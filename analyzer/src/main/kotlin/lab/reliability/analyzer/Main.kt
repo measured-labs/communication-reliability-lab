@@ -18,8 +18,9 @@ val ALWAYS_ZERO = listOf("orphanRows", "pendingRows", "amountMismatch")
 /** 기대 파일의 정수 키 — 차이 목록의 차례도 이 차례. */
 val EXPECT_INT_KEYS = listOf("answers", "lostTotal", "doubledTotal", "layerMismatch", "orphanRows", "pendingRows", "amountMismatch")
 
+/** 첫 인자가 `timing`이면 task 02의 시각 지표(Timing.kt), 아니면 대조 분석(이 파일 — 명령줄 계약은 docs/measurement.md 5절). */
 fun main(args: Array<String>) {
-    exitProcess(runAnalyzer(args))
+    exitProcess(if (args.firstOrNull() == "timing") runTiming(args.drop(1).toTypedArray()) else runAnalyzer(args))
 }
 
 /** 명령줄 계약 그대로의 입구(테스트도 이것을 부른다). 보고는 <실행 폴더>/report.json, report.md에 쓴다. */
