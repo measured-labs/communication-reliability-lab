@@ -56,14 +56,22 @@ for entry in "${SERVICE_PORTS[@]}"; do
   curl -sf "localhost:${port}/settings" > "$OUT/settings-${svc}.json"
 done
 
-# 3. 워밍업(장애 없음). 모두 201이어야 한다 — 아니면 서비스가 정상이 아닌 채로 재는 것이다.
-log "워밍업 ${WARMUP_RATE}/s × ${WARMUP_SECONDS}s"
-k6 run -q -e SCENARIO=warmup -e BASE_URL="$BASE_URL" -e RATE="$WARMUP_RATE" -e DURATION_SECONDS="$WARMUP_SECONDS" \
-  -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e RUN_ID="warmup-${NAME}" \
-  --log-output=file="$OUT/warmup-k6-log.txt" --log-format=raw load/chain.js > "$OUT/warmup-k6-stdout.txt" 2>&1
-warm_sent=$(grep -c '^{"type":"answer"' "$OUT/warmup-k6-log.txt" || true)
-warm_ok=$(grep -c '"status":201' "$OUT/warmup-k6-log.txt" || true)
-[[ $warm_sent -gt 0 && $warm_sent == "$warm_ok" ]] || die "워밍업 ${warm_sent}건 중 201이 ${warm_ok}건"
+# 3. 워밍업(장애 없음). 한 회차가 모두 201이 될 때까지 최대 3회차 — 셋 다 아니면 서비스가 정상이 아닌 채로 재는 것이라 멈춘다.
+#    막 뜬 JVM에서는 첫 회차의 일부가 층의 타임아웃(1000ms)을 넘는다(504 32/300 — 실측 2026-11-24).
+warmed=no
+for round in 1 2 3; do
+  log "워밍업 ${round}회차 ${WARMUP_RATE}/s × ${WARMUP_SECONDS}s"
+  k6 run -q -e SCENARIO=warmup -e BASE_URL="$BASE_URL" -e RATE="$WARMUP_RATE" -e DURATION_SECONDS="$WARMUP_SECONDS" \
+    -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e RUN_ID="warmup${round}-${NAME}" \
+    --log-output=file="$OUT/warmup${round}-k6-log.txt" --log-format=raw load/chain.js > "$OUT/warmup${round}-k6-stdout.txt" 2>&1 \
+    || die "워밍업 k6가 실패했다 — $OUT/warmup${round}-k6-stdout.txt"
+  warm_sent=$(grep -c '^{"type":"answer"' "$OUT/warmup${round}-k6-log.txt" || true)
+  warm_ok=$(grep -c '"status":201' "$OUT/warmup${round}-k6-log.txt" || true)
+  echo "warmup_round_${round}=${warm_ok}/${warm_sent} 201" >> "$OUT/config.env"
+  if [[ $warm_sent -gt 0 && $warm_sent == "$warm_ok" ]]; then warmed=yes; break; fi
+  log "워밍업 ${round}회차: ${warm_sent}건 중 201이 ${warm_ok}건"
+done
+[[ $warmed == yes ]] || die "워밍업 3회차 모두 201이 아닌 응답이 있었다"
 
 # 4. 상태 초기화: 이 프로젝트의 세 DB의 행과 서비스의 장애 카운터
 log "상태 초기화"

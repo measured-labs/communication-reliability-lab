@@ -56,6 +56,8 @@
 
 그 밖의 필드는 무시한다. 줄의 차례는 뜻이 없다(완료 차례로 쌓인다).
 
+보내는 수: k6 `constant-arrival-rate`는 끝 경계에서 반복을 하나 더 시작할 때가 있어서(30s × 20/s에 601번을 실측), 스크립트가 `iterationInTest >= RATE × DURATION_SECONDS`인 반복은 보내지 않는다(정답 줄도 없음). 모자라면(VU 부족으로 떨어진 반복) 분석기의 `--planned`가 잡는다.
+
 k6는 `--log-output=file=<k6-log.txt> --log-format=raw`로 `console.log`를 파일에 쓰고, 같은 파일에 자기 경고(`Request Failed`)도 쓴다. 실행 스크립트가 `{"type":"answer"`로 시작하는 줄만 골라 `answers.jsonl`을 만든다(0줄이면 실행 실패).
 
 ## 2. DB 상태 — `db/orders.csv` · `db/reservations.csv` · `db/payments.csv`
@@ -209,7 +211,7 @@ JSON 객체. 아래 키 가운데 **적은 것만** 견준다(하나 이상 적�
 | `compose.resolved.yaml` | `docker compose config` — 자원 제한, JVM 옵션(`-Djdk.httpclient.disableRetryConnect=true` 등), 층 사이 타임아웃 |
 | `images.txt` | 쓴 이미지와 PostgreSQL 이미지의 다이제스트 |
 | `settings-<서비스>.json` | 떠 있는 서비스가 실제로 쓴 설정(`GET /settings`): Tomcat 스레드·큐·연결 수, Hikari 풀·대기, 가상 스레드, 타임아웃, JDK HttpClient 시스템 속성 |
-| `warmup-k6-log.txt`, `warmup-k6-stdout.txt` | 워밍업(모두 201이어야 실행이 이어진다) |
+| `warmup<n>-k6-log.txt`, `warmup<n>-k6-stdout.txt` | 워밍업 회차마다(한 회차가 모두 201이 되면 이어진다, 최대 3회차 — 회차마다의 201 수는 `config.env`의 `warmup_round_<n>`) |
 | `k6-log.txt`, `k6-stdout.txt`, `k6-summary.json` | k6 원본 출력 |
 | `answers.jsonl` | 1절 |
 | `db/*.csv` | 2절 |
@@ -217,4 +219,4 @@ JSON 객체. 아래 키 가운데 **적은 것만** 견준다(하나 이상 적�
 | `expect.json` | 견준 기대 파일의 사본(`load/expectations/<시나리오>.json`) |
 | `report.json`, `report.md` | 5절 |
 
-실행 차례(`scripts/run.sh`): 컨테이너 넷이 떠 있고 세 서비스가 UP인지 확인 → 설정 기록 → 워밍업(장애 없음) → 세 DB의 행을 비우고 카운터를 0으로(남은 행이 있으면 실패) → 부하 → 가라앉기(늦게 끝나는 지연 요청을 기다림) → 컨테이너가 여전히 떠 있는지 확인 → 내보내기 → 분석. 어느 단계든 실패하면 0이 아닌 코드로 멈춘다.
+실행 차례(`scripts/run.sh`): 컨테이너 넷이 떠 있고 세 서비스가 UP인지 확인 → 설정 기록 → 워밍업(장애 없음, 모두 201인 회차가 나올 때까지 최대 3회차) → 세 DB의 행을 비우고 카운터를 0으로(남은 행이 있으면 실패) → 부하 → 가라앉기(늦게 끝나는 지연 요청을 기다림) → 컨테이너가 여전히 떠 있는지 확인 → 내보내기 → 분석. 어느 단계든 실패하면 0이 아닌 코드로 멈춘다.

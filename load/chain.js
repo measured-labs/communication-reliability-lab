@@ -72,8 +72,14 @@ function pick(i) {
   return { requestId: `${RUN_ID}-${i}`, fault: '' };
 }
 
+// constant-arrival-rate는 끝 경계에서 반복을 하나 더 시작할 때가 있다(30s × 20/s에 601번 — 실측 2026-11-24).
+// 보낸 수를 계획한 수(RATE × DURATION_SECONDS)에 정확히 맞추려고 넘는 반복은 보내지 않는다.
+// 모자란 경우(VU 부족으로 떨어진 반복)는 분석기가 --planned로 잡는다.
+const PLANNED = RATE * DURATION_SECONDS;
+
 export default function () {
   const i = exec.scenario.iterationInTest;
+  if (i >= PLANNED) return;
   const { requestId, fault } = pick(i);
   const headers = { 'Content-Type': 'application/json', 'X-Request-Id': requestId };
   if (fault) headers['X-Fault'] = fault;
