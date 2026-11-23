@@ -86,7 +86,14 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
     override fun call(amount: Long): LayerOutcome {
         val ctx = ChainContext.current()
         val request = request(ctx.requestId, ctx.rawFault, amount)
-        return try {
+        val start = epochMicros()
+        return send(request).also { outcome ->
+            ctx.call = CallRecord(start, epochMicros(), outcome.label())
+        }
+    }
+
+    private fun send(request: HttpRequest): LayerOutcome =
+        try {
             val status = client.send(request, HttpResponse.BodyHandlers.discarding()).statusCode()
             when (status) {
                 in 200..299 -> LayerOutcome.Completed
@@ -102,7 +109,13 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
         } catch (e: IOException) {
             LayerOutcome.Unknown("IO_${e.javaClass.simpleName}")
         }
-    }
+}
+
+/** 시각 기록에 남기는 결과의 이름: "Completed" · "Failed:<까닭>" · "Unknown:<까닭>". */
+fun LayerOutcome.label(): String = when (this) {
+    LayerOutcome.Completed -> "Completed"
+    is LayerOutcome.Failed -> "Failed:$reason"
+    is LayerOutcome.Unknown -> "Unknown:$reason"
 }
 
 /** 위 층의 응답 상태: 처리됨 201, 아래 층이 처리 안 함 502, 모름 504. */

@@ -30,13 +30,20 @@ class ChainLinkConfiguration {
     @Bean
     fun inFlightRequests() = InFlightRequests()
 
-    /** 업무 입구 한 경로에만 건다(Actuator·/faults·/settings·/inflight에는 걸지 않는다). */
+    @Bean
+    fun requestTimings() = RequestTimings()
+
+    @Bean
+    fun loadSampler(context: ApplicationContext, inFlightRequests: InFlightRequests) = LoadSampler(context, inFlightRequests)
+
+    /** 업무 입구 한 경로에만 건다(Actuator·/faults·/settings·/inflight·/timings·/samples·조회 끝점에는 걸지 않는다). */
     @Bean
     fun chainEntryFilter(
         faultInjection: FaultInjection,
         inFlightRequests: InFlightRequests,
+        requestTimings: RequestTimings,
         @Value("\${chain.entry-path}") entryPath: String,
-    ) = FilterRegistrationBean(ChainEntryFilter(faultInjection, inFlightRequests)).apply {
+    ) = FilterRegistrationBean(ChainEntryFilter(faultInjection, inFlightRequests, requestTimings)).apply {
         addUrlPatterns(entryPath)
         order = Ordered.HIGHEST_PRECEDENCE
     }
