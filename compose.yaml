@@ -1,0 +1,86 @@
+# 이 프로젝트의 자원만 만든다: 컨테이너·네트워크·볼륨 이름이 모두 communication-reliability-lab- 로 시작한다.
+# 띄우기: scripts/up.sh · 내리기: scripts/down.sh
+name: communication-reliability-lab
+
+# 측정 조건(같게 둘 것): 자원 제한, JVM 옵션, 층 사이의 타임아웃. 실행 기록에 `docker compose config`로 남는다.
+x-service: &service
+  restart: "no" # 죽으면 죽은 채로 둔다 — 되살아나 측정이 조용히 이어지지 않게
+  mem_limit: 768m
+  cpus: 2
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+x-service-env: &service-env
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_USER: lab      # 로컬 실험용 계정(비밀 값 아님 — README)
+  DB_PASSWORD: lab
+  VIRTUAL_THREADS: "false"
+  # JDK HttpClient의 숨은 기본값: 연결 실패 자동 재시도(기본 켜짐)를 끈다. 나머지는 기본값과 같은 값을 명시한다.
+  JAVA_TOOL_OPTIONS: >-
+    -XX:MaxRAMPercentage=75
+    -Djdk.httpclient.disableRetryConnect=true
+    -Djdk.httpclient.enableAllMethodRetry=false
+    -Djdk.httpclient.keepalive.timeout=30
+    -Djdk.httpclient.connectionPoolSize=0
+
+services:
+  postgres:
+    image: postgres:18.7
+    restart: "no"
+    mem_limit: 1g
+    cpus: 2
+    command: postgres -c max_connections=100
+    environment:
+      POSTGRES_USER: lab      # 로컬 실험용
+      POSTGRES_PASSWORD: lab
+    volumes:
+      - ./infra/postgres:/docker-entrypoint-initdb.d:ro
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U lab -d payment_db"] # TCP로 — 초기화 중의 임시 서버(소켓만)를 준비됨으로 보지 않게
+      interval: 2s
+      retries: 30
+
+  order:
+    <<: *service
+    build: { context: ., target: order }
+    environment:
+      <<: *service-env
+      NEXT_LAYER_URL: http://inventory:8080/reservations
+      NEXT_LAYER_CONNECT_TIMEOUT: 500ms
+      NEXT_LAYER_REQUEST_TIMEOUT: 2000ms
+    ports:
+      - "8081:8080"
+
+  inventory:
+    <<: *service
+    build: { context: ., target: inventory }
+    environment:
+      <<: *service-env
+      NEXT_LAYER_URL: http://payment:8080/payments
+      NEXT_LAYER_CONNECT_TIMEOUT: 500ms
+      NEXT_LAYER_REQUEST_TIMEOUT: 1000ms
+    ports:
+      - "8082:8080"
+
+  payment:
+    <<: *service
+    build: { context: ., target: payment }
+    environment:
+      <<: *service-env
+    ports:
+      - "8083:8080"
+
+  # 분석기: 서비스와 함께 뜨지 않는다. scripts/run.sh가 `docker compose run --rm analyzer ...`로 부른다.
+  analyzer:
+    build: { context: ., target: analyzer }
+    profiles: [tools]
+    mem_limit: 1g
+    cpus: 2
+    volumes:
+      - ./runs:/runs
+
+volumes:
+  pgdata:

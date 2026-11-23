@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: order
+  config:
+    import: classpath:chain-link.yml
+
+chain:
+  service: order
+  entry-path: /orders
+  next-layer:
+    url: ${NEXT_LAYER_URL}
+    connect-timeout: ${NEXT_LAYER_CONNECT_TIMEOUT}
+    request-timeout: ${NEXT_LAYER_REQUEST_TIMEOUT}
