@@ -1,0 +1,1 @@
+{"order":{"delay":50,"error":50,"fail-after-commit":50},"inventory":{"delay":100,"error":50,"fail-after-commit":50},"payment":{"delay":100,"error":50,"fail-after-commit":50}}

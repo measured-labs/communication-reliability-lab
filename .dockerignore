@@ -1,0 +1,9 @@
+.git
+.gradle
+.kotlin
+**/build
+runs
+docs
+load
+scripts
+README.md

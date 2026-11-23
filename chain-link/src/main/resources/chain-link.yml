@@ -1,0 +1,43 @@
+# 세 서비스가 같게 두는 설정. 각 서비스의 application.yml이 spring.config.import로 읽는다.
+# 측정을 흐리는 숨은 기본값을 모두 값으로 적는다(기본값과 같은 값이어도 적는다 — 실행 기록에 남기려는 것).
+# 실제로 쓰인 값은 GET /settings 로 확인한다(떠 있는 객체에서 읽는다 — 실행 스크립트가 실행마다 받아 둔다).
+
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 200            # Boot 기본 200. 가상 스레드를 켜면 듣지 않는다
+      min-spare: 10       # Boot 기본 10
+    accept-count: 100     # Boot 기본 100 — 스레드가 다 찼을 때 연결 대기 큐
+    max-connections: 8192 # Boot 기본 8192
+    connection-timeout: 20s # Boot 기본값 없음 → Tomcat 기본 60s. 명시
+    # 서버가 유휴 연결을 닫는 시간. 주지 않으면 Tomcat이 connection-timeout을 쓴다.
+    # 클라이언트(JDK HttpClient)의 유휴 연결 유지 시간(compose.yaml의 jdk.httpclient.keepalive.timeout=15s)보다 길게 둔다 —
+    # 서버가 먼저 닫은 연결을 클라이언트가 재사용하면, 받지도 않은 요청이 "연결이 끊김 → 결과 모름"이 된다.
+    keep-alive-timeout: 20s
+
+spring:
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS:false} # 기본은 플랫폼 스레드. 비교할 때만 켠다
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${chain.service}_db
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10    # Hikari 기본 10
+      minimum-idle: 10         # Hikari 기본 = maximum-pool-size
+      connection-timeout: 1000 # ms. Hikari 기본 30000 — 층의 타임아웃보다 길어 타임아웃 실험이 DB 대기에 묻힌다
+  sql:
+    init:
+      mode: always             # 기본 embedded → PostgreSQL에서는 schema.sql이 조용히 안 돈다
+      continue-on-error: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
