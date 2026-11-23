@@ -1,0 +1,331 @@
+time="2026-11-24T01:25:08+09:00" level=warning msg="Docker Compose is configured to build using Bake, but buildx isn't installed"
+#0 building with "default" instance using docker driver
+
+#1 [order internal] load build definition from Dockerfile
+#1 transferring dockerfile: 2.44kB done
+#1 DONE 0.1s
+
+#2 [inventory internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.44kB done
+#2 DONE 0.1s
+
+#3 [payment internal] load build definition from Dockerfile
+#3 transferring dockerfile: 2.44kB done
+#3 DONE 0.1s
+
+#4 [inventory internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble
+#4 DONE 0.0s
+
+#5 [inventory internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble
+#5 DONE 0.0s
+
+#6 [inventory internal] load .dockerignore
+#6 DONE 0.0s
+
+#7 [order internal] load .dockerignore
+#7 transferring context: 103B done
+#7 DONE 0.1s
+
+#8 [analyzer internal] load build definition from Dockerfile
+#8 transferring dockerfile: 2.44kB done
+#8 DONE 0.1s
+
+#5 [analyzer internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble
+#5 DONE 0.0s
+
+#4 [analyzer internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble
+#4 DONE 0.0s
+
+#6 [inventory internal] load .dockerignore
+#6 transferring context: 103B done
+#6 DONE 0.1s
+
+#9 [order internal] load build context
+#9 DONE 0.0s
+
+#10 [order service 1/2] FROM docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble
+#10 DONE 0.0s
+
+#11 [order build  1/18] FROM docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble
+#11 DONE 0.0s
+
+#12 [payment internal] load .dockerignore
+#12 transferring context: 103B done
+#12 DONE 0.1s
+
+#13 [analyzer internal] load .dockerignore
+#13 transferring context: 103B done
+#13 DONE 0.1s
+
+#10 [analyzer service 1/2] FROM docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble
+#10 DONE 0.0s
+
+#11 [analyzer build  1/18] FROM docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble
+#11 DONE 0.0s
+
+#9 [order internal] load build context
+#9 transferring context: 4.89kB 0.0s done
+#9 DONE 0.1s
+
+#14 [inventory internal] load build context
+#14 transferring context: 4.89kB 0.0s done
+#14 DONE 0.1s
+
+#15 [payment internal] load build context
+#15 transferring context: 4.89kB 0.0s done
+#15 DONE 0.1s
+
+#16 [analyzer internal] load build context
+#16 transferring context: 4.89kB 0.0s done
+#16 DONE 0.1s
+
+#17 [order build  7/18] COPY order/build.gradle.kts order/
+#17 CACHED
+
+#18 [order build  6/18] COPY chain-link/build.gradle.kts chain-link/
+#18 CACHED
+
+#19 [order build 14/18] COPY order order
+#19 CACHED
+
+#20 [order build  5/18] COPY fault-header/build.gradle.kts fault-header/
+#20 CACHED
+
+#21 [order build 15/18] COPY inventory inventory
+#21 CACHED
+
+#22 [order build 18/18] RUN ./gradlew --no-daemon -q :order:bootJar :inventory:bootJar :payment:bootJar :analyzer:installDist
+#22 CACHED
+
+#23 [order build  8/18] COPY inventory/build.gradle.kts inventory/
+#23 CACHED
+
+#24 [order build 16/18] COPY payment payment
+#24 CACHED
+
+#25 [order build 12/18] COPY fault-header fault-header
+#25 CACHED
+
+#26 [order build  9/18] COPY payment/build.gradle.kts payment/
+#26 CACHED
+
+#27 [order build 13/18] COPY chain-link chain-link
+#27 CACHED
+
+#28 [order build 10/18] COPY analyzer/build.gradle.kts analyzer/
+#28 CACHED
+
+#29 [order build  3/18] COPY gradlew settings.gradle.kts gradle.properties ./
+#29 CACHED
+
+#30 [order build  4/18] COPY gradle gradle
+#30 CACHED
+
+#31 [order build 11/18] RUN ./gradlew --no-daemon -q       :fault-header:dependencies :chain-link:dependencies :order:dependencies :inventory:dependencies :payment:dependencies :analyzer:dependencies > /dev/null
+#31 CACHED
+
+#32 [order build 17/18] COPY analyzer analyzer
+#32 CACHED
+
+#33 [payment build 15/18] COPY inventory inventory
+#33 CACHED
+
+#34 [payment build 13/18] COPY chain-link chain-link
+#34 CACHED
+
+#35 [payment build  5/18] COPY fault-header/build.gradle.kts fault-header/
+#35 CACHED
+
+#36 [payment build  7/18] COPY order/build.gradle.kts order/
+#36 CACHED
+
+#37 [payment build  9/18] COPY payment/build.gradle.kts payment/
+#37 CACHED
+
+#38 [payment build  3/18] COPY gradlew settings.gradle.kts gradle.properties ./
+#38 CACHED
+
+#39 [payment build  6/18] COPY chain-link/build.gradle.kts chain-link/
+#39 CACHED
+
+#40 [payment build 10/18] COPY analyzer/build.gradle.kts analyzer/
+#40 CACHED
+
+#41 [payment build 14/18] COPY order order
+#41 CACHED
+
+#42 [payment build  4/18] COPY gradle gradle
+#42 CACHED
+
+#43 [payment build 18/18] RUN ./gradlew --no-daemon -q :order:bootJar :inventory:bootJar :payment:bootJar :analyzer:installDist
+#43 CACHED
+
+#44 [payment build  8/18] COPY inventory/build.gradle.kts inventory/
+#44 CACHED
+
+#45 [payment build 16/18] COPY payment payment
+#45 CACHED
+
+#46 [payment build 11/18] RUN ./gradlew --no-daemon -q       :fault-header:dependencies :chain-link:dependencies :order:dependencies :inventory:dependencies :payment:dependencies :analyzer:dependencies > /dev/null
+#46 CACHED
+
+#47 [payment build 17/18] COPY analyzer analyzer
+#47 CACHED
+
+#48 [payment build 12/18] COPY fault-header fault-header
+#48 CACHED
+
+#49 [order order 1/1] COPY --from=build /src/order/build/libs/app.jar app.jar
+#49 CACHED
+
+#50 [inventory build  9/18] COPY payment/build.gradle.kts payment/
+#50 CACHED
+
+#51 [inventory build  6/18] COPY chain-link/build.gradle.kts chain-link/
+#51 CACHED
+
+#52 [inventory build 11/18] RUN ./gradlew --no-daemon -q       :fault-header:dependencies :chain-link:dependencies :order:dependencies :inventory:dependencies :payment:dependencies :analyzer:dependencies > /dev/null
+#52 CACHED
+
+#53 [inventory build  3/18] COPY gradlew settings.gradle.kts gradle.properties ./
+#53 CACHED
+
+#54 [inventory build 13/18] COPY chain-link chain-link
+#54 CACHED
+
+#55 [inventory build  4/18] COPY gradle gradle
+#55 CACHED
+
+#56 [inventory build 14/18] COPY order order
+#56 CACHED
+
+#57 [inventory build  5/18] COPY fault-header/build.gradle.kts fault-header/
+#57 CACHED
+
+#58 [inventory service 2/2] WORKDIR /app
+#58 CACHED
+
+#59 [inventory build 18/18] RUN ./gradlew --no-daemon -q :order:bootJar :inventory:bootJar :payment:bootJar :analyzer:installDist
+#59 CACHED
+
+#60 [inventory build 10/18] COPY analyzer/build.gradle.kts analyzer/
+#60 CACHED
+
+#61 [inventory build  8/18] COPY inventory/build.gradle.kts inventory/
+#61 CACHED
+
+#62 [inventory build 12/18] COPY fault-header fault-header
+#62 CACHED
+
+#63 [inventory build 16/18] COPY payment payment
+#63 CACHED
+
+#64 [inventory build 15/18] COPY inventory inventory
+#64 CACHED
+
+#65 [inventory build 17/18] COPY analyzer analyzer
+#65 CACHED
+
+#66 [inventory build  7/18] COPY order/build.gradle.kts order/
+#66 CACHED
+
+#67 [payment payment 1/1] COPY --from=build /src/payment/build/libs/app.jar app.jar
+#67 CACHED
+
+#68 [inventory inventory 1/1] COPY --from=build /src/inventory/build/libs/app.jar app.jar
+#68 CACHED
+
+#69 [analyzer build 13/18] COPY chain-link chain-link
+#69 CACHED
+
+#70 [analyzer build  5/18] COPY fault-header/build.gradle.kts fault-header/
+#70 CACHED
+
+#71 [analyzer build  3/18] COPY gradlew settings.gradle.kts gradle.properties ./
+#71 CACHED
+
+#72 [analyzer build  4/18] COPY gradle gradle
+#72 CACHED
+
+#73 [analyzer build  2/18] WORKDIR /src
+#73 CACHED
+
+#74 [analyzer build 18/18] RUN ./gradlew --no-daemon -q :order:bootJar :inventory:bootJar :payment:bootJar :analyzer:installDist
+#74 CACHED
+
+#75 [analyzer build  6/18] COPY chain-link/build.gradle.kts chain-link/
+#75 CACHED
+
+#76 [analyzer build 10/18] COPY analyzer/build.gradle.kts analyzer/
+#76 CACHED
+
+#77 [analyzer build 17/18] COPY analyzer analyzer
+#77 CACHED
+
+#78 [analyzer build  8/18] COPY inventory/build.gradle.kts inventory/
+#78 CACHED
+
+#79 [analyzer build 14/18] COPY order order
+#79 CACHED
+
+#80 [analyzer build 11/18] RUN ./gradlew --no-daemon -q       :fault-header:dependencies :chain-link:dependencies :order:dependencies :inventory:dependencies :payment:dependencies :analyzer:dependencies > /dev/null
+#80 CACHED
+
+#81 [analyzer build 15/18] COPY inventory inventory
+#81 CACHED
+
+#82 [analyzer build  9/18] COPY payment/build.gradle.kts payment/
+#82 CACHED
+
+#83 [analyzer build 12/18] COPY fault-header fault-header
+#83 CACHED
+
+#84 [analyzer build  7/18] COPY order/build.gradle.kts order/
+#84 CACHED
+
+#85 [analyzer build 16/18] COPY payment payment
+#85 CACHED
+
+#86 [analyzer analyzer 2/2] COPY --from=build /src/analyzer/build/install/analyzer /opt/analyzer
+#86 CACHED
+
+#87 [payment] exporting to image
+#87 exporting layers done
+#87 writing image sha256:016892ba8627006b3bad6621ea9d71e4015811166ea1027ed45f2793631be140 0.0s done
+#87 naming to docker.io/library/communication-reliability-lab-payment
+#87 naming to docker.io/library/communication-reliability-lab-payment 0.0s done
+#87 DONE 0.2s
+
+#88 [order] exporting to image
+#88 exporting layers done
+#88 writing image sha256:9b75d5d47c84cf2f77829f2d6873e34335e78504aa29ad0571439fc12b2f98db 0.0s done
+#88 naming to docker.io/library/communication-reliability-lab-order 0.0s done
+#88 DONE 0.1s
+
+#89 [inventory] exporting to image
+#89 exporting layers done
+#89 writing image sha256:bf3b599ad7a4b64d166794e5fb906055813f43d0198e598e20ba9ef6e94036f6 0.0s done
+#89 naming to docker.io/library/communication-reliability-lab-inventory 0.0s done
+#89 DONE 0.1s
+
+#90 [analyzer] exporting to image
+#90 exporting layers done
+#90 writing image sha256:62f7e3a08a81437added2072e96ffade11d5414bbe8ebddfd8e33b92080c78eb 0.0s done
+#90 naming to docker.io/library/communication-reliability-lab-analyzer 0.0s done
+#90 DONE 0.1s
+
+#91 [order] resolving provenance for metadata file
+#91 DONE 0.2s
+
+#92 [inventory] resolving provenance for metadata file
+#92 DONE 0.1s
+
+#93 [analyzer] resolving provenance for metadata file
+#93 DONE 0.0s
+
+#94 [payment] resolving provenance for metadata file
+#94 DONE 0.0s
+ analyzer  Built
+ inventory  Built
+ order  Built
+ payment  Built
