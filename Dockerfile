@@ -6,13 +6,15 @@ FROM eclipse-temurin:25.0.5.1_2-jdk-noble AS build
 WORKDIR /src
 COPY gradlew settings.gradle.kts gradle.properties ./
 COPY gradle gradle
+COPY fault-header/build.gradle.kts fault-header/
 COPY chain-link/build.gradle.kts chain-link/
 COPY order/build.gradle.kts order/
 COPY inventory/build.gradle.kts inventory/
 COPY payment/build.gradle.kts payment/
 COPY analyzer/build.gradle.kts analyzer/
 RUN ./gradlew --no-daemon -q \
-      :chain-link:dependencies :order:dependencies :inventory:dependencies :payment:dependencies :analyzer:dependencies > /dev/null
+      :fault-header:dependencies :chain-link:dependencies :order:dependencies :inventory:dependencies :payment:dependencies :analyzer:dependencies > /dev/null
+COPY fault-header fault-header
 COPY chain-link chain-link
 COPY order order
 COPY inventory inventory

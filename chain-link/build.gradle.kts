@@ -13,6 +13,7 @@ kotlin {
 }
 
 dependencies {
+    api(project(":fault-header"))
     api(platform("org.springframework.boot:spring-boot-dependencies:$springBootVersion"))
     api("org.springframework.boot:spring-boot-starter-webmvc")
     api("org.springframework.boot:spring-boot-starter-jdbc")
