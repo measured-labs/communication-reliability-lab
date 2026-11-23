@@ -61,7 +61,7 @@ scripts/down.sh                    # 이 프로젝트의 컨테이너·네트워
 ## task 02 — 타임아웃
 
 ```bash
-scripts/task02-all.sh                 # 보정 → 실험 가·나·다(조건마다 서비스를 다시 띄우고 버리는 실행 1회 + 반복 3회). 노트북에서 약 1시간 20분
+scripts/task02-all.sh                 # 보정 → 실험 가·나·다(조건마다 서비스를 다시 띄우고 버리는 실행 1회 + 반복 3회). 2026-11-24 노트북에서 약 55분(02:38~03:33)
 scripts/task02-all.sh ga              # 실험 하나만(cal | ga | na | da)
 scripts/task02-table.sh ga 'edges.inventory->payment.falseTimeoutRatio'   # 결과 표의 줄(반복마다의 값, 가운데값, 범위)
 scripts/task02-recompute.sh runs/false-timeout-…-r1                       # 커밋한 raw.tar.gz에서 분석을 다시 돌려 커밋한 보고와 견준다
