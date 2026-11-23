@@ -61,4 +61,25 @@ class QuantileTest {
             .answer("c", 201, "payment:delay=300", 340).rows("c", "COMPLETED", "RESERVED", "APPROVED").analyze()
         assertEquals(listOf(2.0, 300.0, 340.0, 340.0, 340.0), quantiles(rec, "labels", "payment:delay=300", "elapsedMs"))
     }
+
+    // ---- 순위는 정수 산술(4-5): rank = (q·n + 99) / 100 ----
+    // n=20: p50 → (1000+99)/100 = 10, p95 → (1900+99)/100 = 19, p99 → (1980+99)/100 = 20
+    // n=21: p50 → (1050+99)/100 = 11, p95 → (1995+99)/100 = 20, p99 → (2079+99)/100 = 21
+    // (q·n 이 100의 배수인 경계와 아닌 경우. 50·95·99 에서 double 의 ceil(p·n) 과 갈리는 n 은 1..200000 에 없었다 — 손계산 값으로 단정한다.)
+
+    private fun ofSize(n: Int): Map<String, Any?> {
+        val r = RunRecord(root)
+        (1..n).reversed().forEach { r.completedChain("id-$it", elapsedMs = it * 10) }
+        return r.analyze()
+    }
+
+    @Test
+    fun 스무_건이면_p50_p95_p99는_10_19_20번째_값이다() {
+        assertEquals(listOf(20.0, 100.0, 190.0, 200.0, 200.0), quantiles(ofSize(20), "elapsedMs", "all"))
+    }
+
+    @Test
+    fun 스물한_건이면_p50_p95_p99는_11_20_21번째_값이다() {
+        assertEquals(listOf(21.0, 110.0, 200.0, 210.0, 210.0), quantiles(ofSize(21), "elapsedMs", "all"))
+    }
 }

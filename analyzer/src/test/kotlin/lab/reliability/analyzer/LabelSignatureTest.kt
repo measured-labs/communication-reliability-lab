@@ -62,4 +62,35 @@ class LabelSignatureTest {
         val v = listOf("completed", "failed", "unknown").map { rec.long("labels", "inventory:delay=300", "verdicts", it) }
         assertEquals(listOf(1L, 0L, 2L), v)
     }
+
+    // ---- (mixed) 묶음 — 그 묶음의 정답 줄은 모두 (mixed) 로 센다(4-3) ----
+
+    private fun mixed() = RunRecord(root)
+        .answer("a", 201, "", 10).answer("a", 500, "order:error", 30).rows("a", "COMPLETED", "RESERVED", "APPROVED")
+
+    @Test
+    fun mixed_묶음의_정답_줄은_모두_mixed_라벨의_answers로_센다() {
+        val rec = mixed().analyze()
+        assertEquals(2L to 1L, rec.long("labels", "(mixed)", "answers") to rec.long("labels", "(mixed)", "requestIds"))
+    }
+
+    @Test
+    fun mixed_묶음의_판정은_모두_mixed_라벨에서_센다() {
+        val rec = mixed().analyze()
+        val v = listOf("completed", "failed", "unknown").map { rec.long("labels", "(mixed)", "verdicts", it) }
+        assertEquals(listOf(1L, 1L, 0L), v)
+    }
+
+    @Test
+    fun mixed_묶음의_경과는_모두_mixed_라벨의_분위수에_든다() {
+        val rec = mixed().analyze()
+        assertEquals(2.0 to 30.0, rec.double("labels", "(mixed)", "elapsedMs", "count") to rec.double("labels", "(mixed)", "elapsedMs", "max"))
+    }
+
+    @Test
+    fun mixed_묶음의_줄은_자기_fault의_라벨로_나누지_않는다() {
+        val rec = mixed().analyze()
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(setOf("(mixed)"), (rec["labels"] as Map<String, Any?>).keys)
+    }
 }

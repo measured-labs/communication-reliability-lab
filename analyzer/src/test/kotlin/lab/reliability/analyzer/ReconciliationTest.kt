@@ -295,6 +295,104 @@ class ReconciliationTest {
         assertEquals(1L, rec.long("layerMismatch"))
     }
 
+    // ---- 8. 전체의 orphanRows·pendingRows(5-1: 세 층의 합) ----
+
+    @Test
+    fun 전체_orphanRows는_세_층의_합이다() {
+        val rec = record().completedChain("a")
+            .row("order", "x", "FAILED").row("inventory", "y", "RESERVED").row("inventory", "y", "RESERVED").analyze()
+        assertEquals(3L, rec.long("orphanRows"))
+    }
+
+    @Test
+    fun 전체_pendingRows는_세_층의_합이다() {
+        val rec = record().answer("a", 0).rows("a", "PENDING", "PENDING", null).answer("b", 0).rows("b", "PENDING", null, null)
+            .analyze()
+        assertEquals(3L, rec.long("pendingRows"))
+    }
+
+    // ---- 9. 금액 불일치(4-2 amountMismatch) ----
+
+    private fun amountMismatch(rec: Map<String, Any?>) =
+        listOf(rec.at("layers", "order", "amountMismatch"), rec.at("layers", "inventory", "amountMismatch"),
+            rec.at("layers", "payment", "amountMismatch"), rec.at("amountMismatch"))
+            .map { (it as Number?)?.toLong() }
+
+    @Test
+    fun 금액이_맞으면_금액_불일치는_0이고_inventory는_null이다() {
+        val rec = record().completedChain("a", amount = 1000).completedChain("b", amount = 1001).analyze()
+        assertEquals(listOf(0L, null, 0L, 0L), amountMismatch(rec))
+    }
+
+    @Test
+    fun order_처리_행의_금액이_보낸_금액과_다르면_order만_센다() {
+        val rec = record().answer("a", 201, amount = 1000)
+            .row("order", "a", "COMPLETED", 1999).row("inventory", "a", "RESERVED").row("payment", "a", "APPROVED", 1000)
+            .analyze()
+        assertEquals(listOf(1L, null, 0L, 1L), amountMismatch(rec))
+    }
+
+    @Test
+    fun payment_처리_행의_금액이_보낸_금액과_다르면_payment만_센다() {
+        val rec = record().answer("a", 201, amount = 1000)
+            .row("order", "a", "COMPLETED", 1000).row("inventory", "a", "RESERVED").row("payment", "a", "APPROVED", 999)
+            .analyze()
+        assertEquals(listOf(0L, null, 1L, 1L), amountMismatch(rec))
+    }
+
+    @Test
+    fun 다른_요청의_금액이_섞이면_금액_불일치다() {
+        // b 의 처리 행이 a 의 금액을 들고 있다 — 정답 전체가 아니라 그 requestId 로 보낸 금액과 견준다
+        val rec = record().completedChain("a", amount = 1000)
+            .answer("b", 201, amount = 1001).rows("b", "COMPLETED", "RESERVED", "APPROVED", amount = 1000).analyze()
+        assertEquals(listOf(1L, null, 1L, 2L), amountMismatch(rec))
+    }
+
+    @Test
+    fun 처리_행이_아닌_행의_금액은_견주지_않는다() {
+        val rec = record().answer("a", 502, amount = 1000).rows("a", "FAILED", "FAILED", null, amount = 5).analyze()
+        assertEquals(listOf(0L, null, 0L, 0L), amountMismatch(rec))
+    }
+
+    @Test
+    fun 같은_id를_두_번_보냈으면_보낸_금액_가운데_하나와_같으면_맞다() {
+        // 행의 차례를 정답 줄의 차례와 엇갈리게 둔다
+        val rec = record().answer("a", 201, amount = 1000).answer("a", 201, amount = 1001)
+            .rows("a", "COMPLETED", "RESERVED", "APPROVED", amount = 1001)
+            .rows("a", "COMPLETED", "RESERVED", "APPROVED", amount = 1000).analyze()
+        assertEquals(listOf(0L, null, 0L, 0L), amountMismatch(rec))
+    }
+
+    @Test
+    fun 같은_id를_두_번_보냈어도_어느_금액과도_다르면_금액_불일치다() {
+        val rec = record().answer("a", 201, amount = 1000).answer("a", 201, amount = 1001)
+            .rows("a", "COMPLETED", "RESERVED", "APPROVED", amount = 1000)
+            .rows("a", "COMPLETED", "RESERVED", "APPROVED", amount = 1002).analyze()
+        assertEquals(listOf(1L, null, 1L, 2L), amountMismatch(rec))
+    }
+
+    @Test
+    fun 금액_불일치는_requestId가_아니라_행_수로_센다() {
+        val rec = record().answer("a", 201, amount = 1000)
+            .row("order", "a", "COMPLETED", 7).row("order", "a", "COMPLETED", 8)
+            .row("inventory", "a", "RESERVED").row("payment", "a", "APPROVED", 1000).analyze()
+        assertEquals(2L, rec.long("layers", "order", "amountMismatch"))
+    }
+
+    @Test
+    fun 정답에_없는_행의_금액은_금액_불일치에_들지_않는다() {
+        val rec = record().completedChain("a", amount = 1000).row("payment", "ghost", "APPROVED", 1).analyze()
+        assertEquals(listOf(0L, null, 0L, 0L), amountMismatch(rec))
+    }
+
+    @Test
+    fun 금액은_결과_모름이나_실패_응답의_처리_행도_견준다() {
+        // 4-2: 응답 판정과 상관없이 "처리 행" 가운데 금액이 다른 행
+        val rec = record().answer("a", 0, amount = 1000).rows("a", "COMPLETED", "RESERVED", "APPROVED", amount = 1)
+            .answer("b", 500, amount = 2000).rows("b", "COMPLETED", "RESERVED", "APPROVED", amount = 2).analyze()
+        assertEquals(listOf(2L, null, 2L, 4L), amountMismatch(rec))
+    }
+
     private fun verdicts(rec: Map<String, Any?>) =
         listOf(rec.long("verdicts", "completed"), rec.long("verdicts", "failed"), rec.long("verdicts", "unknown"))
 }

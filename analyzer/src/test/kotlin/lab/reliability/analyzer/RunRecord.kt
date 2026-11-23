@@ -22,6 +22,9 @@ private val HEADERS = mapOf(
 )
 private val CSV_FILES = mapOf("order" to "orders.csv", "inventory" to "reservations.csv", "payment" to "payments.csv")
 
+/** 요청마다 다른 금액(1절: 부하 스크립트는 요청마다 다르게 보낸다). 같은 id면 같은 값 — 다른 금액은 인자로 준다. */
+fun amountFor(id: String): Long = 1000L + id.hashCode().mod(9000)
+
 class RunRecord(root: Path, val name: String = "test-20261124T000000-r1") {
     val dir: Path = root.resolve(name).also { it.createDirectories() }
     private val answerLines = mutableListOf<String>()
@@ -36,8 +39,14 @@ class RunRecord(root: Path, val name: String = "test-20261124T000000-r1") {
     /** 쓰지 않을 파일(없는 파일 시험용): "answers.jsonl", "fault-counts.json", "db/orders.csv" 등 */
     val omit = mutableSetOf<String>()
 
-    fun answer(id: String, status: Int = 201, fault: String = "", elapsedMs: Number = 10): RunRecord {
-        answerLines += """{"type":"answer","requestId":"$id","fault":"$fault","status":$status,"errorCode":0,"elapsedMs":$elapsedMs}"""
+    fun answer(
+        id: String,
+        status: Int = 201,
+        fault: String = "",
+        elapsedMs: Number = 10,
+        amount: Long = amountFor(id),
+    ): RunRecord {
+        answerLines += """{"type":"answer","requestId":"$id","fault":"$fault","amount":$amount,"status":$status,"errorCode":0,"elapsedMs":$elapsedMs}"""
         return this
     }
 
@@ -46,22 +55,23 @@ class RunRecord(root: Path, val name: String = "test-20261124T000000-r1") {
         return this
     }
 
-    fun row(layer: String, id: String, status: String): RunRecord {
-        rows.getValue(layer) += if (layer == "inventory") "$id,$status" else "$id,1000,$status"
+    /** 한 층의 행 하나. inventory 에는 금액 칸이 없어 amount 를 쓰지 않는다. */
+    fun row(layer: String, id: String, status: String, amount: Long = amountFor(id)): RunRecord {
+        rows.getValue(layer) += if (layer == "inventory") "$id,$status" else "$id,$amount,$status"
         return this
     }
 
     /** 세 층의 행을 한 번에. null 이면 그 층에 행이 없다. */
-    fun rows(id: String, order: String?, inventory: String?, payment: String?): RunRecord {
-        order?.let { row("order", id, it) }
-        inventory?.let { row("inventory", id, it) }
-        payment?.let { row("payment", id, it) }
+    fun rows(id: String, order: String?, inventory: String?, payment: String?, amount: Long = amountFor(id)): RunRecord {
+        order?.let { row("order", id, it, amount) }
+        inventory?.let { row("inventory", id, it, amount) }
+        payment?.let { row("payment", id, it, amount) }
         return this
     }
 
     /** 완료 응답(201)과 세 층의 처리 행 하나씩 — 모두 맞는 요청 하나. */
-    fun completedChain(id: String, elapsedMs: Number = 10): RunRecord =
-        answer(id, 201, "", elapsedMs).rows(id, "COMPLETED", "RESERVED", "APPROVED")
+    fun completedChain(id: String, elapsedMs: Number = 10, amount: Long = amountFor(id)): RunRecord =
+        answer(id, 201, "", elapsedMs, amount).rows(id, "COMPLETED", "RESERVED", "APPROVED", amount)
 
     fun counted(service: String, kind: String, n: Int): RunRecord {
         counted[service to kind] = n
@@ -88,9 +98,12 @@ class RunRecord(root: Path, val name: String = "test-20261124T000000-r1") {
         }
     }
 
-    fun run(vararg extra: String): Int {
+    fun run(vararg extra: String): Int = runWithRunArg(dir.toString(), *extra)
+
+    /** `--run` 에 넘길 값을 바꿔 돌린다(끝의 `/` 등). */
+    fun runWithRunArg(runArg: String, vararg extra: String): Int {
         write()
-        return runAnalyzer(arrayOf("--run", dir.toString(), *extra))
+        return runAnalyzer(arrayOf("--run", runArg, *extra))
     }
 
     val reportJson: Path get() = dir.resolve("report.json")
