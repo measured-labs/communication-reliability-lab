@@ -168,6 +168,7 @@ export default function () {
     sentAtMs: sentAt.getTime(), // 벽시계(ms) — 서비스의 시각 기록과 같은 시계(task 02 분석이 읽는다)
     status: res.status,
     errorCode: res.error_code,
+    error: res.error, // k6의 오류 문장(없으면 ""). errorCode 1000(일반 오류)의 까닭을 가르려고 — 판정에 쓰지 않는다
     elapsedMs,
   }));
 }
@@ -185,6 +186,7 @@ export function lookup() {
     sentAtMs: sentAt.getTime(),
     status: res.status,
     errorCode: res.error_code,
+    error: res.error,
     elapsedMs: Date.now() - sentAt.getTime(),
   }));
 }
