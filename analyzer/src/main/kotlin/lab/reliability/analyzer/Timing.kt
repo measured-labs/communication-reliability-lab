@@ -305,6 +305,22 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
         val timeouts = calls.filter { it.callOutcome == TIMEOUT_OUTCOME }
         val falseTimeouts = timeouts.count { it.requestId in processed.getValue(callee) }
         val timeoutMs = requestTimeoutMs(run, settingsOf)
+        // 넣은 지연이 타임아웃보다 짧은데 끊긴 요청을 요청마다의 시각으로 가른다(불린 쪽에 지연을 넣지 않았으면 지연 0)
+        val calleeDelay = answers.associate { a ->
+            a.requestId to (FaultDirectives.parse(a.fault).firstOrNull { it.service == callee.label && it.kind == FaultKind.DELAY }?.delayMs?.toDouble() ?: 0.0)
+        }
+        val calleeTimings = timings.getValue(callee)
+        val below = timeouts.filter { calleeDelay.getValue(it.requestId) < timeoutMs }
+        val belowClass = below.groupingBy { u ->
+            val l = calleeTimings[u.requestId]
+            when {
+                l == null -> "calleeNotStarted"
+                ms(l.endUs - l.startUs) >= timeoutMs -> "calleeServiceAtLeastTimeout"
+                l.endUs > u.callEndUs!! -> "calleeEndedAfterGiveUp"
+                else -> "calleeEndedBeforeGiveUp"
+            }
+        }.eachCount()
+        val belowStarted = below.mapNotNull { u -> calleeTimings[u.requestId]?.let { u to it } }
         edges["${caller.label}->${callee.label}"] = linkedMapOf(
             "timeoutMs" to timeoutMs,
             "calls" to calls.size,
@@ -315,6 +331,16 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
             "callMs" to quantiles(calls.map { ms(it.callEndUs!! - it.callStartUs!!) }),
             // 넣은 지연이 이 구간의 타임아웃 이상인 요청 수(불린 쪽이 맨 아래 결제일 때 — 거짓 타임아웃의 아래 한계)
             "injectedCalleeDelayAtLeastTimeout" to delays.getValue(callee.label).count { it >= timeoutMs },
+            "belowDelay" to linkedMapOf(
+                "timeouts" to below.size,
+                "calleeServiceAtLeastTimeout" to (belowClass["calleeServiceAtLeastTimeout"] ?: 0),
+                "calleeEndedAfterGiveUp" to (belowClass["calleeEndedAfterGiveUp"] ?: 0),
+                "calleeEndedBeforeGiveUp" to (belowClass["calleeEndedBeforeGiveUp"] ?: 0),
+                "calleeNotStarted" to (belowClass["calleeNotStarted"] ?: 0),
+                "callToCalleeStartMs" to quantiles(belowStarted.map { (u, l) -> ms(l.startUs - u.callStartUs!!) }),
+                // μs 정수로 빼서 ms로 — 실수 뺄셈의 꼬리(4.828000000000003)를 남기지 않게
+                "calleeServiceBeyondDelayMs" to quantiles(belowStarted.map { (u, l) -> ms(l.endUs - l.startUs - (calleeDelay.getValue(u.requestId) * 1000).toLong()) }),
+            ),
         )
     }
 
@@ -346,6 +372,8 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
             "wasted" to wasted.size,
             "wastedProcessed" to wasted.count { (t, _) -> t.requestId in processed.getValue(layer) },
             "startedAfterGiveUp" to wasted.count { (t, _) -> giveUp(layer, t.requestId)!! <= t.startUs },
+            // 그 몫의 헛일 시간 합 — 나머지(wastedMsSum − 이것)는 위가 포기한 때 진행 중이던 일
+            "startedAfterGiveUpMsSum" to wasted.filter { (t, _) -> giveUp(layer, t.requestId)!! <= t.startUs }.sumOf { it.second }.round1(),
             "wastedMsSum" to wasted.sumOf { it.second }.round1(),
             "wastedMs" to quantiles(wasted.map { it.second }),
         )
@@ -442,6 +470,13 @@ private fun slowWindow(run: Path, label: String, answers: List<TimedAnswer>, ord
             "after" to verdictCounts(normal.filter { it.sentAtMs > end }),
         ),
         "slowChain" to verdictCounts(slow),
+        // 회복 ②가 센 "나쁜" 요청의 수 — 사슬: 2xx가 아님 / 2xx인데 1000ms 넘음, 조회: 200이 아님 / 200인데 1000ms 넘음
+        "badAfter" to linkedMapOf(
+            "chainNot2xx" to normal.count { it.sentAtMs > end && it.status !in 200..299 },
+            "chainSlow2xx" to normal.count { it.sentAtMs > end && it.status in 200..299 && it.elapsedMs > BAD_ELAPSED_MS },
+            "lookupsNot200" to lookups.count { it.sentAtMs > end && it.status != 200 },
+            "lookupsSlow200" to lookups.count { it.sentAtMs > end && it.status == 200 && it.elapsedMs > BAD_ELAPSED_MS },
+        ),
         "baselineOrderLoad" to baseline,
         "recoveredBySamples" to recoveredBySamples,
         "recoveryBySamplesMs" to if (!recoveredBySamples) null else (lastHighAfter?.let { it - end } ?: 0L),

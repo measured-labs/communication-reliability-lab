@@ -314,11 +314,18 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | `edges.<U>-><L>.outcomes` | `callOutcome`마다의 수 |
 | `edges.<U>-><L>.callMs` | U가 잰 `callEnd − callStart`의 분위수 |
 | `edges.<U>-><L>.injectedCalleeDelayAtLeastTimeout` | L에 넣은 지연 가운데 `timeoutMs` 이상인 것의 수(거짓 타임아웃의 아래 한계로 견주려는 것) |
+| `edges.<U>-><L>.belowDelay.timeouts` | 타임아웃 가운데 L에 넣은 지연(정답의 `fault`, 없으면 0)이 `timeoutMs`보다 **짧은** 것 — "넣은 지연 ≥ 타임아웃"보다 많이 끊긴 몫. 아래 넷으로 가른다(차례대로 처음 맞는 것): |
+| `….belowDelay.calleeNotStarted` | L의 시각 기록이 없다(L의 입구에 들지 않았다) |
+| `….belowDelay.calleeServiceAtLeastTimeout` | L의 `end − start ≥ timeoutMs` — L 안의 시간(넣은 지연 + 그 밖)만으로 타임아웃 이상 |
+| `….belowDelay.calleeEndedAfterGiveUp` | L의 `end > ` U의 `callEnd` — L 안은 타임아웃 미만인데 U가 부른 때부터 L의 입구까지가 더해져 U가 포기한 뒤 끝났다 |
+| `….belowDelay.calleeEndedBeforeGiveUp` | 나머지 — L은 U가 포기하기 전에 끝났는데 응답이 U에 닿기 전에 타임아웃이 울렸다(헛일로 세지 않는 거짓 타임아웃) |
+| `….belowDelay.callToCalleeStartMs`·`calleeServiceBeyondDelayMs` | L의 시각 기록이 있는 것의 `start(L) − callStart(U)`, `end(L) − start(L) − 넣은 지연`의 분위수 |
 | `layers.<L>.records`, `layers.<L>.serviceMs` | L의 시각 기록 수, `end − start`의 분위수(불린 쪽 응답 시간 — 넣은 지연 포함) |
 | `giveUp(L, id)`(보고에 따로 나오지 않음) | 다음 가운데 가장 이른 것(없으면 정의되지 않음): k6가 응답을 받지 못했으면(`status` 0) `sentAtMs + elapsedMs` · L보다 위의 층 U마다 U의 `callOutcome`이 `Unknown:REQUEST_TIMEOUT`이면 U의 `callEnd` |
 | `waste.<L>.wasted` | L의 시각 기록 가운데 `giveUp`이 정의되고 `end > giveUp`인 것 |
 | `waste.<L>.wastedProcessed` | 그 가운데 L의 DB에 그 requestId의 처리 행이 있는 것 |
 | `waste.<L>.startedAfterGiveUp` | 그 가운데 `start ≥ giveUp`인 것(위가 포기한 뒤에 시작한 일) |
+| `waste.<L>.startedAfterGiveUpMsSum` | 그 몫(`startedAfterGiveUp`)의 헛일 시간의 합(소수 첫째 자리). `wastedMsSum − 이것` = 위가 포기한 때 진행 중이던 일의 헛일 시간 |
 | `waste.<L>.wastedMs`, `wastedMsSum` | 헛일 시간 `end − max(start, giveUp)`의 분위수와 합(소수 첫째 자리) |
 | `samples.<서비스>.maxGapMs` | 이웃한 표본의 `atMs` 차의 최대. **표본이 하나면 `null`**(간격이 없다 — 7-4의 검사가 차이 줄을 낸다) |
 | `samples.<서비스>.maxInflight`·`maxActive`·`maxThreads`·`maxQueue`·`maxConnections` | 표본의 최대(그 칸이 모두 `null`이면 `null`) |
@@ -327,6 +334,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | `slow.startMs`·`endMs` | `--slow-label`과 `fault`가 같은 정답의 `sentAtMs` 최소·최대(느린 구간) |
 | `slow.lookups.<before/during/after>` | 조회를 `sentAtMs < start` / `start ≤ sentAtMs ≤ end` / `> end`로 나눠 `count`, `failed`(`status ≠ 200`, 0 포함), `elapsedMs` 분위수. **분위수에는 실패한 조회도 넣는다**(k6가 잰 경과 — 응답 없음이면 k6가 포기할 때까지의 시간). 실패만 따로 보려면 `failed` |
 | `slow.normalChain.<before/during/after>`, `slow.slowChain` | 느린 라벨이 아닌 사슬 요청과 느린 요청의 4-1절 판정마다의 수. 정상 요청은 조회와 같은 경계로 앞(`< start`) · **안(`start ≤ sentAtMs ≤ end`, 양끝 포함 — 느린 요청 사이에 끼어 보낸 정상 요청)** · 뒤(`> end`)에 센다 |
+| `slow.badAfter.<chainNot2xx/chainSlow2xx/lookupsNot200/lookupsSlow200>` | 느린 구간 뒤(`sentAtMs > end`)에 보낸 "나쁜" 요청(아래 회복 ②의 뜻)의 수를 까닭마다: 사슬 2xx 아님 / 사슬 2xx인데 `elapsedMs > 1000` / 조회 200 아님 / 조회 200인데 `elapsedMs > 1000` — 회복 ②가 무엇 때문에 그 길이였는지 보려고 |
 | `slow.baselineOrderLoad` | 주문 표본 가운데 `atMs < start`인 것의 `inflight + queue` 최대 |
 | `slow.recoveredBySamples`(불) | 마지막 주문 표본이 `atMs ≤ end`이거나 `inflight + queue ≤ baselineOrderLoad`이면 `true`. 아니면 `false` — 표본이 끝날 때까지 회복하지 못했다 |
 | `slow.recoveryBySamplesMs` | 회복했으면: `atMs > end`이고 `inflight + queue > baselineOrderLoad`인 주문 표본의 마지막 `atMs` − `end`(없으면 0). **회복하지 못했으면 `null`**(값이 아니라 그 사실 — "마지막 표본까지"의 시간을 회복 시간으로 내지 않는다) |

@@ -5,6 +5,8 @@
 # runs/.recompute/<이름>/ 에 풀고, 대조 분석과 시각 분석을 그 실행과 같은 인자로 돌린 뒤
 # report.json·report-timing.json·metrics.tsv가 커밋한 것과 바이트까지 같은지 견준다. 하나라도 다르면 종료 코드 1.
 # 분석기 이미지는 지금의 코드로 짓는다(docker compose build analyzer).
+# WRITE=yes 를 주면 견주지 않고, 다시 돈 보고로 실행 폴더의 보고(report.json·report.md·report-timing.json·metrics.tsv)를 바꾼다 —
+# 분석기의 지표를 고친 뒤 커밋한 실행들을 지금의 분석기로 다시 분석할 때(그 뒤 WRITE 없이 다시 돌려 같음을 확인한다).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib.sh
@@ -34,6 +36,14 @@ for run in "$@"; do
   "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}" > /dev/null 2>&1
   trc=$?
   set -e
+  if [[ ${WRITE:-no} == yes ]]; then
+    for f in report.json report.md report-timing.json metrics.tsv; do
+      [[ -f $tmp/$f ]] || die "$name: 다시 돈 분석이 $f 를 쓰지 않았다(대조 분석 $rc, 시각 분석 $trc)"
+      sed "s#/runs/.recompute/${name}#/runs/${name}#g" "$tmp/$f" > "$run/$f"
+    done
+    echo "$name: 대조 분석 $rc, 시각 분석 $trc, 보고를 다시 씀"
+    continue
+  fi
   same=yes
   for f in report.json report-timing.json metrics.tsv; do
     # 보고 안의 경로는 다시 돈 위치(/runs/.recompute/…)를 가리키므로 그 부분만 원래 위치로 바꿔 견준다.
