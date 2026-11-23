@@ -66,12 +66,24 @@
 | JDK HttpClient `enableAllMethodRetry=false` | (기본은 꺼짐) | 같은 값을 명시, 켜져 있으면 뜨지 않는다 | 같은 곳 |
 | JDK HttpClient 요청 타임아웃 없음(무한) | 아래 층이 멈추면 위 층도 영원히 기다린다 | 요청마다 `timeout(requestTimeout)` | `NextLayerCall.kt`, `compose.yaml`(`NEXT_LAYER_REQUEST_TIMEOUT`) |
 | JDK HttpClient 연결 타임아웃 없음 | OS의 연결 제한까지 기다린다 | 클라이언트에 `connectTimeout` | 같은 곳(`NEXT_LAYER_CONNECT_TIMEOUT`) |
-| JDK HttpClient HTTP/2 시도, 연결 풀 무제한, 유휴 30초 | 프로토콜이 실행마다 같다는 보장이 없다 | HTTP/1.1 고정, 리다이렉트 NEVER, `keepalive.timeout=30`·`connectionPoolSize=0`(무제한)을 명시 | `NextLayerCall.kt`, `compose.yaml` |
-| Tomcat 스레드 200 · 큐 100 · 연결 8192 · 연결 타임아웃(Boot 기본값 없음) | 값이 기록에 남지 않는다 | 같은 값을 명시, 연결 타임아웃 20s | `chain-link/src/main/resources/chain-link.yml` |
+| JDK HttpClient HTTP/2 시도, 연결 풀 무제한 | 프로토콜이 실행마다 같다는 보장이 없다 | HTTP/1.1 고정, 리다이렉트 NEVER, `connectionPoolSize=0`(무제한)을 명시 | `NextLayerCall.kt`, `compose.yaml` |
+| **keep-alive — 클라이언트와 서버의 유휴 연결 시간.** JDK HttpClient `jdk.httpclient.keepalive.timeout`(초, 기본 **30** — 유휴 연결을 풀에 두는 시간, HTTP/1.1과 HTTP/2 모두) · Tomcat `keepAliveTimeout`(ms, 기본 = **`connectionTimeout`의 값** — 이 실험에서는 20s, Tomcat 자체의 `connectionTimeout` 기본은 60s) · Boot `server.tomcat.keep-alive-timeout`(기본값 없음 — "When not set the connectionTimeout is used") | 클라이언트가 30s 둔 연결을 서버가 20s에 닫는다. 그 사이 클라이언트가 닫힌 연결에 요청을 쓰면, 서버가 받지도 않은 요청이 "연결이 끊김 → 결과 모름(504)"이 된다(R01-10) | 둘 다 명시하고 **클라이언트 15s < 서버 20s**: `-Djdk.httpclient.keepalive.timeout=15`, `server.tomcat.keep-alive-timeout: 20s`. 실제 값은 `/settings`의 `jdkSystemProperties`와 `tomcat.keepAliveTimeoutMs` | `compose.yaml`, `chain-link.yml` |
+| Tomcat 스레드 200 · 큐 100 · 연결 8192 · 연결 타임아웃(Boot 기본값 없음 → Tomcat 60s) | 값이 기록에 남지 않는다 | 같은 값을 명시, 연결 타임아웃 20s | `chain-link/src/main/resources/chain-link.yml` |
 | Hikari 풀 10 · 연결 대기 30초 | 30초 대기가 층의 타임아웃(1~2초)보다 길어 타임아웃 실험이 DB 대기에 묻힌다 | 풀 10·최소 유휴 10·대기 1000ms | `chain-link.yml` |
 | `spring.sql.init.mode=embedded` | PostgreSQL에서 `schema.sql`이 조용히 돌지 않는다 | `always`, `continue-on-error: false` | `chain-link.yml` |
 | 가상 스레드 꺼짐 | — | `spring.threads.virtual.enabled: ${VIRTUAL_THREADS:false}` — compose에서 `"false"`를 명시 | `chain-link.yml`, `compose.yaml` |
 | k6 요청 타임아웃 60초 | "결과 모름"의 기준이 층의 타임아웃과 무관해진다 | `REQUEST_TIMEOUT=5s`를 요청마다 | `scripts/run.sh`, `load/chain.js` |
 | 컨테이너 재시작 정책 | 죽은 서비스가 되살아나 측정이 조용히 이어진다 | `restart: "no"`, 실행 앞뒤로 네 컨테이너가 떠 있는지 확인 | `compose.yaml`, `scripts/lib.sh` |
 
-실제로 쓰인 값은 실행마다 `runs/<실행>/settings-<서비스>.json`(떠 있는 프로세스에서 읽음)과 `compose.resolved.yaml`에 남는다.
+실제로 쓰인 값은 실행마다 `runs/<실행>/settings-<서비스>.json`과 `compose.resolved.yaml`에 남는다. `settings-*.json`은 설정 문자열이 아니라 떠 있는 객체에서 읽는다 — `HikariDataSource`, Tomcat 커넥터의 프로토콜 핸들러와 실행기, 아래 층 호출의 `HttpClient`와 요청(`docs/measurement.md` 6절). 설정 키가 적용되지 않았으면 그 파일에서 설정과 다른 값이 보인다.
+
+keep-alive 두 설정의 출처(2026-11-24 확인):
+- JDK 25 `java.net.http` 모듈 요약 — `jdk.httpclient.keepalive.timeout`(기본 30, "The number of seconds to keep idle HTTP connections alive in the keep alive cache"), `jdk.httpclient.connectionPoolSize`(기본 0 = 무제한): https://docs.oracle.com/en/java/javase/25/docs/api/java.net.http/module-summary.html
+- Tomcat 11 HTTP 커넥터 — `keepAliveTimeout`("The default value is to use the value that has been set for the connectionTimeout attribute"), `connectionTimeout`(기본 60000, 배포판 `server.xml`은 20000): https://tomcat.apache.org/tomcat-11.0-doc/config/http.html
+- Spring Boot 4.2.0 `server.tomcat.keep-alive-timeout`·`server.tomcat.connection-timeout`(둘 다 `Duration`, 기본값 없음): `spring-boot-tomcat-4.2.0.jar`의 `META-INF/spring-configuration-metadata.json`, 공개 목록 https://docs.spring.io/spring-boot/appendix/application-properties/index.html
+
+### 장애 헤더 해석을 나눈 모듈 `fault-header` — 새 의존성 없음
+
+- 정말 필요한가: 분석기가 정답의 `fault`를 서비스와 같은 규칙으로 읽어야 한다. 규칙을 두 곳에 두었더니 서로 달라졌다(같은 서비스의 같은 종류 두 번, 공백 — R01-4).
+- 선택지: (가) 분석기가 `chain-link`에 기댄다 — Spring Boot 스타터가 분석기에 따라온다. (나) `chain-link`에 기대되 전이 의존성을 끊는다 — 같은 jar 안의 Spring 클래스가 클래스패스 없이 실려 깨지기 쉽다. (다) 해석 코드(`FaultKind`, `FaultDirective`, `FaultDirectives`)만 Kotlin 표준 라이브러리에만 기대는 Gradle 모듈로 옮기고, `chain-link`는 `api`로, 분석기는 `implementation`으로 그것에 기댄다 — 파일 하나를 옮기는 변경, 패키지 이름은 그대로.
+- 고른 것: (다).

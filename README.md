@@ -29,12 +29,13 @@ k6 (load/chain.js) ──HTTP──▶ order :8081 ──HTTP──▶ inventory
 
 | 폴더 | 내용 |
 |---|---|
-| `chain-link/` | 세 서비스가 같은 규칙으로 쓰는 것: 장애 헤더(`Fault.kt`), 요청 문맥과 입구 필터(`ChainRequest.kt`), 아래 층 호출(`NextLayerCall.kt` — 뒤에 gRPC 구현을 끼울 자리), 같게 두는 설정(`chain-link.yml`) |
+| `fault-header/` | 장애 헤더(`X-Fault`)의 해석 — Spring에 기대지 않아 서비스와 분석기가 같은 코드를 쓴다 |
+| `chain-link/` | 세 서비스가 같은 규칙으로 쓰는 것: 장애 주입과 카운터(`Fault.kt`), 요청 문맥과 입구 필터(`ChainRequest.kt`), 아래 층 호출(`NextLayerCall.kt` — 뒤에 gRPC 구현을 끼울 자리), 같게 두는 설정(`chain-link.yml`) |
 | `order/`, `inventory/`, `payment/` | 세 서비스(Kotlin, Spring Boot 4.2, Spring MVC, `JdbcClient`) |
 | `analyzer/` | 정답과 DB 상태를 대조하는 명령줄 분석기 |
 | `load/` | k6 스크립트와 시나리오마다의 기대 파일 |
 | `scripts/` | 띄우기·실행·내리기 |
-| `runs/` | 실행마다의 기록(커밋한 것은 보정 실행뿐 — `.gitignore`) |
+| `runs/` | 실행마다의 기록. 커밋한 것은 보정 실행 세 번과 일부러 중복을 넣은 실행 한 번뿐이다(`docs/calibration.md`의 기록 — 나머지는 `.gitignore`) |
 | `docs/measurement.md` | 측정 도구의 입력·출력 형식과 판정 규칙(분석기의 계약) |
 | `docs/calibration.md` | 보정 실행의 결과와 편차 |
 | `docs/dependencies.md` | 들인 것마다 필요한가·왜·선택지·버전, 꺼 둔 숨은 기본값 |
@@ -47,10 +48,10 @@ k6 (load/chain.js) ──HTTP──▶ order :8081 ──HTTP──▶ inventory
 scripts/up.sh                      # 이미지를 짓고 DB와 세 서비스를 띄운다(호스트 포트 8081~8083)
 scripts/run.sh calibration 1       # 보정 실행 한 번 → runs/calibration-<시각>-r1/
 scripts/run.sh duplicate 1         # 일부러 같은 requestId를 두 번 보내는 실행
-scripts/test.sh                    # 테스트(컨테이너 안)
+scripts/test.sh                    # 테스트(컨테이너 안). 마지막 줄에 통과·실패·건너뜀 수, 돈 테스트가 0개여도 실패
 scripts/down.sh                    # 이 프로젝트의 컨테이너·네트워크·볼륨을 내린다
 ```
 
-- `run.sh`의 종료 코드: 0 통과, 1 실행 실패(서비스가 뜨지 않음, 워밍업 실패, 입력 오류 등), 2 분석 결과가 기대(`load/expectations/<시나리오>.json`)와 다름.
+- `run.sh`의 종료 코드: 0 통과, 1 실행 실패(서비스가 뜨지 않음, 떠 있는 서비스가 지금의 코드로 지은 이미지가 아님, 워밍업 실패, k6가 보내지 못한 반복, 가라앉기 시간 안에 처리 중인 요청이 0이 되지 않음, 입력 오류 등), 2 분석 결과가 기대(`load/expectations/<시나리오>.json`)와 다르거나 늘 0이어야 하는 지표(정답에 없는 행, PENDING 행, 금액 불일치)가 0이 아님.
 - Docker 자원은 compose 프로젝트 이름 `communication-reliability-lab`으로만 만든다.
 - DB 계정 `lab`/`lab`은 **로컬 실험용** 값이다(비밀 값이 아니다).

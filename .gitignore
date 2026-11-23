@@ -7,7 +7,7 @@ build/
 
 # 실행 기록(runs/)은 기본으로 넣지 않는다 — 실행마다 정답·DB 상태가 수백 KB씩 쌓인다.
 # 결과의 근거가 되는 실행만 골라 `git add -f runs/<실행 폴더>`로 넣는다
-# (보정 실행 세 번과 일부러 중복을 넣은 실행은 넣었다 — docs/calibration.md).
+# (보정 실행 세 번과 일부러 중복을 넣은 실행 한 번을 넣었다 — docs/calibration.md 머리의 "기록").
 /runs/*
 
 .claude/
