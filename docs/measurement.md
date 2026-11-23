@@ -169,7 +169,7 @@ analyzer --run <실행 폴더> [--expect <기대 파일>] [--planned <n>]
 - 출력: `<실행 폴더>/report.json`, `<실행 폴더>/report.md`(같은 내용의 사람용 표), 표준 출력에 한 줄 요약, 표준 오류에 불일치 목록.
 - 인자는 `--이름 값` 짝. 모르는 인자, 짝이 안 맞음, 같은 인자가 두 번, `--run` 없음, `--planned`가 1 이상의 정수가 아님(10진 숫자만 — `+5`·`1.5`·`abc`는 입력 오류, 앞의 0은 받는다: `0600` = 600) → 종료 코드 1.
 - `--run`의 끝 `/`는 받는다(`runs/x/` = `runs/x`). 보고의 `run`은 경로의 마지막 이름이다. 이름이 없는 경로(`/`, 빈 값)는 입력 오류.
-- 테스트용 입구: `lab.reliability.analyzer.runAnalyzer(args: Array<String>): Int` — 프로세스를 끝내지 않고 종료 코드를 돌려준다(`main`은 이것을 부르고 `exitProcess`).
+- 테스트용 입구: `lab.reliability.analyzer.runAnalyzer(args: Array<String>): Int` — 프로세스를 끝내지 않고 종료 코드를 돌려준다(`main`은 이것을 부르고 `exitProcess`). 첫 인자가 `timing`이면 7절의 시각 분석으로 넘긴다(`runAnalyzer(arrayOf("timing", "--run", …))` = `analyzer timing --run …`).
 
 | 종료 코드 | 뜻 | 보고 파일 |
 |---|---|---|
@@ -257,7 +257,7 @@ JSON 객체. 아래 키 가운데 **적은 것만** 견준다(하나 이상 적�
 | `fault-counts.json` | 3절 |
 | `expect.json` | 견준 기대 파일의 사본(`load/expectations/<시나리오>.json`) |
 | `report.json`, `report.md` | 5절 |
-| (task 02) `config.env`에 더한 칸 | `k6_max_vus`, `lookup_rate_per_second`, `slow_label`, 조건 `order_to_inventory_timeout`·`inventory_to_payment_timeout`·`virtual_threads`, `timing_expect`, `discard_run`(반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행 — `yes`) |
+| (task 02) `config.env`에 더한 칸 | `k6_max_vus`, `k6_no_connection_reuse`(부하의 k6가 keep-alive를 껐나 — `true`면 요청마다 새 연결과 `Connection: close`. `slow-layer`만 `true`, 까닭은 `scripts/run.sh` 머리와 `docs/results/task-02-timeouts.md` 실험 나), `lookup_rate_per_second`, `slow_label`, 조건 `order_to_inventory_timeout`·`inventory_to_payment_timeout`·`virtual_threads`, `timing_expect`, `discard_run`(반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행 — `yes`) |
 | (task 02) `timing/timings-<서비스>.json`, `timing/samples-<서비스>.json`, `lookups.jsonl` | 7-1절 |
 | (task 02) `expect.timing.json`, `report-timing.json`, `metrics.tsv` | 7-4절 |
 
@@ -291,6 +291,10 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 - 표본: `overflow`가 `true`(서비스가 상한 100000개를 넘겨 더 쌓지 않았다), `samples`가 비었음, `atMs`가 앞보다 이름, 표본이 부하 구간을 덮지 않음(첫 표본 > 첫 `sentAtMs` + 2×간격, 또는 마지막 표본 < 정답들의 `sentAtMs + elapsedMs` 최대).
 - `--slow-label`을 줬는데 그 라벨로 보낸 정답이 없음, `lookups.jsonl`이 없음·0줄·형식이 틀림, 느린 구간 앞의 주문 표본이 없음.
 - 인자: `timing` 뒤에 `--run`(필수), `--slow-label`, `--expect` 짝. 모르는 인자·짝이 안 맞음·두 번 → 1. 기대 파일이 없음·JSON 객체가 아님·빔·값이 `{"min": 수, "max": 수}`(min ≤ max)가 아님 → 1.
+- **음수 시각**: 정답의 `sentAtMs`, 시각 기록의 `startUs`(그래서 `endUs`·call 칸도 — 차례 검사로), 표본의 `atMs`, 조회의 `sentAtMs`가 음수 → 1.
+- **모르는 층 이름**: 정답의 `fault`가 세 서비스(`order`·`inventory`·`payment`) 밖을 가리키면 1절의 `fault` 문법 오류다(1). 시각 기록·표본 파일의 이름은 세 서비스로 정해져 있다(다른 이름의 파일은 읽지 않는다).
+- **`callOutcome`의 꼴**: 정규식 `Completed|(Failed|Unknown):\S+` 전체와 맞아야 한다(`Unknown:REQUEST_TIMEOUT`, `Failed:HTTP_500` 등 — 쌍점 뒤는 공백 없는 한 낱말 이상). 아니면 1.
+- **설정 파일의 최소 꼴**: `settings-order.json`·`settings-inventory.json`은 JSON 객체이고 `nextLayer.requestTimeoutMs`가 1 이상의 JSON 정수다. 다른 칸은 읽지 않는다(없어도 된다). `settings-payment.json`은 읽지 않는다.
 
 ### 7-3. 지표의 식
 
@@ -302,7 +306,10 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | `edges.<U>-><L>.timeoutMs` | `settings-<U>.json`의 `nextLayer.requestTimeoutMs` |
 | `edges.<U>-><L>.calls` | U의 시각 기록 가운데 `callOutcome`이 있는 것의 수 |
 | `edges.<U>-><L>.timeouts` | 그 가운데 `callOutcome == "Unknown:REQUEST_TIMEOUT"` |
-| `edges.<U>-><L>.falseTimeouts` | 타임아웃 가운데 L의 DB에 그 requestId의 처리 행(4-2절)이 있는 것 |
+| `clients.noResponse` | 정답 가운데 `status` 0(k6가 응답을 받지 못함 — k6 타임아웃이나 연결 오류) |
+| `clients.notReachedServer` | 그 가운데 주문(맨 위 층)의 시각 기록이 없는 것 — **서버의 업무 입구에 닿지 못한 요청**. 실험의 부하가 서버에 다 닿았는지의 검사다(task 02의 실행에서는 0이어야 한다 — 0이 아니면 결과 문서의 표에 그 수와 시각을 적는다). 한 줄 요약의 첫 칸 |
+| `clients.notReachedServerFirstSentMs`·`LastSentMs` | 그 요청들의 `sentAtMs − (정답의 첫 sentAtMs)`의 최소·최대(0건이면 `null`) |
+| `edges.<U>-><L>.falseTimeouts` | 타임아웃 가운데 L의 DB에 그 requestId의 처리 행(4-2절)이 있는 것. **L 자신의 처리 행만 본다** — 가운데 층(재고)이 L일 때, 재고 행은 없는데 그 아래(결제)에서 처리된 요청은 거짓 타임아웃으로 세지 않는다 |
 | `edges.<U>-><L>.falseTimeoutRatio` | `falseTimeouts ÷ calls`(calls가 0이면 `null`) |
 | `edges.<U>-><L>.outcomes` | `callOutcome`마다의 수 |
 | `edges.<U>-><L>.callMs` | U가 잰 `callEnd − callStart`의 분위수 |
@@ -313,22 +320,26 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | `waste.<L>.wastedProcessed` | 그 가운데 L의 DB에 그 requestId의 처리 행이 있는 것 |
 | `waste.<L>.startedAfterGiveUp` | 그 가운데 `start ≥ giveUp`인 것(위가 포기한 뒤에 시작한 일) |
 | `waste.<L>.wastedMs`, `wastedMsSum` | 헛일 시간 `end − max(start, giveUp)`의 분위수와 합(소수 첫째 자리) |
-| `samples.<서비스>.maxGapMs` | 이웃한 표본의 `atMs` 차의 최대 |
+| `samples.<서비스>.maxGapMs` | 이웃한 표본의 `atMs` 차의 최대. **표본이 하나면 `null`**(간격이 없다 — 7-4의 검사가 차이 줄을 낸다) |
 | `samples.<서비스>.maxInflight`·`maxActive`·`maxThreads`·`maxQueue`·`maxConnections` | 표본의 최대(그 칸이 모두 `null`이면 `null`) |
 | `samples.<서비스>.saturatedMs` | `active ≥ maxThreads`인 표본 수 × `intervalMs`(`maxThreads`가 없으면 `null`) |
-| `samples.<서비스>.meanLoadDuringSend` | `atMs`가 [첫 `sentAtMs`, 마지막 `sentAtMs`]인 표본의 `inflight + queue`(queue가 `null`이면 0) 평균 |
+| `samples.<서비스>.meanLoadDuringSend` | `atMs`가 [첫 `sentAtMs`, 마지막 `sentAtMs`](양끝 포함)인 표본의 `inflight + queue`(queue가 `null`이면 0) 평균. **그 창 안에 표본이 없으면 `null`**(7-4의 검사가 차이 줄을 낸다 — 보내는 시간이 표본 간격보다 짧은 실행) |
 | `slow.startMs`·`endMs` | `--slow-label`과 `fault`가 같은 정답의 `sentAtMs` 최소·최대(느린 구간) |
-| `slow.lookups.<before/during/after>` | 조회를 `sentAtMs < start` / `start ≤ sentAtMs ≤ end` / `> end`로 나눠 `count`, `failed`(`status ≠ 200`, 0 포함), `elapsedMs` 분위수 |
-| `slow.normalChain.<before/after>`, `slow.slowChain` | 느린 라벨이 아닌 사슬 요청(앞·뒤)과 느린 요청의 4-1절 판정마다의 수 |
+| `slow.lookups.<before/during/after>` | 조회를 `sentAtMs < start` / `start ≤ sentAtMs ≤ end` / `> end`로 나눠 `count`, `failed`(`status ≠ 200`, 0 포함), `elapsedMs` 분위수. **분위수에는 실패한 조회도 넣는다**(k6가 잰 경과 — 응답 없음이면 k6가 포기할 때까지의 시간). 실패만 따로 보려면 `failed` |
+| `slow.normalChain.<before/during/after>`, `slow.slowChain` | 느린 라벨이 아닌 사슬 요청과 느린 요청의 4-1절 판정마다의 수. 정상 요청은 조회와 같은 경계로 앞(`< start`) · **안(`start ≤ sentAtMs ≤ end`, 양끝 포함 — 느린 요청 사이에 끼어 보낸 정상 요청)** · 뒤(`> end`)에 센다 |
 | `slow.baselineOrderLoad` | 주문 표본 가운데 `atMs < start`인 것의 `inflight + queue` 최대 |
-| `slow.recoveryBySamplesMs` | `atMs > end`이고 `inflight + queue > baselineOrderLoad`인 주문 표본의 마지막 `atMs` − `end`. 없으면 0 |
-| `slow.recoveryByClientsMs` | `sentAtMs > end`인 요청(느린 라벨이 아닌 사슬 요청과 조회) 가운데 "나쁜" 것 — 성공이 아님(사슬 2xx, 조회 200) 또는 `elapsedMs > 1000` — 의 마지막 `sentAtMs` − `end`. 없으면 0 |
+| `slow.recoveredBySamples`(불) | 마지막 주문 표본이 `atMs ≤ end`이거나 `inflight + queue ≤ baselineOrderLoad`이면 `true`. 아니면 `false` — 표본이 끝날 때까지 회복하지 못했다 |
+| `slow.recoveryBySamplesMs` | 회복했으면: `atMs > end`이고 `inflight + queue > baselineOrderLoad`인 주문 표본의 마지막 `atMs` − `end`(없으면 0). **회복하지 못했으면 `null`**(값이 아니라 그 사실 — "마지막 표본까지"의 시간을 회복 시간으로 내지 않는다) |
+| `slow.recoveredByClients`(불) | `sentAtMs > end`인 요청(느린 라벨이 아닌 사슬 요청과 조회)이 하나 이상 있고, "나쁜" 것 — 성공이 아님(사슬 2xx, 조회 200) 또는 `elapsedMs > 1000` — 이 없거나 마지막 나쁜 요청의 `sentAtMs` 이상에 보낸 좋은 요청이 있으면 `true`. 아니면 `false`(마지막까지 나빴거나 뒤에 보낸 요청이 없다) |
+| `slow.recoveryByClientsMs` | 회복했으면: 나쁜 것의 마지막 `sentAtMs` − `end`(없으면 0). **회복하지 못했으면 `null`** |
+
+**보고에 있는데 위 표에 따로 적지 않은 키**(모두 입력을 센 것이다): `answers`(정답 줄 수), `samples.<서비스>.count`(표본 수)·`intervalMs`(표본 파일의 값), `edges.<U>-><L>.outcomes.<callOutcome>`(`callOutcome`마다의 수 — `metrics.tsv`에서는 이름에 쌍점이 든다), `slow.label`(문자열 — `metrics.tsv`에 없다), `slow.slowRequests`(느린 라벨 정답 수), `slow.lookups.<구간>.count`·`failed`, `slow.normalChain.<구간>.count`·`slow.slowChain.count`(판정 셋의 합). 불 값(`recoveredBy…`)과 문자열은 `report-timing.json`에만 있고 `metrics.tsv`에는 없다 — 표에서 회복 시간이 빈 값(`없음`)이면 회복하지 못한 것이다.
 
 ### 7-4. 판정과 출력
 
 - 출력: `<실행 폴더>/report-timing.json`(`run`, `expect`, `differences`와 위 지표), `<실행 폴더>/metrics.tsv`(지표를 `a.b.c<TAB>값` 한 줄씩 편 것 — 수와 `null`만, `null`은 빈 값), 표준 출력에 한 줄 요약, 표준 오류에 불일치.
-- 늘 견주는 것: 서비스마다 `samples.<서비스>.maxGapMs ≤ 1000` — 넘으면 `samples.<서비스>.maxGapMs: 늘 1000 이하, 실제 <n>`(표본이 끊겼다).
-- 기대 파일(`--expect`): `{"<metrics.tsv의 이름>": {"min": 수, "max": 수}, ...}`. 이름마다 `min ≤ 값 ≤ max`가 아니면(값이 없거나 `null`이어도) `<이름>: 기대 <min>~<max>, 실제 <값>`. 보정의 기대 파일: `load/expectations/cal-*.timing.json`(실행 스크립트가 `TIMING_EXPECT` 또는 `<시나리오>.timing.json`을 실행 폴더의 `expect.timing.json`으로 옮겨 넘긴다).
+- 늘 견주는 것(서비스마다, 이 차례로): ① `samples.<서비스>.maxGapMs ≤ 1000` — 넘으면 `samples.<서비스>.maxGapMs: 늘 1000 이하, 실제 <n>`(표본이 끊겼다). 표본이 하나라 `null`이면 `samples.<서비스>.maxGapMs: 표본이 하나라 간격을 잴 수 없다` ② `meanLoadDuringSend`가 `null`이면 `samples.<서비스>.meanLoadDuringSend: 보내는 동안의 표본이 없다`. 서비스의 차례는 order → inventory → payment. 그 뒤에 기대 파일의 차이.
+- 기대 파일(`--expect`): `{"<metrics.tsv의 이름>": {"min": 수, "max": 수}, ...}`. 이름마다 `min ≤ 값 ≤ max`가 아니면(값이 없거나 `null`이어도) `<이름>: 기대 <min>~<max>, 실제 <값>`. **수의 꼴**: `min`·`max`·값 모두, 정수인 값은 소수점 없이(`0`, `400` — JSON에 `0.0`으로 적었어도), 정수가 아니면 소수 표기 그대로(`307.6`). 값이 없으면 `없음`. 예: `edges.inventory->payment.falseTimeouts: 기대 0~0, 실제 1`. 차례는 기대 파일에 적은 차례. 보정의 기대 파일: `load/expectations/cal-*.timing.json`(실행 스크립트가 `TIMING_EXPECT` 또는 `<시나리오>.timing.json`을 실행 폴더의 `expect.timing.json`으로 옮겨 넘긴다).
 - 종료 코드: 0 불일치 없음 · 1 입력 오류(7-2) · 2 불일치. `scripts/run.sh`의 종료 코드는 대조 분석과 시각 분석 가운데 큰 것(대조 분석이 1이면 시각 분석을 돌리지 않는다).
 
 ### 7-5. 알려진 한계

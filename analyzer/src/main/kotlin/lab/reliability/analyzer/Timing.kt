@@ -58,14 +58,21 @@ fun runTiming(args: Array<String>): Int {
         val metrics = flatten(report)
         val differences = mutableListOf<String>()
         @Suppress("UNCHECKED_CAST")
-        val sampleGaps = (report["samples"] as Map<String, Map<String, Any?>>).mapValues { it.value["maxGapMs"] as Long }
-        sampleGaps.forEach { (svc, gap) -> if (gap > MAX_SAMPLE_GAP_MS) differences += "samples.$svc.maxGapMs: 늘 ${MAX_SAMPLE_GAP_MS} 이하, 실제 $gap" }
+        val sampleReports = report["samples"] as Map<String, Map<String, Any?>>
+        sampleReports.forEach { (svc, s) ->
+            // 7-4: 표본이 하나면 간격을 잴 수 없다 — 통과로 두지 않는다
+            when (val gap = s["maxGapMs"] as Long?) {
+                null -> differences += "samples.$svc.maxGapMs: 표본이 하나라 간격을 잴 수 없다"
+                else -> if (gap > MAX_SAMPLE_GAP_MS) differences += "samples.$svc.maxGapMs: 늘 ${MAX_SAMPLE_GAP_MS} 이하, 실제 $gap"
+            }
+            if (s["meanLoadDuringSend"] == null) differences += "samples.$svc.meanLoadDuringSend: 보내는 동안의 표본이 없다"
+        }
         expect?.forEach { (key, range) ->
             val v = metrics[key]
             if (v !is Number) {
-                differences += "$key: 기대 ${range.first}~${range.second}, 실제 ${v ?: "없음"}"
+                differences += "$key: 기대 ${num(range.first)}~${num(range.second)}, 실제 ${v ?: "없음"}"
             } else if (v.toDouble() < range.first || v.toDouble() > range.second) {
-                differences += "$key: 기대 ${range.first}~${range.second}, 실제 $v"
+                differences += "$key: 기대 ${num(range.first)}~${num(range.second)}, 실제 ${num(v.toDouble())}"
             }
         }
         val full = linkedMapOf<String, Any?>("run" to run.fileName.toString(), "expect" to options["--expect"], "differences" to differences) + report
@@ -82,7 +89,12 @@ fun runTiming(args: Array<String>): Int {
     }
 }
 
+/** 차이 줄의 수(7-4): 정수인 값은 소수점 없이(0.0 → 0), 아니면 Kotlin의 Double 표기 그대로. */
+fun num(v: Double): String =
+    if (v.isFinite() && v == Math.floor(v) && Math.abs(v) < 1e15) v.toLong().toString() else v.toString()
+
 private val summaryKeys = listOf(
+    "clients.notReachedServer",
     "edges.inventory->payment.timeouts", "edges.inventory->payment.falseTimeouts",
     "edges.order->inventory.timeouts", "edges.order->inventory.falseTimeouts",
     "waste.inventory.wasted", "waste.payment.wasted", "samples.order.maxActive", "samples.order.maxQueue",
@@ -165,6 +177,7 @@ fun readTimedAnswers(path: Path): List<TimedAnswer> {
     return answers.mapIndexed { i, a ->
         val where = "$path:${i + 1}"
         val sentAtMs = json.readTree(lines[i]).long("sentAtMs", where)
+        if (sentAtMs < 0) throw InputException("$where: sentAtMs가 음수다")
         TimedAnswer(a.requestId, a.fault, a.status, a.elapsedMs, sentAtMs)
     }
 }
@@ -180,6 +193,7 @@ fun readTimings(path: Path, hasNextLayer: Boolean): List<Timing> {
             r.longOrNull("callStartUs", where), r.longOrNull("callEndUs", where),
             r.get("callOutcome")?.takeUnless { it.isNull }?.let { if (it.isString && it.stringValue().isNotBlank()) it.stringValue() else throw InputException("$where: 'callOutcome'이 문자열이 아니다") },
         )
+        if (t.startUs < 0) throw InputException("$where: startUs가 음수다")
         if (t.endUs < t.startUs) throw InputException("$where: endUs < startUs")
         val callFields = listOf(t.callStartUs, t.callEndUs, t.callOutcome)
         if (callFields.any { it != null } && callFields.any { it == null }) throw InputException("$where: call 칸 셋이 함께 있거나 함께 없어야 한다")
@@ -210,6 +224,7 @@ fun readSamples(path: Path): SampleSeries {
         val inflight = s.long("inflight", where)
         if (inflight < 0) throw InputException("$where: inflight가 음수다")
         s.longOrNull("poolSize", where)
+        if (s.long("atMs", where) < 0) throw InputException("$where: atMs가 음수다")
         Sample(s.long("atMs", where), inflight.toInt(), s.longOrNull("active", where)?.toInt(), s.longOrNull("maxThreads", where)?.toInt(),
             s.longOrNull("queue", where)?.toInt(), s.longOrNull("connections", where))
     }
@@ -227,14 +242,18 @@ fun readLookups(path: Path): List<Lookup> = readLines(path).mapIndexed { i, line
     if (status != 0 && status !in 100..599) throw InputException("$where: status $status")
     val e = n.req("elapsedMs", where)
     if (!e.isNumber || e.doubleValue() < 0) throw InputException("$where: elapsedMs가 0 이상의 수가 아니다")
-    Lookup(n.long("sentAtMs", where), status, e.doubleValue())
+    val sentAtMs = n.long("sentAtMs", where)
+    if (sentAtMs < 0) throw InputException("$where: sentAtMs가 음수다")
+    Lookup(sentAtMs, status, e.doubleValue())
 }
 
 /** settings-<서비스>.json의 nextLayer.requestTimeoutMs(떠 있는 객체에서 읽은 값). */
 private fun requestTimeoutMs(run: Path, service: String): Long {
     val path = run.resolve("settings-$service.json")
     val v = readJson(path).get("nextLayer")?.get("requestTimeoutMs")
-    if (v == null || !v.isIntegralNumber) throw InputException("$path: nextLayer.requestTimeoutMs가 정수가 아니다")
+    if (v == null || !v.isIntegralNumber || !v.canConvertToLong() || v.longValue() < 1) {
+        throw InputException("$path: nextLayer.requestTimeoutMs가 1 이상의 정수가 아니다")
+    }
     return v.longValue()
 }
 
@@ -347,7 +366,8 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
         linkedMapOf(
             "count" to list.size,
             "intervalMs" to s.intervalMs,
-            "maxGapMs" to (list.zipWithNext { a, b -> b.atMs - a.atMs }.maxOrNull() ?: 0L),
+            // 표본이 하나면 간격이 없다 — null(차이 줄로 드러낸다, 7-4)
+            "maxGapMs" to list.zipWithNext { a, b -> b.atMs - a.atMs }.maxOrNull(),
             "maxInflight" to list.maxOf { it.inflight },
             "maxActive" to list.mapNotNull { it.active }.maxOrNull(),
             "maxThreads" to maxThreads,
@@ -358,8 +378,19 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
         )
     }
 
+    // 서버에 닿지 못한 사슬 요청: k6가 응답을 받지 못했고(status 0) 주문(맨 위 층)의 시각 기록이 없다 — 업무 입구에 들지 못했다.
+    // 시각은 첫 sentAtMs로부터의 ms(없으면 null).
+    val notReached = answers.filter { it.status == 0 && it.requestId !in timings.getValue(Layer.ORDER) }
+    val clients = linkedMapOf<String, Any?>(
+        "noResponse" to answers.count { it.status == 0 },
+        "notReachedServer" to notReached.size,
+        "notReachedServerFirstSentMs" to notReached.minOfOrNull { it.sentAtMs - firstSent },
+        "notReachedServerLastSentMs" to notReached.maxOfOrNull { it.sentAtMs - firstSent },
+    )
+
     val report = linkedMapOf<String, Any?>(
         "answers" to answers.size,
+        "clients" to clients,
         "delays" to delays.mapValues { quantiles(it.value) },
         "edges" to edges,
         "layers" to layers,
@@ -383,13 +414,17 @@ private fun slowWindow(run: Path, label: String, answers: List<TimedAnswer>, ord
     )
     val normal = answers.filter { it.fault != label }
     fun bad(status: Int, ok: (Int) -> Boolean, elapsed: Double) = !ok(status) || elapsed > BAD_ELAPSED_MS
-    val lastBadAfter = (
-        normal.filter { it.sentAtMs > end && bad(it.status, { s -> s in 200..299 }, it.elapsedMs) }.map { it.sentAtMs } +
-            lookups.filter { it.sentAtMs > end && bad(it.status, { s -> s == 200 }, it.elapsedMs) }.map { it.sentAtMs }
-        ).maxOrNull()
+    // 느린 구간 뒤에 보낸 요청(느린 라벨이 아닌 사슬 요청과 조회): 송신 시각과 "나쁜가"
+    val afterSends = normal.filter { it.sentAtMs > end }.map { it.sentAtMs to bad(it.status, { s -> s in 200..299 }, it.elapsedMs) } +
+        lookups.filter { it.sentAtMs > end }.map { it.sentAtMs to bad(it.status, { s -> s == 200 }, it.elapsedMs) }
+    val lastBadAfter = afterSends.filter { it.second }.maxOfOrNull { it.first }
+    // 회복 ②: 마지막 나쁜 요청과 같거나 늦게 보낸 좋은 요청이 있어야 회복한 것이다(뒤에 보낸 요청이 없으면 알 수 없다 — 회복하지 못함으로 본다)
+    val recoveredByClients = afterSends.isNotEmpty() && (lastBadAfter == null || afterSends.any { !it.second && it.first >= lastBadAfter })
     val baseline = order.samples.filter { it.atMs < start }.maxOfOrNull { it.load }
         ?: throw InputException("samples-order.json: 느린 구간 앞의 표본이 없다")
     val lastHighAfter = order.samples.filter { it.atMs > end && it.load > baseline }.maxOfOrNull { it.atMs }
+    // 회복 ①: 마지막 표본이 기준을 넘으면 끝까지 회복하지 못한 것이다(값이 아니라 그 사실을 낸다)
+    val recoveredBySamples = order.samples.last().let { it.atMs <= end || it.load <= baseline }
     return linkedMapOf(
         "label" to label,
         "startMs" to start,
@@ -402,12 +437,16 @@ private fun slowWindow(run: Path, label: String, answers: List<TimedAnswer>, ord
         ),
         "normalChain" to linkedMapOf(
             "before" to verdictCounts(normal.filter { it.sentAtMs < start }),
+            // 느린 구간 안(양끝 포함)에 보낸 정상 요청 — 앞·뒤 어디에도 세지 않으므로 따로 센다
+            "during" to verdictCounts(normal.filter { it.sentAtMs in start..end }),
             "after" to verdictCounts(normal.filter { it.sentAtMs > end }),
         ),
         "slowChain" to verdictCounts(slow),
         "baselineOrderLoad" to baseline,
-        "recoveryBySamplesMs" to (lastHighAfter?.let { it - end } ?: 0L),
-        "recoveryByClientsMs" to (lastBadAfter?.let { it - end } ?: 0L),
+        "recoveredBySamples" to recoveredBySamples,
+        "recoveryBySamplesMs" to if (!recoveredBySamples) null else (lastHighAfter?.let { it - end } ?: 0L),
+        "recoveredByClients" to recoveredByClients,
+        "recoveryByClientsMs" to if (!recoveredByClients) null else (lastBadAfter?.let { it - end } ?: 0L),
     )
 }
 
