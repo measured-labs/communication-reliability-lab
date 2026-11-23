@@ -87,3 +87,28 @@ keep-alive 두 설정의 출처(2026-11-24 확인):
 - 정말 필요한가: 분석기가 정답의 `fault`를 서비스와 같은 규칙으로 읽어야 한다. 규칙을 두 곳에 두었더니 서로 달라졌다(같은 서비스의 같은 종류 두 번, 공백 — R01-4).
 - 선택지: (가) 분석기가 `chain-link`에 기댄다 — Spring Boot 스타터가 분석기에 따라온다. (나) `chain-link`에 기대되 전이 의존성을 끊는다 — 같은 jar 안의 Spring 클래스가 클래스패스 없이 실려 깨지기 쉽다. (다) 해석 코드(`FaultKind`, `FaultDirective`, `FaultDirectives`)만 Kotlin 표준 라이브러리에만 기대는 Gradle 모듈로 옮기고, `chain-link`는 `api`로, 분석기는 `implementation`으로 그것에 기댄다 — 파일 하나를 옮기는 변경, 패키지 이름은 그대로.
 - 고른 것: (다).
+
+## task 02에서 정한 것 — 새 의존성 없음
+
+### 층마다의 시각 기록 — 서비스 메모리 + 끝점(`GET /timings`), DB 표나 로그가 아니라
+
+- 정말 필요한가: 예. 헛일(위가 포기한 뒤 아래가 계속한 일)은 층마다 요청의 시작·끝 시각과 위 층이 포기한 시각 없이는 셀 수 없다(명세 task 02 계약). DB의 `created_at`·`updated_at`은 트랜잭션 시작 시각(`now()`)이라 지연 장애로 자는 시간과 아래 층을 기다린 시간을 가르지 못한다.
+- 선택지: (가) 서비스마다 시각 표를 하나 더 두고 요청마다 행을 쓴다 — 장점: 서비스가 죽어도 남는다. 단점: 요청마다 쓰기가 하나 늘어 Hikari 풀(10)을 더 쓴다 — 실험 나의 측정 대상(묶이는 자원)을 측정 도구가 흔든다. 판정용 CSV의 머리줄(2절)이 바뀌어 task 01의 계약과 테스트가 흔들린다. (나) 로그 줄로 남기고 `docker logs`에서 긁는다 — 단점: 로그 버퍼·순서·잘림을 따로 검사해야 한다. (다) 메모리에 쌓고 끝점으로 내보낸다 — 장점: 새 의존성·DB 부하 없음, 실행 스크립트가 받기 실패를 바로 실패로 낸다. 단점: 서비스가 다시 뜨면 사라진다(이 실험은 실행 중에 서비스를 죽이지 않는다).
+- 고른 것: (다). 시각은 `Instant.now()`(μs) — 세 서비스와 k6가 한 컴퓨터의 시계를 쓴다(서버 여러 대로 나누면 다시 본다 — `docs/measurement.md` 7-5).
+
+### 바쁜 스레드·대기 수 — 서비스 안에서 100ms마다 뜬 표본, Actuator 지표 끝점이 아니라
+
+- 정말 필요한가: 예. 실험 나의 "묶이는 스레드와 대기 수의 시간 흐름"(명세).
+- 선택지: (가) Actuator의 `metrics` 끝점(`tomcat.threads.busy` 등)을 열고 밖에서 주기적으로 묻는다 — 이미 있는 의존성의 기능이다. 단점: 묻는 요청이 바로 그 차 버린 Tomcat 스레드를 기다려야 해서, 스레드가 다 찬 순간에는 답이 늦거나 오지 않는다 — 재려는 때에 측정이 빠진다. 큐 길이(실행기의 대기 작업 수)는 기본 지표에 없다. (나) Prometheus 등록기 + 수집기 — 새 의존성과 컨테이너(명세가 들이지 않기로 함). (다) 서비스 안의 데몬 플랫폼 스레드 하나가 Tomcat 실행기(`org.apache.tomcat.util.threads.ThreadPoolExecutor`의 `getActiveCount`·`getPoolSize`·`getMaximumPoolSize`·`getQueue`)와 처리 중 요청 수를 읽어 메모리에 적고, 부하가 끝난 뒤 끝점(`GET /samples`)으로 받는다 — 새 의존성 없음, 스레드가 다 차도 계속 뜬다.
+- 고른 것: (다). 메서드 이름과 뜻은 Tomcat 11 API 문서에서 확인했다(https://tomcat.apache.org/tomcat-11.0-doc/api/org/apache/tomcat/util/threads/ThreadPoolExecutor.html — `getQueue`는 "intended primarily for debugging and monitoring"). 가상 스레드 실행기(`VirtualThreadExecutor`)는 스레드 수·큐가 없어 그 칸은 `null`이고, 처리 중 요청 수(`inflight`)로 견준다.
+- 고치며 알게 된 것: 커넥터를 `Tomcat.getConnector()`로 찾으면 서비스에 커넥터가 없을 때 기본 커넥터를 새로 만들어 붙인다. Boot가 초기화와 시작 사이에 커넥터를 떼어 두는 틈에 표본 스레드가 그것을 불러 8080을 두 번 열었고 기동이 "Port 8080 was already in use"로 실패했다. `service.findConnectors()`로 있는 것만 찾게 고쳤다(`chain-link/…/Observation.kt`).
+
+### 요청마다의 지연을 분포에서 뽑기 — k6 스크립트 안의 작은 의사 난수(mulberry32 + Box–Muller)
+
+- 정말 필요한가: 예. 실험 가는 넣은 분포의 분위수에 타임아웃을 맞추고, 반복과 조건마다 같은 요청에 같은 지연을 넣어야 한다.
+- 선택지: (가) `Math.random()` + k6의 `randomSeed` — VU가 반복을 집어 가는 차례가 실행마다 달라 같은 요청 번호에 같은 값이 간다는 보장이 없다. (나) 외부 JS 라이브러리(jslib 등) — 새 의존성. (다) 요청 번호와 씨앗으로만 정해지는 의사 난수를 스크립트에 직접 짠다(20줄) — VU 차례와 무관하게 요청 i의 값이 같다.
+- 고른 것: (다). 분포의 실제 분위수는 분석기가 정답에서 다시 센다(`delays.payment` — 그것이 맞는지의 확인이 된다).
+
+### 조건을 바꾸는 방법 — `compose.yaml`의 환경 변수 + `/settings` 대조
+
+- 타임아웃 둘과 스레드 방식을 `${ORDER_TO_INVENTORY_TIMEOUT:-2000ms}`·`${INVENTORY_TO_PAYMENT_TIMEOUT:-1000ms}`·`${VIRTUAL_THREADS:-false}`로 읽는다(기본값 = task 01의 값). 바꾼 값이 정말 걸렸는지는 실행 스크립트가 `settings-<서비스>.json`(떠 있는 `HttpClient` 요청과 Tomcat 실행기에서 읽은 값)과 견준다. Spring의 설정 키(`spring.threads.virtual.enabled`)와 Tomcat 설정은 task 01에서 확인한 것 그대로다.

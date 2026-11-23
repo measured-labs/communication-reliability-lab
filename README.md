@@ -35,10 +35,12 @@ k6 (load/chain.js) ──HTTP──▶ order :8081 ──HTTP──▶ inventory
 | `analyzer/` | 정답과 DB 상태를 대조하는 명령줄 분석기 |
 | `load/` | k6 스크립트와 시나리오마다의 기대 파일 |
 | `scripts/` | 띄우기·실행·내리기 |
-| `runs/` | 실행마다의 기록. 커밋한 것은 보정 실행 세 번과 일부러 중복을 넣은 실행 한 번뿐이다(`docs/calibration.md`의 기록 — 나머지는 `.gitignore`) |
+| `runs/` | 실행마다의 기록. 커밋한 것: task 01의 보정 실행 세 번과 일부러 중복을 넣은 실행 한 번(`docs/calibration.md`), task 02의 보정과 실험의 모든 실행(버리는 실행·실패한 실행 포함)의 요약과 `raw.tar.gz`(아래 "task 02") — 나머지는 `.gitignore` |
 | `docs/measurement.md` | 측정 도구의 입력·출력 형식과 판정 규칙(분석기의 계약) |
 | `docs/calibration.md` | 보정 실행의 결과와 편차 |
 | `docs/dependencies.md` | 들인 것마다 필요한가·왜·선택지·버전, 꺼 둔 숨은 기본값 |
+| `docs/experiments/task-02-design.md` | task 02(타임아웃) 실험의 설계와 보기 전의 예상 |
+| `docs/results/task-02-timeouts.md` | task 02의 결과 표, 예상과의 대조, 한계 |
 
 ## 실행
 
@@ -55,3 +57,16 @@ scripts/down.sh                    # 이 프로젝트의 컨테이너·네트워
 - `run.sh`의 종료 코드: 0 통과, 1 실행 실패(서비스가 뜨지 않음, 떠 있는 서비스가 지금의 코드로 지은 이미지가 아님, 워밍업 실패, k6가 보내지 못한 반복, 가라앉기 시간 안에 처리 중인 요청이 0이 되지 않음, 입력 오류 등), 2 분석 결과가 기대(`load/expectations/<시나리오>.json`)와 다르거나 늘 0이어야 하는 지표(정답에 없는 행, PENDING 행, 금액 불일치)가 0이 아님.
 - Docker 자원은 compose 프로젝트 이름 `communication-reliability-lab`으로만 만든다.
 - DB 계정 `lab`/`lab`은 **로컬 실험용** 값이다(비밀 값이 아니다).
+
+## task 02 — 타임아웃
+
+```bash
+scripts/task02-all.sh                 # 보정 → 실험 가·나·다(조건마다 서비스를 다시 띄우고 버리는 실행 1회 + 반복 3회). 노트북에서 약 1시간 20분
+scripts/task02-all.sh ga              # 실험 하나만(cal | ga | na | da)
+scripts/task02-table.sh ga 'edges.inventory->payment.falseTimeoutRatio'   # 결과 표의 줄(반복마다의 값, 가운데값, 범위)
+scripts/task02-recompute.sh runs/false-timeout-…-r1                       # 커밋한 raw.tar.gz에서 분석을 다시 돌려 커밋한 보고와 견준다
+```
+
+- 조건(타임아웃 둘, 스레드 방식)은 환경 변수 `ORDER_TO_INVENTORY_TIMEOUT`·`INVENTORY_TO_PAYMENT_TIMEOUT`·`VIRTUAL_THREADS`로 준다(`compose.yaml`이 읽는다 — 주지 않으면 task 01의 값). `run.sh`가 떠 있는 서비스의 `/settings`(실제 값)와 견주고 다르면 실패한다.
+- 서비스는 업무 요청마다 시작·끝 시각과 아래 층 호출을 메모리에 남기고(`GET /timings`), 100ms마다 처리 중 요청·바쁜 스레드·큐를 뜬다(`GET /samples`). 형식과 지표의 식: `docs/measurement.md` 7절.
+- 실행 하나의 기록은 수 MB라 다 커밋하지 않는다. 커밋하는 것: 실행 폴더의 `config.env`, `compose.resolved.yaml`, `images.txt`, `k6-summary.json`, 보고(`report.*`, `report-timing.json`, `metrics.tsv`)와, 결과를 다시 계산하는 입력을 묶은 `raw.tar.gz`(`scripts/task02-pack.sh` — 정답·조회·DB 상태·장애 수·설정·시각 기록·표본·기대 파일), 그리고 `runs/task-02-index.tsv`(조건마다의 실행과 종료 코드). 커밋하지 않는 것: k6 원본 로그(정답·조회 줄은 `raw.tar.gz`에 있다), 워밍업 로그, 이미지 짓기 출력.

@@ -257,8 +257,13 @@ JSON 객체. 아래 키 가운데 **적은 것만** 견준다(하나 이상 적�
 | `fault-counts.json` | 3절 |
 | `expect.json` | 견준 기대 파일의 사본(`load/expectations/<시나리오>.json`) |
 | `report.json`, `report.md` | 5절 |
+| (task 02) `config.env`에 더한 칸 | `k6_max_vus`, `lookup_rate_per_second`, `slow_label`, 조건 `order_to_inventory_timeout`·`inventory_to_payment_timeout`·`virtual_threads`, `timing_expect`, `discard_run`(반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행 — `yes`) |
+| (task 02) `timing/timings-<서비스>.json`, `timing/samples-<서비스>.json`, `lookups.jsonl` | 7-1절 |
+| (task 02) `expect.timing.json`, `report-timing.json`, `metrics.tsv` | 7-4절 |
 
-실행 차례(`scripts/run.sh`): 컨테이너 넷이 떠 있고 세 서비스가 준비됐는지 확인(`/actuator/health`가 HTTP 200이고 최상위 `status`가 `UP`) → 이미지를 짓고(분석기 포함 — 지금의 코드로), 떠 있는 세 서비스가 방금 지은 이미지인지 확인(아니면 실패 — `up.sh`를 다시) → 설정 기록 → 워밍업(장애 없음, 모두 201인 회차가 나올 때까지 최대 3회차) → 세 DB의 행을 비우고 카운터를 0으로(남은 행이 있으면 실패) → 부하 → k6가 보내지 못한 반복(`dropped_iterations`)이 있으면 실패 → **가라앉기**: 세 서비스의 `GET /inflight`를 order → inventory → payment 차례로 읽어 한 바퀴에 셋이 모두 0이면 끝(위 층이 0이면 아래 층에 새 호출이 생기지 않는다). `settle_timeout_seconds`(시나리오의 가장 긴 지연보다 길게 — calibration 20s, duplicate 10s) 안에 0이 되지 않으면 **실패**(종료 코드 1, DB를 내보내지 않는다) → 컨테이너가 여전히 떠 있는지 확인 → 내보내기 → 분석. 어느 단계든 실패하면 0이 아닌 코드로 멈춘다.
+task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, `VIRTUAL_THREADS`)은 환경 변수로 주고, 서비스도 같은 값으로 띄워 둔다(`scripts/up.sh` — `compose.yaml`이 그 변수를 읽는다). 실행 스크립트는 설정 기록 뒤 `settings-<서비스>.json`(떠 있는 객체의 값)에서 주문·재고의 `nextLayer.requestTimeoutMs`와 세 서비스의 `tomcat.executorVirtualThreads`가 그 조건과 같은지 보고, 다르면 실패(종료 코드 1). 조건 하나를 버리는 실행과 반복으로 돌리는 것은 `scripts/task02.sh`, 모든 조건은 `scripts/task02-all.sh`, 결과 표는 `scripts/task02-table.sh`(`runs/task-02-index.tsv`와 `metrics.tsv`에서 다시 계산).
+
+실행 차례(`scripts/run.sh`): 컨테이너 넷이 떠 있고 세 서비스가 준비됐는지 확인(`/actuator/health`가 HTTP 200이고 최상위 `status`가 `UP`) → 이미지를 짓고(분석기 포함 — 지금의 코드로), 떠 있는 세 서비스가 방금 지은 이미지인지 확인(아니면 실패 — `up.sh`를 다시) → 설정 기록 → 워밍업(장애 없음, 모두 201인 회차가 나올 때까지 최대 3회차) → 세 DB의 행을 비우고 카운터를 0으로(남은 행이 있으면 실패) → 부하 → k6가 보내지 못한 반복(`dropped_iterations`)이 있으면 실패 → **가라앉기**: 세 서비스의 `GET /inflight`를 order → inventory → payment 차례로 읽어 한 바퀴에 셋이 모두 0이면 끝(위 층이 0이면 아래 층에 새 호출이 생기지 않는다). `settle_timeout_seconds`(시나리오의 가장 긴 지연보다 길게 — calibration 20s, duplicate 10s) 안에 0이 되지 않으면 **실패**(종료 코드 1, DB를 내보내지 않는다) → 컨테이너가 여전히 떠 있는지 확인 → 내보내기(task 02: 시각 기록과 표본도) → 분석(task 02: 이어서 7절의 시각 분석). 어느 단계든 실패하면 0이 아닌 코드로 멈춘다.
 
 ## 7. 시각 지표 (task 02) — `analyzer timing`
 
