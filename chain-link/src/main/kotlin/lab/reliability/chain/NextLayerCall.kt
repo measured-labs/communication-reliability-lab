@@ -62,15 +62,30 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
         .connectTimeout(settings.connectTimeout)
         .build()
 
-    override fun call(amount: Long): LayerOutcome {
-        val ctx = ChainContext.current()
-        val request = HttpRequest.newBuilder(settings.url)
+    private fun request(requestId: String, rawFault: String?, amount: Long): HttpRequest =
+        HttpRequest.newBuilder(settings.url)
             .timeout(settings.requestTimeout)
             .header("Content-Type", "application/json")
-            .header(ChainHeaders.REQUEST_ID, ctx.requestId)
-            .apply { ctx.rawFault?.let { header(ChainHeaders.FAULT, it) } }
+            .header(ChainHeaders.REQUEST_ID, requestId)
+            .apply { rawFault?.let { header(ChainHeaders.FAULT, it) } }
             .POST(HttpRequest.BodyPublishers.ofString("""{"amount":$amount}"""))
             .build()
+
+    /** `/settings`용: 클라이언트 객체와, [call]과 같은 방법으로 만든 요청에서 읽은 실제 값. */
+    fun actualSettings(): Map<String, Any?> {
+        val sample = request("settings-probe", null, 0)
+        return linkedMapOf(
+            "url" to sample.uri().toString(),
+            "connectTimeoutMs" to (client.connectTimeout().map { it.toMillis() }.orElse(null) ?: "없음(무한)"),
+            "requestTimeoutMs" to (sample.timeout().map { it.toMillis() }.orElse(null) ?: "없음(무한)"),
+            "version" to client.version().name,
+            "followRedirects" to client.followRedirects().name,
+        )
+    }
+
+    override fun call(amount: Long): LayerOutcome {
+        val ctx = ChainContext.current()
+        val request = request(ctx.requestId, ctx.rawFault, amount)
         return try {
             val status = client.send(request, HttpResponse.BodyHandlers.discarding()).statusCode()
             when (status) {
