@@ -1,0 +1,117 @@
+answers	1200
+delays.inventory.count	0
+delays.inventory.p50	
+delays.inventory.p90	
+delays.inventory.p99	
+delays.inventory.max	
+delays.order.count	0
+delays.order.p50	
+delays.order.p90	
+delays.order.p99	
+delays.order.max	
+delays.payment.count	1200
+delays.payment.p50	78.0
+delays.payment.p90	174.0
+delays.payment.p99	365.0
+delays.payment.max	663.0
+edges.order->inventory.timeoutMs	5000
+edges.order->inventory.calls	1200
+edges.order->inventory.timeouts	0
+edges.order->inventory.falseTimeouts	0
+edges.order->inventory.falseTimeoutRatio	0.0
+edges.order->inventory.outcomes.Completed	518
+edges.order->inventory.outcomes.Unknown:HTTP_504	682
+edges.order->inventory.callMs.count	1200
+edges.order->inventory.callMs.p50	90.482
+edges.order->inventory.callMs.p90	93.93
+edges.order->inventory.callMs.p99	98.456
+edges.order->inventory.callMs.max	111.709
+edges.order->inventory.injectedCalleeDelayAtLeastTimeout	0
+edges.inventory->payment.timeoutMs	80
+edges.inventory->payment.calls	1200
+edges.inventory->payment.timeouts	682
+edges.inventory->payment.falseTimeouts	682
+edges.inventory->payment.falseTimeoutRatio	0.5683333333333334
+edges.inventory->payment.outcomes.Completed	518
+edges.inventory->payment.outcomes.Unknown:REQUEST_TIMEOUT	682
+edges.inventory->payment.callMs.count	1200
+edges.inventory->payment.callMs.p50	79.751
+edges.inventory->payment.callMs.p90	80.485
+edges.inventory->payment.callMs.p99	80.702
+edges.inventory->payment.callMs.max	91.061
+edges.inventory->payment.injectedCalleeDelayAtLeastTimeout	592
+layers.order.records	1200
+layers.order.serviceMs.count	1200
+layers.order.serviceMs.p50	99.949
+layers.order.serviceMs.p90	105.965
+layers.order.serviceMs.p99	113.287
+layers.order.serviceMs.max	133.966
+layers.inventory.records	1200
+layers.inventory.serviceMs.count	1200
+layers.inventory.serviceMs.p50	88.845
+layers.inventory.serviceMs.p90	92.134
+layers.inventory.serviceMs.p99	96.264
+layers.inventory.serviceMs.max	105.485
+layers.payment.records	1200
+layers.payment.serviceMs.count	1200
+layers.payment.serviceMs.p50	83.933
+layers.payment.serviceMs.p90	179.311
+layers.payment.serviceMs.p99	369.628
+layers.payment.serviceMs.max	667.964
+waste.order.wasted	0
+waste.order.wastedProcessed	0
+waste.order.startedAfterGiveUp	0
+waste.order.wastedMsSum	0.0
+waste.order.wastedMs.count	0
+waste.order.wastedMs.p50	
+waste.order.wastedMs.p90	
+waste.order.wastedMs.p99	
+waste.order.wastedMs.max	
+waste.inventory.wasted	0
+waste.inventory.wastedProcessed	0
+waste.inventory.startedAfterGiveUp	0
+waste.inventory.wastedMsSum	0.0
+waste.inventory.wastedMs.count	0
+waste.inventory.wastedMs.p50	
+waste.inventory.wastedMs.p90	
+waste.inventory.wastedMs.p99	
+waste.inventory.wastedMs.max	
+waste.payment.wasted	658
+waste.payment.wastedProcessed	658
+waste.payment.startedAfterGiveUp	0
+waste.payment.wastedMsSum	41466.2
+waste.payment.wastedMs.count	658
+waste.payment.wastedMs.p50	39.427
+waste.payment.wastedMs.p90	146.993
+waste.payment.wastedMs.p99	346.806
+waste.payment.wastedMs.max	589.106
+samples.order.count	327
+samples.order.intervalMs	100
+samples.order.maxGapMs	100
+samples.order.maxInflight	5
+samples.order.maxActive	5
+samples.order.maxThreads	200
+samples.order.maxQueue	1
+samples.order.maxConnections	301
+samples.order.saturatedMs	0
+samples.order.meanLoadDuringSend	4.0
+samples.inventory.count	328
+samples.inventory.intervalMs	100
+samples.inventory.maxGapMs	100
+samples.inventory.maxInflight	4
+samples.inventory.maxActive	4
+samples.inventory.maxThreads	200
+samples.inventory.maxQueue	0
+samples.inventory.maxConnections	41
+samples.inventory.saturatedMs	0
+samples.inventory.meanLoadDuringSend	2.9
+samples.payment.count	328
+samples.payment.intervalMs	100
+samples.payment.maxGapMs	100
+samples.payment.maxInflight	8
+samples.payment.maxActive	8
+samples.payment.maxThreads	200
+samples.payment.maxQueue	0
+samples.payment.maxConnections	10
+samples.payment.saturatedMs	0
+samples.payment.meanLoadDuringSend	4.3

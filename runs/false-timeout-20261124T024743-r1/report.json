@@ -1,0 +1,4860 @@
+{
+  "run" : "false-timeout-20261124T024743-r1",
+  "expect" : null,
+  "planned" : 1200,
+  "differences" : [ ],
+  "reconciliation" : {
+    "amountMismatch" : 0,
+    "answers" : 1200,
+    "doubledTotal" : 0,
+    "elapsedMs" : {
+      "all" : {
+        "count" : 1200,
+        "max" : 308.0,
+        "p50" : 110.0,
+        "p95" : 197.0,
+        "p99" : 203.0
+      },
+      "completed" : {
+        "count" : 1063,
+        "max" : 308.0,
+        "p50" : 104.0,
+        "p95" : 179.0,
+        "p99" : 194.0
+      },
+      "failed" : {
+        "count" : 0,
+        "max" : null,
+        "p50" : null,
+        "p95" : null,
+        "p99" : null
+      },
+      "unknown" : {
+        "count" : 137,
+        "max" : 291.0,
+        "p50" : 197.0,
+        "p95" : 208.0,
+        "p99" : 269.0
+      }
+    },
+    "faultCounts" : [ {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 1200,
+      "injected" : 1200,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "payment"
+    } ],
+    "faultCountsMatch" : true,
+    "labels" : {
+      "payment:delay=100" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 146.0,
+          "p50" : 130.0,
+          "p95" : 146.0,
+          "p99" : 146.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=101" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 137.0,
+          "p50" : 129.0,
+          "p95" : 137.0,
+          "p99" : 137.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=102" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 134.0,
+          "p50" : 133.0,
+          "p95" : 134.0,
+          "p99" : 134.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=103" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 135.0,
+          "p50" : 133.0,
+          "p95" : 135.0,
+          "p99" : 135.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 6,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=104" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 137.0,
+          "p50" : 134.0,
+          "p95" : 137.0,
+          "p99" : 137.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 6,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=105" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 155.0,
+          "p50" : 139.0,
+          "p95" : 155.0,
+          "p99" : 155.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=106" : {
+        "answers" : 10,
+        "elapsedMs" : {
+          "count" : 10,
+          "max" : 147.0,
+          "p50" : 136.0,
+          "p95" : 147.0,
+          "p99" : 147.0
+        },
+        "requestIds" : 10,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 10
+        },
+        "verdicts" : {
+          "completed" : 10,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=107" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 141.0,
+          "p50" : 135.0,
+          "p95" : 141.0,
+          "p99" : 141.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 6,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=108" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 140.0,
+          "p50" : 139.0,
+          "p95" : 140.0,
+          "p99" : 140.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=109" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 142.0,
+          "p50" : 138.0,
+          "p95" : 142.0,
+          "p99" : 142.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=110" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 142.0,
+          "p50" : 140.0,
+          "p95" : 142.0,
+          "p99" : 142.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=111" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 147.0,
+          "p50" : 142.0,
+          "p95" : 147.0,
+          "p99" : 147.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 6,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=112" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 152.0,
+          "p50" : 141.0,
+          "p95" : 152.0,
+          "p99" : 152.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=113" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 145.0,
+          "p50" : 143.0,
+          "p95" : 145.0,
+          "p99" : 145.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=114" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 146.0,
+          "p50" : 145.0,
+          "p95" : 146.0,
+          "p99" : 146.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=115" : {
+        "answers" : 5,
+        "elapsedMs" : {
+          "count" : 5,
+          "max" : 152.0,
+          "p50" : 147.0,
+          "p95" : 152.0,
+          "p99" : 152.0
+        },
+        "requestIds" : 5,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 5
+        },
+        "verdicts" : {
+          "completed" : 5,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=116" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 151.0,
+          "p50" : 148.0,
+          "p95" : 151.0,
+          "p99" : 151.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=117" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 151.0,
+          "p50" : 147.0,
+          "p95" : 151.0,
+          "p99" : 151.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=118" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 152.0,
+          "p50" : 146.0,
+          "p95" : 152.0,
+          "p99" : 152.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=119" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 146.0,
+          "p50" : 146.0,
+          "p95" : 146.0,
+          "p99" : 146.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=120" : {
+        "answers" : 5,
+        "elapsedMs" : {
+          "count" : 5,
+          "max" : 163.0,
+          "p50" : 150.0,
+          "p95" : 163.0,
+          "p99" : 163.0
+        },
+        "requestIds" : 5,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 5
+        },
+        "verdicts" : {
+          "completed" : 5,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=121" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 153.0,
+          "p50" : 149.0,
+          "p95" : 153.0,
+          "p99" : 153.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=122" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 154.0,
+          "p50" : 151.0,
+          "p95" : 154.0,
+          "p99" : 154.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=123" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 160.0,
+          "p50" : 151.0,
+          "p95" : 160.0,
+          "p99" : 160.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=124" : {
+        "answers" : 5,
+        "elapsedMs" : {
+          "count" : 5,
+          "max" : 154.0,
+          "p50" : 153.0,
+          "p95" : 154.0,
+          "p99" : 154.0
+        },
+        "requestIds" : 5,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 5
+        },
+        "verdicts" : {
+          "completed" : 5,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=125" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 158.0,
+          "p50" : 153.0,
+          "p95" : 158.0,
+          "p99" : 158.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=126" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 160.0,
+          "p50" : 155.0,
+          "p95" : 160.0,
+          "p99" : 160.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=127" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 156.0,
+          "p50" : 156.0,
+          "p95" : 156.0,
+          "p99" : 156.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=128" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 161.0,
+          "p50" : 158.0,
+          "p95" : 161.0,
+          "p99" : 161.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=129" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 163.0,
+          "p50" : 160.0,
+          "p95" : 163.0,
+          "p99" : 163.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=13" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 48.0,
+          "p50" : 46.0,
+          "p95" : 48.0,
+          "p99" : 48.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=130" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 158.0,
+          "p50" : 158.0,
+          "p95" : 158.0,
+          "p99" : 158.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=131" : {
+        "answers" : 5,
+        "elapsedMs" : {
+          "count" : 5,
+          "max" : 161.0,
+          "p50" : 160.0,
+          "p95" : 161.0,
+          "p99" : 161.0
+        },
+        "requestIds" : 5,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 5
+        },
+        "verdicts" : {
+          "completed" : 5,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=132" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 163.0,
+          "p50" : 161.0,
+          "p95" : 163.0,
+          "p99" : 163.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=133" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 179.0,
+          "p50" : 164.0,
+          "p95" : 179.0,
+          "p99" : 179.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=134" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 163.0,
+          "p50" : 162.0,
+          "p95" : 163.0,
+          "p99" : 163.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=135" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 172.0,
+          "p50" : 167.0,
+          "p95" : 172.0,
+          "p99" : 172.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=136" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 167.0,
+          "p50" : 166.0,
+          "p95" : 167.0,
+          "p99" : 167.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=137" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 172.0,
+          "p50" : 168.0,
+          "p95" : 172.0,
+          "p99" : 172.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=138" : {
+        "answers" : 5,
+        "elapsedMs" : {
+          "count" : 5,
+          "max" : 171.0,
+          "p50" : 168.0,
+          "p95" : 171.0,
+          "p99" : 171.0
+        },
+        "requestIds" : 5,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 5
+        },
+        "verdicts" : {
+          "completed" : 5,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=139" : {
+        "answers" : 5,
+        "elapsedMs" : {
+          "count" : 5,
+          "max" : 170.0,
+          "p50" : 170.0,
+          "p95" : 170.0,
+          "p99" : 170.0
+        },
+        "requestIds" : 5,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 5
+        },
+        "verdicts" : {
+          "completed" : 5,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=14" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 46.0,
+          "p50" : 44.0,
+          "p95" : 46.0,
+          "p99" : 46.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=140" : {
+        "answers" : 5,
+        "elapsedMs" : {
+          "count" : 5,
+          "max" : 173.0,
+          "p50" : 171.0,
+          "p95" : 173.0,
+          "p99" : 173.0
+        },
+        "requestIds" : 5,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 5
+        },
+        "verdicts" : {
+          "completed" : 5,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=141" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 175.0,
+          "p50" : 172.0,
+          "p95" : 175.0,
+          "p99" : 175.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=142" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 179.0,
+          "p50" : 176.0,
+          "p95" : 179.0,
+          "p99" : 179.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=143" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 175.0,
+          "p50" : 171.0,
+          "p95" : 175.0,
+          "p99" : 175.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=144" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 174.0,
+          "p50" : 173.0,
+          "p95" : 174.0,
+          "p99" : 174.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=145" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 173.0,
+          "p50" : 173.0,
+          "p95" : 173.0,
+          "p99" : 173.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=146" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 179.0,
+          "p50" : 178.0,
+          "p95" : 179.0,
+          "p99" : 179.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=147" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 176.0,
+          "p50" : 174.0,
+          "p95" : 176.0,
+          "p99" : 176.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=148" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 182.0,
+          "p50" : 179.0,
+          "p95" : 182.0,
+          "p99" : 182.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=149" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 184.0,
+          "p50" : 179.0,
+          "p95" : 184.0,
+          "p99" : 184.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=15" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 59.0,
+          "p50" : 59.0,
+          "p95" : 59.0,
+          "p99" : 59.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=150" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 177.0,
+          "p50" : 177.0,
+          "p95" : 177.0,
+          "p99" : 177.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=151" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 181.0,
+          "p50" : 179.0,
+          "p95" : 181.0,
+          "p99" : 181.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=152" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 186.0,
+          "p50" : 180.0,
+          "p95" : 186.0,
+          "p99" : 186.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=153" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 181.0,
+          "p50" : 181.0,
+          "p95" : 181.0,
+          "p99" : 181.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=154" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 194.0,
+          "p50" : 182.0,
+          "p95" : 194.0,
+          "p99" : 194.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 6,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=155" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 308.0,
+          "p50" : 185.0,
+          "p95" : 308.0,
+          "p99" : 308.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=156" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 185.0,
+          "p50" : 185.0,
+          "p95" : 185.0,
+          "p99" : 185.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=157" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 187.0,
+          "p50" : 185.0,
+          "p95" : 187.0,
+          "p99" : 187.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 6,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=158" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 189.0,
+          "p50" : 189.0,
+          "p95" : 189.0,
+          "p99" : 189.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=159" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 194.0,
+          "p50" : 189.0,
+          "p95" : 194.0,
+          "p99" : 194.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=16" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 47.0,
+          "p50" : 45.0,
+          "p95" : 47.0,
+          "p99" : 47.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=160" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 190.0,
+          "p50" : 190.0,
+          "p95" : 190.0,
+          "p99" : 190.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=161" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 189.0,
+          "p50" : 188.0,
+          "p95" : 189.0,
+          "p99" : 189.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=162" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 192.0,
+          "p50" : 190.0,
+          "p95" : 192.0,
+          "p99" : 192.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=163" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 197.0,
+          "p50" : 193.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=164" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 196.0,
+          "p50" : 195.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1,
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=165" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 197.0,
+          "p50" : 195.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=167" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 195.0,
+          "p50" : 195.0,
+          "p95" : 195.0,
+          "p99" : 195.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=168" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 200.0,
+          "p50" : 194.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 3
+        }
+      },
+      "payment:delay=17" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 50.0,
+          "p50" : 50.0,
+          "p95" : 50.0,
+          "p99" : 50.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=170" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 203.0,
+          "p50" : 201.0,
+          "p95" : 203.0,
+          "p99" : 203.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 3
+        }
+      },
+      "payment:delay=171" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 202.0,
+          "p50" : 198.0,
+          "p95" : 202.0,
+          "p99" : 202.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=172" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 199.0,
+          "p50" : 195.0,
+          "p95" : 199.0,
+          "p99" : 199.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=173" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=174" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 291.0,
+          "p50" : 195.0,
+          "p95" : 291.0,
+          "p99" : 291.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 4
+        }
+      },
+      "payment:delay=175" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 197.0,
+          "p50" : 196.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 3
+        }
+      },
+      "payment:delay=176" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=179" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 200.0,
+          "p50" : 199.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=18" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 46.0,
+          "p50" : 46.0,
+          "p95" : 46.0,
+          "p99" : 46.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=180" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 202.0,
+          "p50" : 202.0,
+          "p95" : 202.0,
+          "p99" : 202.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=181" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 195.0,
+          "p50" : 195.0,
+          "p95" : 195.0,
+          "p99" : 195.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=182" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 198.0,
+          "p50" : 194.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=185" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 200.0,
+          "p50" : 200.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=187" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 209.0,
+          "p50" : 198.0,
+          "p95" : 209.0,
+          "p99" : 209.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=19" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 49.0,
+          "p50" : 48.0,
+          "p95" : 49.0,
+          "p99" : 49.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=191" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=192" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=193" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 197.0,
+          "p50" : 195.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 6
+        }
+      },
+      "payment:delay=194" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 205.0,
+          "p50" : 199.0,
+          "p95" : 205.0,
+          "p99" : 205.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=196" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 197.0,
+          "p50" : 196.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=197" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=198" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 201.0,
+          "p50" : 201.0,
+          "p95" : 201.0,
+          "p99" : 201.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=199" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 199.0,
+          "p50" : 199.0,
+          "p95" : 199.0,
+          "p99" : 199.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 3
+        }
+      },
+      "payment:delay=20" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 52.0,
+          "p50" : 47.0,
+          "p95" : 52.0,
+          "p99" : 52.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=200" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=201" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 194.0,
+          "p50" : 194.0,
+          "p95" : 194.0,
+          "p99" : 194.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=202" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 208.0,
+          "p50" : 199.0,
+          "p95" : 208.0,
+          "p99" : 208.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=203" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=204" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 269.0,
+          "p50" : 198.0,
+          "p95" : 269.0,
+          "p99" : 269.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=205" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 204.0,
+          "p50" : 199.0,
+          "p95" : 204.0,
+          "p99" : 204.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=206" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 236.0,
+          "p50" : 196.0,
+          "p95" : 236.0,
+          "p99" : 236.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=207" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 197.0,
+          "p50" : 194.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=209" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 195.0,
+          "p50" : 195.0,
+          "p95" : 195.0,
+          "p99" : 195.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=21" : {
+        "answers" : 4,
+        "elapsedMs" : {
+          "count" : 4,
+          "max" : 57.0,
+          "p50" : 54.0,
+          "p95" : 57.0,
+          "p99" : 57.0
+        },
+        "requestIds" : 4,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 4
+        },
+        "verdicts" : {
+          "completed" : 4,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=211" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 210.0,
+          "p50" : 199.0,
+          "p95" : 210.0,
+          "p99" : 210.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=212" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 202.0,
+          "p50" : 202.0,
+          "p95" : 202.0,
+          "p99" : 202.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=213" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=214" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 205.0,
+          "p50" : 198.0,
+          "p95" : 205.0,
+          "p99" : 205.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=216" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=218" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=219" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 201.0,
+          "p50" : 195.0,
+          "p95" : 201.0,
+          "p99" : 201.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=22" : {
+        "answers" : 5,
+        "elapsedMs" : {
+          "count" : 5,
+          "max" : 64.0,
+          "p50" : 53.0,
+          "p95" : 64.0,
+          "p99" : 64.0
+        },
+        "requestIds" : 5,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 5
+        },
+        "verdicts" : {
+          "completed" : 5,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=221" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 197.0,
+          "p50" : 196.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=223" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 203.0,
+          "p50" : 203.0,
+          "p95" : 203.0,
+          "p99" : 203.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=224" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 200.0,
+          "p50" : 196.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=225" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 200.0,
+          "p50" : 200.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=226" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 200.0,
+          "p50" : 198.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=227" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=23" : {
+        "answers" : 3,
+        "elapsedMs" : {
+          "count" : 3,
+          "max" : 62.0,
+          "p50" : 54.0,
+          "p95" : 62.0,
+          "p99" : 62.0
+        },
+        "requestIds" : 3,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 3
+        },
+        "verdicts" : {
+          "completed" : 3,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=234" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 196.0,
+          "p50" : 194.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=235" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 194.0,
+          "p50" : 194.0,
+          "p95" : 194.0,
+          "p99" : 194.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=236" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 200.0,
+          "p50" : 197.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=24" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 58.0,
+          "p50" : 55.0,
+          "p95" : 58.0,
+          "p99" : 58.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=243" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=244" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=245" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 198.0,
+          "p50" : 198.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=248" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 195.0,
+          "p50" : 195.0,
+          "p95" : 195.0,
+          "p99" : 195.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=25" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 60.0,
+          "p50" : 55.0,
+          "p95" : 60.0,
+          "p99" : 60.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=250" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=254" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 192.0,
+          "p50" : 192.0,
+          "p95" : 192.0,
+          "p99" : 192.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=255" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 223.0,
+          "p50" : 195.0,
+          "p95" : 223.0,
+          "p99" : 223.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=258" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 198.0,
+          "p50" : 198.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=259" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=26" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 60.0,
+          "p50" : 55.0,
+          "p95" : 60.0,
+          "p99" : 60.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 6,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=268" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 199.0,
+          "p50" : 199.0,
+          "p95" : 199.0,
+          "p99" : 199.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=269" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 196.0,
+          "p50" : 192.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=27" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 65.0,
+          "p50" : 53.0,
+          "p95" : 65.0,
+          "p99" : 65.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=272" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 195.0,
+          "p50" : 195.0,
+          "p95" : 195.0,
+          "p99" : 195.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=273" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 200.0,
+          "p50" : 200.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=276" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 198.0,
+          "p50" : 198.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=278" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=279" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 198.0,
+          "p50" : 198.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=28" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 140.0,
+          "p50" : 55.0,
+          "p95" : 140.0,
+          "p99" : 140.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=280" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=281" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=282" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 199.0,
+          "p50" : 199.0,
+          "p95" : 199.0,
+          "p99" : 199.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=287" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 195.0,
+          "p50" : 195.0,
+          "p95" : 195.0,
+          "p99" : 195.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=29" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 59.0,
+          "p50" : 58.0,
+          "p95" : 59.0,
+          "p99" : 59.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 2,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=292" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=296" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 198.0,
+          "p50" : 198.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=298" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 198.0,
+          "p50" : 195.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=30" : {
+        "answers" : 11,
+        "elapsedMs" : {
+          "count" : 11,
+          "max" : 65.0,
+          "p50" : 60.0,
+          "p95" : 65.0,
+          "p99" : 65.0
+        },
+        "requestIds" : 11,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 11
+        },
+        "verdicts" : {
+          "completed" : 11,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=300" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 200.0,
+          "p50" : 200.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=31" : {
+        "answers" : 5,
+        "elapsedMs" : {
+          "count" : 5,
+          "max" : 62.0,
+          "p50" : 59.0,
+          "p95" : 62.0,
+          "p99" : 62.0
+        },
+        "requestIds" : 5,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 5
+        },
+        "verdicts" : {
+          "completed" : 5,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=313" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 200.0,
+          "p50" : 200.0,
+          "p95" : 200.0,
+          "p99" : 200.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=315" : {
+        "answers" : 2,
+        "elapsedMs" : {
+          "count" : 2,
+          "max" : 194.0,
+          "p50" : 190.0,
+          "p95" : 194.0,
+          "p99" : 194.0
+        },
+        "requestIds" : 2,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 2
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 2
+        }
+      },
+      "payment:delay=32" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 73.0,
+          "p50" : 60.0,
+          "p95" : 73.0,
+          "p99" : 73.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=322" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=323" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 198.0,
+          "p50" : 198.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=33" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 70.0,
+          "p50" : 63.0,
+          "p95" : 70.0,
+          "p99" : 70.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=335" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=338" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 195.0,
+          "p50" : 195.0,
+          "p95" : 195.0,
+          "p99" : 195.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=34" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 70.0,
+          "p50" : 67.0,
+          "p95" : 70.0,
+          "p99" : 70.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=346" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=35" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 74.0,
+          "p50" : 65.0,
+          "p95" : 74.0,
+          "p99" : 74.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=355" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 195.0,
+          "p50" : 195.0,
+          "p95" : 195.0,
+          "p99" : 195.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=358" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=36" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 71.0,
+          "p50" : 66.0,
+          "p95" : 71.0,
+          "p99" : 71.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=365" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 198.0,
+          "p50" : 198.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=366" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 203.0,
+          "p50" : 203.0,
+          "p95" : 203.0,
+          "p99" : 203.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=37" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 72.0,
+          "p50" : 65.0,
+          "p95" : 72.0,
+          "p99" : 72.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=373" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=374" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=38" : {
+        "answers" : 13,
+        "elapsedMs" : {
+          "count" : 13,
+          "max" : 73.0,
+          "p50" : 68.0,
+          "p95" : 73.0,
+          "p99" : 73.0
+        },
+        "requestIds" : 13,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 13
+        },
+        "verdicts" : {
+          "completed" : 13,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=39" : {
+        "answers" : 12,
+        "elapsedMs" : {
+          "count" : 12,
+          "max" : 87.0,
+          "p50" : 74.0,
+          "p95" : 87.0,
+          "p99" : 87.0
+        },
+        "requestIds" : 12,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 12
+        },
+        "verdicts" : {
+          "completed" : 12,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=40" : {
+        "answers" : 10,
+        "elapsedMs" : {
+          "count" : 10,
+          "max" : 82.0,
+          "p50" : 71.0,
+          "p95" : 82.0,
+          "p99" : 82.0
+        },
+        "requestIds" : 10,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 10
+        },
+        "verdicts" : {
+          "completed" : 10,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=400" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 194.0,
+          "p50" : 194.0,
+          "p95" : 194.0,
+          "p99" : 194.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=407" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 192.0,
+          "p50" : 192.0,
+          "p95" : 192.0,
+          "p99" : 192.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=41" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 74.0,
+          "p50" : 73.0,
+          "p95" : 74.0,
+          "p99" : 74.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=42" : {
+        "answers" : 12,
+        "elapsedMs" : {
+          "count" : 12,
+          "max" : 77.0,
+          "p50" : 72.0,
+          "p95" : 77.0,
+          "p99" : 77.0
+        },
+        "requestIds" : 12,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 12
+        },
+        "verdicts" : {
+          "completed" : 12,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=420" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=427" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 195.0,
+          "p50" : 195.0,
+          "p95" : 195.0,
+          "p99" : 195.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=43" : {
+        "answers" : 12,
+        "elapsedMs" : {
+          "count" : 12,
+          "max" : 83.0,
+          "p50" : 73.0,
+          "p95" : 83.0,
+          "p99" : 83.0
+        },
+        "requestIds" : 12,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 12
+        },
+        "verdicts" : {
+          "completed" : 12,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=44" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 89.0,
+          "p50" : 78.0,
+          "p95" : 89.0,
+          "p99" : 89.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=45" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 131.0,
+          "p50" : 76.0,
+          "p95" : 131.0,
+          "p99" : 131.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=46" : {
+        "answers" : 16,
+        "elapsedMs" : {
+          "count" : 16,
+          "max" : 179.0,
+          "p50" : 75.0,
+          "p95" : 179.0,
+          "p99" : 179.0
+        },
+        "requestIds" : 16,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 16
+        },
+        "verdicts" : {
+          "completed" : 16,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=469" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 194.0,
+          "p50" : 194.0,
+          "p95" : 194.0,
+          "p99" : 194.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=47" : {
+        "answers" : 13,
+        "elapsedMs" : {
+          "count" : 13,
+          "max" : 81.0,
+          "p50" : 77.0,
+          "p95" : 81.0,
+          "p99" : 81.0
+        },
+        "requestIds" : 13,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 13
+        },
+        "verdicts" : {
+          "completed" : 13,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=48" : {
+        "answers" : 10,
+        "elapsedMs" : {
+          "count" : 10,
+          "max" : 85.0,
+          "p50" : 76.0,
+          "p95" : 85.0,
+          "p99" : 85.0
+        },
+        "requestIds" : 10,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 10
+        },
+        "verdicts" : {
+          "completed" : 10,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=483" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 203.0,
+          "p50" : 203.0,
+          "p95" : 203.0,
+          "p99" : 203.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=49" : {
+        "answers" : 15,
+        "elapsedMs" : {
+          "count" : 15,
+          "max" : 82.0,
+          "p50" : 78.0,
+          "p95" : 82.0,
+          "p99" : 82.0
+        },
+        "requestIds" : 15,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 15
+        },
+        "verdicts" : {
+          "completed" : 15,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=50" : {
+        "answers" : 12,
+        "elapsedMs" : {
+          "count" : 12,
+          "max" : 82.0,
+          "p50" : 78.0,
+          "p95" : 82.0,
+          "p99" : 82.0
+        },
+        "requestIds" : 12,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 12
+        },
+        "verdicts" : {
+          "completed" : 12,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=51" : {
+        "answers" : 11,
+        "elapsedMs" : {
+          "count" : 11,
+          "max" : 84.0,
+          "p50" : 79.0,
+          "p95" : 84.0,
+          "p99" : 84.0
+        },
+        "requestIds" : 11,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 11
+        },
+        "verdicts" : {
+          "completed" : 11,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=52" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 90.0,
+          "p50" : 81.0,
+          "p95" : 90.0,
+          "p99" : 90.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=523" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 199.0,
+          "p50" : 199.0,
+          "p95" : 199.0,
+          "p99" : 199.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=53" : {
+        "answers" : 12,
+        "elapsedMs" : {
+          "count" : 12,
+          "max" : 92.0,
+          "p50" : 84.0,
+          "p95" : 92.0,
+          "p99" : 92.0
+        },
+        "requestIds" : 12,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 12
+        },
+        "verdicts" : {
+          "completed" : 12,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=54" : {
+        "answers" : 12,
+        "elapsedMs" : {
+          "count" : 12,
+          "max" : 89.0,
+          "p50" : 81.0,
+          "p95" : 89.0,
+          "p99" : 89.0
+        },
+        "requestIds" : 12,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 12
+        },
+        "verdicts" : {
+          "completed" : 12,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=55" : {
+        "answers" : 14,
+        "elapsedMs" : {
+          "count" : 14,
+          "max" : 95.0,
+          "p50" : 85.0,
+          "p95" : 95.0,
+          "p99" : 95.0
+        },
+        "requestIds" : 14,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 14
+        },
+        "verdicts" : {
+          "completed" : 14,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=56" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 97.0,
+          "p50" : 84.0,
+          "p95" : 97.0,
+          "p99" : 97.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=57" : {
+        "answers" : 10,
+        "elapsedMs" : {
+          "count" : 10,
+          "max" : 90.0,
+          "p50" : 85.0,
+          "p95" : 90.0,
+          "p99" : 90.0
+        },
+        "requestIds" : 10,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 10
+        },
+        "verdicts" : {
+          "completed" : 10,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=58" : {
+        "answers" : 15,
+        "elapsedMs" : {
+          "count" : 15,
+          "max" : 98.0,
+          "p50" : 89.0,
+          "p95" : 98.0,
+          "p99" : 98.0
+        },
+        "requestIds" : 15,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 15
+        },
+        "verdicts" : {
+          "completed" : 15,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=59" : {
+        "answers" : 19,
+        "elapsedMs" : {
+          "count" : 19,
+          "max" : 198.0,
+          "p50" : 90.0,
+          "p95" : 198.0,
+          "p99" : 198.0
+        },
+        "requestIds" : 19,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 19
+        },
+        "verdicts" : {
+          "completed" : 19,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=60" : {
+        "answers" : 13,
+        "elapsedMs" : {
+          "count" : 13,
+          "max" : 98.0,
+          "p50" : 90.0,
+          "p95" : 98.0,
+          "p99" : 98.0
+        },
+        "requestIds" : 13,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 13
+        },
+        "verdicts" : {
+          "completed" : 13,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=61" : {
+        "answers" : 16,
+        "elapsedMs" : {
+          "count" : 16,
+          "max" : 97.0,
+          "p50" : 91.0,
+          "p95" : 97.0,
+          "p99" : 97.0
+        },
+        "requestIds" : 16,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 16
+        },
+        "verdicts" : {
+          "completed" : 16,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=62" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 99.0,
+          "p50" : 92.0,
+          "p95" : 99.0,
+          "p99" : 99.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=622" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 197.0,
+          "p50" : 197.0,
+          "p95" : 197.0,
+          "p99" : 197.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=63" : {
+        "answers" : 13,
+        "elapsedMs" : {
+          "count" : 13,
+          "max" : 105.0,
+          "p50" : 96.0,
+          "p95" : 105.0,
+          "p99" : 105.0
+        },
+        "requestIds" : 13,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 13
+        },
+        "verdicts" : {
+          "completed" : 13,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=64" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 100.0,
+          "p50" : 94.0,
+          "p95" : 100.0,
+          "p99" : 100.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=65" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 99.0,
+          "p50" : 94.0,
+          "p95" : 99.0,
+          "p99" : 99.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=66" : {
+        "answers" : 10,
+        "elapsedMs" : {
+          "count" : 10,
+          "max" : 101.0,
+          "p50" : 99.0,
+          "p95" : 101.0,
+          "p99" : 101.0
+        },
+        "requestIds" : 10,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 10
+        },
+        "verdicts" : {
+          "completed" : 10,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=663" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 196.0,
+          "p50" : 196.0,
+          "p95" : 196.0,
+          "p99" : 196.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "unknown | UNKNOWN | UNKNOWN | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 0,
+          "failed" : 0,
+          "unknown" : 1
+        }
+      },
+      "payment:delay=67" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 104.0,
+          "p50" : 97.0,
+          "p95" : 104.0,
+          "p99" : 104.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=68" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 100.0,
+          "p50" : 97.0,
+          "p95" : 100.0,
+          "p99" : 100.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=69" : {
+        "answers" : 10,
+        "elapsedMs" : {
+          "count" : 10,
+          "max" : 108.0,
+          "p50" : 102.0,
+          "p95" : 108.0,
+          "p99" : 108.0
+        },
+        "requestIds" : 10,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 10
+        },
+        "verdicts" : {
+          "completed" : 10,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=70" : {
+        "answers" : 16,
+        "elapsedMs" : {
+          "count" : 16,
+          "max" : 106.0,
+          "p50" : 100.0,
+          "p95" : 106.0,
+          "p99" : 106.0
+        },
+        "requestIds" : 16,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 16
+        },
+        "verdicts" : {
+          "completed" : 16,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=71" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 117.0,
+          "p50" : 101.0,
+          "p95" : 117.0,
+          "p99" : 117.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=72" : {
+        "answers" : 12,
+        "elapsedMs" : {
+          "count" : 12,
+          "max" : 114.0,
+          "p50" : 101.0,
+          "p95" : 114.0,
+          "p99" : 114.0
+        },
+        "requestIds" : 12,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 12
+        },
+        "verdicts" : {
+          "completed" : 12,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=73" : {
+        "answers" : 15,
+        "elapsedMs" : {
+          "count" : 15,
+          "max" : 108.0,
+          "p50" : 102.0,
+          "p95" : 108.0,
+          "p99" : 108.0
+        },
+        "requestIds" : 15,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 15
+        },
+        "verdicts" : {
+          "completed" : 15,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=74" : {
+        "answers" : 11,
+        "elapsedMs" : {
+          "count" : 11,
+          "max" : 109.0,
+          "p50" : 103.0,
+          "p95" : 109.0,
+          "p99" : 109.0
+        },
+        "requestIds" : 11,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 11
+        },
+        "verdicts" : {
+          "completed" : 11,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=75" : {
+        "answers" : 20,
+        "elapsedMs" : {
+          "count" : 20,
+          "max" : 110.0,
+          "p50" : 104.0,
+          "p95" : 108.0,
+          "p99" : 110.0
+        },
+        "requestIds" : 20,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 20
+        },
+        "verdicts" : {
+          "completed" : 20,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=76" : {
+        "answers" : 13,
+        "elapsedMs" : {
+          "count" : 13,
+          "max" : 123.0,
+          "p50" : 107.0,
+          "p95" : 123.0,
+          "p99" : 123.0
+        },
+        "requestIds" : 13,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 13
+        },
+        "verdicts" : {
+          "completed" : 13,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=77" : {
+        "answers" : 11,
+        "elapsedMs" : {
+          "count" : 11,
+          "max" : 118.0,
+          "p50" : 108.0,
+          "p95" : 118.0,
+          "p99" : 118.0
+        },
+        "requestIds" : 11,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 11
+        },
+        "verdicts" : {
+          "completed" : 11,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=78" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 113.0,
+          "p50" : 109.0,
+          "p95" : 113.0,
+          "p99" : 113.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=79" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 126.0,
+          "p50" : 109.0,
+          "p95" : 126.0,
+          "p99" : 126.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=80" : {
+        "answers" : 10,
+        "elapsedMs" : {
+          "count" : 10,
+          "max" : 114.0,
+          "p50" : 110.0,
+          "p95" : 114.0,
+          "p99" : 114.0
+        },
+        "requestIds" : 10,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 10
+        },
+        "verdicts" : {
+          "completed" : 10,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=81" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 118.0,
+          "p50" : 111.0,
+          "p95" : 118.0,
+          "p99" : 118.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=82" : {
+        "answers" : 12,
+        "elapsedMs" : {
+          "count" : 12,
+          "max" : 116.0,
+          "p50" : 111.0,
+          "p95" : 116.0,
+          "p99" : 116.0
+        },
+        "requestIds" : 12,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 12
+        },
+        "verdicts" : {
+          "completed" : 12,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=83" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 117.0,
+          "p50" : 115.0,
+          "p95" : 117.0,
+          "p99" : 117.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 6,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=84" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 176.0,
+          "p50" : 117.0,
+          "p95" : 176.0,
+          "p99" : 176.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=85" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 122.0,
+          "p50" : 115.0,
+          "p95" : 122.0,
+          "p99" : 122.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=86" : {
+        "answers" : 7,
+        "elapsedMs" : {
+          "count" : 7,
+          "max" : 123.0,
+          "p50" : 117.0,
+          "p95" : 123.0,
+          "p99" : 123.0
+        },
+        "requestIds" : 7,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 7
+        },
+        "verdicts" : {
+          "completed" : 7,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=87" : {
+        "answers" : 10,
+        "elapsedMs" : {
+          "count" : 10,
+          "max" : 130.0,
+          "p50" : 117.0,
+          "p95" : 130.0,
+          "p99" : 130.0
+        },
+        "requestIds" : 10,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 10
+        },
+        "verdicts" : {
+          "completed" : 10,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=88" : {
+        "answers" : 10,
+        "elapsedMs" : {
+          "count" : 10,
+          "max" : 121.0,
+          "p50" : 116.0,
+          "p95" : 121.0,
+          "p99" : 121.0
+        },
+        "requestIds" : 10,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 10
+        },
+        "verdicts" : {
+          "completed" : 10,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=89" : {
+        "answers" : 11,
+        "elapsedMs" : {
+          "count" : 11,
+          "max" : 132.0,
+          "p50" : 120.0,
+          "p95" : 132.0,
+          "p99" : 132.0
+        },
+        "requestIds" : 11,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 11
+        },
+        "verdicts" : {
+          "completed" : 11,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=9" : {
+        "answers" : 1,
+        "elapsedMs" : {
+          "count" : 1,
+          "max" : 40.0,
+          "p50" : 40.0,
+          "p95" : 40.0,
+          "p99" : 40.0
+        },
+        "requestIds" : 1,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 1
+        },
+        "verdicts" : {
+          "completed" : 1,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=90" : {
+        "answers" : 15,
+        "elapsedMs" : {
+          "count" : 15,
+          "max" : 129.0,
+          "p50" : 122.0,
+          "p95" : 129.0,
+          "p99" : 129.0
+        },
+        "requestIds" : 15,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 15
+        },
+        "verdicts" : {
+          "completed" : 15,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=91" : {
+        "answers" : 6,
+        "elapsedMs" : {
+          "count" : 6,
+          "max" : 129.0,
+          "p50" : 122.0,
+          "p95" : 129.0,
+          "p99" : 129.0
+        },
+        "requestIds" : 6,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 6
+        },
+        "verdicts" : {
+          "completed" : 6,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=92" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 129.0,
+          "p50" : 121.0,
+          "p95" : 129.0,
+          "p99" : 129.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=93" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 126.0,
+          "p50" : 122.0,
+          "p95" : 126.0,
+          "p99" : 126.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=94" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 137.0,
+          "p50" : 124.0,
+          "p95" : 137.0,
+          "p99" : 137.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=95" : {
+        "answers" : 11,
+        "elapsedMs" : {
+          "count" : 11,
+          "max" : 131.0,
+          "p50" : 126.0,
+          "p95" : 131.0,
+          "p99" : 131.0
+        },
+        "requestIds" : 11,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 11
+        },
+        "verdicts" : {
+          "completed" : 11,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=96" : {
+        "answers" : 8,
+        "elapsedMs" : {
+          "count" : 8,
+          "max" : 136.0,
+          "p50" : 126.0,
+          "p95" : 136.0,
+          "p99" : 136.0
+        },
+        "requestIds" : 8,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 8
+        },
+        "verdicts" : {
+          "completed" : 8,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=97" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 139.0,
+          "p50" : 127.0,
+          "p95" : 139.0,
+          "p99" : 139.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=98" : {
+        "answers" : 11,
+        "elapsedMs" : {
+          "count" : 11,
+          "max" : 137.0,
+          "p50" : 129.0,
+          "p95" : 137.0,
+          "p99" : 137.0
+        },
+        "requestIds" : 11,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 11
+        },
+        "verdicts" : {
+          "completed" : 11,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      },
+      "payment:delay=99" : {
+        "answers" : 9,
+        "elapsedMs" : {
+          "count" : 9,
+          "max" : 136.0,
+          "p50" : 131.0,
+          "p95" : 136.0,
+          "p99" : 136.0
+        },
+        "requestIds" : 9,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 9
+        },
+        "verdicts" : {
+          "completed" : 9,
+          "failed" : 0,
+          "unknown" : 0
+        }
+      }
+    },
+    "layerMismatch" : 137,
+    "layers" : {
+      "order" : {
+        "amountMismatch" : 0,
+        "doubled" : 0,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 1063,
+        "rows" : 1200,
+        "unknownNotProcessed" : 137,
+        "unknownProcessed" : 0
+      },
+      "inventory" : {
+        "amountMismatch" : null,
+        "doubled" : 0,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 1063,
+        "rows" : 1200,
+        "unknownNotProcessed" : 137,
+        "unknownProcessed" : 0
+      },
+      "payment" : {
+        "amountMismatch" : 0,
+        "doubled" : 0,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 1200,
+        "rows" : 1200,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 137
+      }
+    },
+    "lostTotal" : 0,
+    "orphanRows" : 0,
+    "pendingRows" : 0,
+    "requestIds" : 1200,
+    "verdicts" : {
+      "completed" : 1063,
+      "failed" : 0,
+      "unknown" : 137
+    }
+  }
+}

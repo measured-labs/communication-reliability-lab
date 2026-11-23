@@ -1,0 +1,242 @@
+{
+  "run" : "slow-layer-20261124T031234-r1",
+  "expect" : null,
+  "differences" : [ ],
+  "answers" : 3000,
+  "delays" : {
+    "inventory" : {
+      "count" : 0,
+      "p50" : null,
+      "p90" : null,
+      "p99" : null,
+      "max" : null
+    },
+    "order" : {
+      "count" : 0,
+      "p50" : null,
+      "p90" : null,
+      "p99" : null,
+      "max" : null
+    },
+    "payment" : {
+      "count" : 1200,
+      "p50" : 5000.0,
+      "p90" : 5000.0,
+      "p99" : 5000.0,
+      "max" : 5000.0
+    }
+  },
+  "edges" : {
+    "order->inventory" : {
+      "timeoutMs" : 60000,
+      "calls" : 3000,
+      "timeouts" : 0,
+      "falseTimeouts" : 0,
+      "falseTimeoutRatio" : 0.0,
+      "outcomes" : {
+        "Completed" : 3000
+      },
+      "callMs" : {
+        "count" : 3000,
+        "p50" : 24.205,
+        "p90" : 5023.987,
+        "p99" : 5048.455,
+        "max" : 5087.469
+      },
+      "injectedCalleeDelayAtLeastTimeout" : 0
+    },
+    "inventory->payment" : {
+      "timeoutMs" : 60000,
+      "calls" : 3000,
+      "timeouts" : 0,
+      "falseTimeouts" : 0,
+      "falseTimeoutRatio" : 0.0,
+      "outcomes" : {
+        "Completed" : 3000
+      },
+      "callMs" : {
+        "count" : 3000,
+        "p50" : 9.099,
+        "p90" : 5009.889,
+        "p99" : 5016.923,
+        "max" : 5071.728
+      },
+      "injectedCalleeDelayAtLeastTimeout" : 0
+    }
+  },
+  "layers" : {
+    "order" : {
+      "records" : 3000,
+      "serviceMs" : {
+        "count" : 3000,
+        "p50" : 38.15,
+        "p90" : 5036.847,
+        "p99" : 5065.721,
+        "max" : 5102.939
+      }
+    },
+    "inventory" : {
+      "records" : 3000,
+      "serviceMs" : {
+        "count" : 3000,
+        "p50" : 22.703,
+        "p90" : 5021.947,
+        "p99" : 5033.844,
+        "max" : 5085.05
+      }
+    },
+    "payment" : {
+      "records" : 3000,
+      "serviceMs" : {
+        "count" : 3000,
+        "p50" : 7.531,
+        "p90" : 5007.936,
+        "p99" : 5012.551,
+        "max" : 5036.133
+      }
+    }
+  },
+  "waste" : {
+    "order" : {
+      "wasted" : 0,
+      "wastedProcessed" : 0,
+      "startedAfterGiveUp" : 0,
+      "wastedMsSum" : 0.0,
+      "wastedMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      }
+    },
+    "inventory" : {
+      "wasted" : 0,
+      "wastedProcessed" : 0,
+      "startedAfterGiveUp" : 0,
+      "wastedMsSum" : 0.0,
+      "wastedMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      }
+    },
+    "payment" : {
+      "wasted" : 0,
+      "wastedProcessed" : 0,
+      "startedAfterGiveUp" : 0,
+      "wastedMsSum" : 0.0,
+      "wastedMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      }
+    }
+  },
+  "samples" : {
+    "order" : {
+      "count" : 532,
+      "intervalMs" : 100,
+      "maxGapMs" : 124,
+      "maxInflight" : 306,
+      "maxActive" : null,
+      "maxThreads" : null,
+      "maxQueue" : null,
+      "maxConnections" : 1712,
+      "saturatedMs" : null,
+      "meanLoadDuringSend" : 122.5
+    },
+    "inventory" : {
+      "count" : 532,
+      "intervalMs" : 100,
+      "maxGapMs" : 136,
+      "maxInflight" : 305,
+      "maxActive" : null,
+      "maxThreads" : null,
+      "maxQueue" : null,
+      "maxConnections" : 307,
+      "saturatedMs" : null,
+      "meanLoadDuringSend" : 121.5
+    },
+    "payment" : {
+      "count" : 533,
+      "intervalMs" : 100,
+      "maxGapMs" : 106,
+      "maxInflight" : 303,
+      "maxActive" : null,
+      "maxThreads" : null,
+      "maxQueue" : null,
+      "maxConnections" : 306,
+      "saturatedMs" : null,
+      "meanLoadDuringSend" : 120.6
+    }
+  },
+  "slow" : {
+    "label" : "payment:delay=5000",
+    "startMs" : 1795457585900,
+    "endMs" : 1795457605882,
+    "slowRequests" : 1200,
+    "lookups" : {
+      "before" : {
+        "count" : 100,
+        "failed" : 0,
+        "elapsedMs" : {
+          "count" : 100,
+          "p50" : 4.0,
+          "p90" : 5.0,
+          "p99" : 8.0,
+          "max" : 16.0
+        }
+      },
+      "during" : {
+        "count" : 200,
+        "failed" : 0,
+        "elapsedMs" : {
+          "count" : 200,
+          "p50" : 4.0,
+          "p90" : 5.0,
+          "p99" : 7.0,
+          "max" : 37.0
+        }
+      },
+      "after" : {
+        "count" : 200,
+        "failed" : 0,
+        "elapsedMs" : {
+          "count" : 200,
+          "p50" : 3.0,
+          "p90" : 4.0,
+          "p99" : 16.0,
+          "max" : 21.0
+        }
+      }
+    },
+    "normalChain" : {
+      "before" : {
+        "count" : 600,
+        "completed" : 600,
+        "failed" : 0,
+        "unknown" : 0
+      },
+      "after" : {
+        "count" : 1200,
+        "completed" : 1200,
+        "failed" : 0,
+        "unknown" : 0
+      }
+    },
+    "slowChain" : {
+      "count" : 1200,
+      "completed" : 1200,
+      "failed" : 0,
+      "unknown" : 0
+    },
+    "baselineOrderLoad" : 7,
+    "recoveryBySamplesMs" : 4924,
+    "recoveryByClientsMs" : 0
+  }
+}
