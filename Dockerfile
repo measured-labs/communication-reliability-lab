@@ -41,5 +41,7 @@ ENTRYPOINT ["/opt/analyzer/bin/analyzer"]
 
 # 테스트만 돌리는 대상(scripts/test.sh): docker build --target test .
 # 맨 끝에 둔다 — 레거시 빌더는 대상 앞의 단계를 모두 지으므로, 앞에 두면 서비스 이미지마다 테스트가 돈다.
+# 테스트가 실패해도 이 단계는 끝낸다 — 결과 XML과 종료 코드를 남겨 scripts/test.sh가 세고 판정한다.
 FROM build AS test
-RUN ./gradlew --no-daemon test
+RUN ./gradlew --no-daemon test --continue; echo $? > /test-exit-code; \
+    mkdir -p /test-results && find . -path '*/build/test-results/test/*.xml' -exec cp {} /test-results/ \;
