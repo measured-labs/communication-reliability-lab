@@ -5,6 +5,7 @@
   "layerMismatch": 0,
   "orphanRows": 0,
   "pendingRows": 0,
+  "amountMismatch": 0,
   "faultCountsMatch": true,
   "labels": {
     "": {

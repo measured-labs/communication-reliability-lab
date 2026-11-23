@@ -81,10 +81,12 @@ export default function () {
   const i = exec.scenario.iterationInTest;
   if (i >= PLANNED) return;
   const { requestId, fault } = pick(i);
+  // 요청마다 다른 금액 — 서비스가 금액을 바꾸거나 다른 요청의 금액을 쓰면 분석기가 amountMismatch로 잡는다.
+  const amount = 1000 + i;
   const headers = { 'Content-Type': 'application/json', 'X-Request-Id': requestId };
   if (fault) headers['X-Fault'] = fault;
   const sentAt = new Date();
-  const res = http.post(`${BASE_URL}/orders`, JSON.stringify({ amount: 1000 }), {
+  const res = http.post(`${BASE_URL}/orders`, JSON.stringify({ amount }), {
     headers,
     timeout: REQUEST_TIMEOUT,
     responseType: 'none', // 본문은 판정에 쓰지 않는다(판정은 DB 행으로)
@@ -95,6 +97,7 @@ export default function () {
     type: 'answer',
     requestId,
     fault,
+    amount,
     iteration: i,
     sentAt: sentAt.toISOString(),
     status: res.status,
