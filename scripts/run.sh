@@ -18,7 +18,8 @@ REP=${2:?"반복 번호"}
 # 시나리오마다의 부하 모양. SETTLE_TIMEOUT = k6가 끝난 뒤 세 서비스의 처리 중인 요청이 0이 되기를 기다리는 최대 시간.
 # 시나리오의 가장 긴 지연(calibration: order:delay=6000)보다 길게 둔다. 그 안에 0이 안 되면 실행 실패.
 # 환경 변수 SETTLE_TIMEOUT_SECONDS로 바꿀 수 있다(기록에 남는다 — 가라앉기 검사가 실패를 내는지 일부러 짧게 해 볼 때).
-# REQUEST_TIMEOUT = k6의 요청 타임아웃(k6 기본 60s를 쓰지 않는다 — 층의 타임아웃보다 길게). MAX_VUS = 사슬 시나리오의 최대 VU.
+# REQUEST_TIMEOUT = k6의 요청 타임아웃(k6 기본 60s를 쓰지 않는다 — 층의 타임아웃보다 길게). MAX_VUS = 사슬 시나리오의 VU 수
+# (모두 미리 만든다 — 도착률 × k6 요청 타임아웃보다 크게: slow-layer 60/s × 20s = 1200 < 1500).
 # TIMING = 시각 기록·표본을 분석하나(task 02). SLOW_LABEL = 느린 구간을 가리키는 장애 값(slow-layer).
 # task 02의 부하 모양과 까닭: docs/experiments/task-02-design.md
 LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no
@@ -26,7 +27,7 @@ case "$SCENARIO" in
   calibration)       RATE=20; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
   duplicate)         RATE=20; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
   false-timeout)     RATE=40; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
-  slow-layer)        RATE=60; DURATION_SECONDS=50; DEFAULT_SETTLE_TIMEOUT=180; REQUEST_TIMEOUT=20s; MAX_VUS=2000; TIMING=yes
+  slow-layer)        RATE=60; DURATION_SECONDS=50; DEFAULT_SETTLE_TIMEOUT=180; REQUEST_TIMEOUT=20s; MAX_VUS=1500; TIMING=yes
                      LOOKUP_RATE=10; SLOW_LABEL="payment:delay=5000" ;;
   split-timeout)     RATE=20; DURATION_SECONDS=40; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
   cal-false-timeout) RATE=20; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;

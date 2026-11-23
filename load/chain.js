@@ -95,7 +95,9 @@ const scenarios = {
     rate: RATE,
     timeUnit: '1s',
     duration: `${DURATION_SECONDS}s`,
-    preAllocatedVUs: Math.min(100, MAX_VUS),
+    // VU를 모두 미리 만든다 — 필요한 동시 수(도착률 × 응답 시간)에 딱 맞게 두면 실행 중에 VU를 늘리는 사이
+    // 반복이 떨어졌다(cal-sampler 50/s × 2s에서 dropped_iterations 4 — 2026-11-24).
+    preAllocatedVUs: MAX_VUS,
     maxVUs: MAX_VUS,
     gracefulStop: GRACEFUL_STOP,
   },
@@ -107,8 +109,8 @@ if (SCENARIO === 'slow-layer') {
     rate: Number(required('LOOKUP_RATE')),
     timeUnit: '1s',
     duration: `${DURATION_SECONDS}s`,
-    preAllocatedVUs: 50,
-    maxVUs: MAX_VUS,
+    preAllocatedVUs: 300,
+    maxVUs: 300, // 10/s × k6 요청 타임아웃 20s = 200보다 크게
     gracefulStop: GRACEFUL_STOP,
   };
 }
