@@ -22,13 +22,17 @@ REP=${2:?"반복 번호"}
 # (모두 미리 만든다 — 도착률 × k6 요청 타임아웃보다 크게: slow-layer 60/s × 20s = 1200 < 1500).
 # TIMING = 시각 기록·표본을 분석하나(task 02). SLOW_LABEL = 느린 구간을 가리키는 장애 값(slow-layer).
 # task 02의 부하 모양과 까닭: docs/experiments/task-02-design.md
-LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no
+# K6_NO_CONNECTION_REUSE = 부하의 k6가 keep-alive를 끄나(요청마다 새 연결, `Connection: close`). slow-layer만 켠다 —
+# VU 1500개를 돌려 쓰면 한 연결이 25s 쉬었다 다시 쓰여 주문 서비스의 keep-alive(20s)를 넘는다. 스레드가 모두 찬 Tomcat은
+# 그 연결을 닫는 일을 실행기의 큐에 넣어 늦게 닫으므로, k6가 그 사이 그 연결에 보낸 요청이 EOF로 끊겼다
+# (2026-11-24 — docs/results/task-02-timeouts.md "실험 나" R02-1). 서비스 사이의 HttpClient는 15s < 20s로 이미 피한다.
+LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no; K6_NO_CONNECTION_REUSE=false
 case "$SCENARIO" in
   calibration)       RATE=20; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
   duplicate)         RATE=20; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
   false-timeout)     RATE=40; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
   slow-layer)        RATE=60; DURATION_SECONDS=50; DEFAULT_SETTLE_TIMEOUT=180; REQUEST_TIMEOUT=20s; MAX_VUS=1500; TIMING=yes
-                     LOOKUP_RATE=10; SLOW_LABEL="payment:delay=5000" ;;
+                     LOOKUP_RATE=10; SLOW_LABEL="payment:delay=5000"; K6_NO_CONNECTION_REUSE=true ;;
   split-timeout)     RATE=20; DURATION_SECONDS=40; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
   cal-false-timeout) RATE=20; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
   cal-sampler)       RATE=50; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
@@ -91,6 +95,7 @@ fi
   echo "planned_requests=$PLANNED"
   echo "k6_request_timeout=$REQUEST_TIMEOUT"
   echo "k6_max_vus=$MAX_VUS"
+  echo "k6_no_connection_reuse=$K6_NO_CONNECTION_REUSE"
   echo "lookup_rate_per_second=$LOOKUP_RATE"
   echo "slow_label=$SLOW_LABEL"
   echo "order_to_inventory_timeout=$ORDER_TO_INVENTORY_TIMEOUT"
@@ -156,7 +161,9 @@ left_p=$(psql_lab payment_db "select count(*) from payments")
 
 # 5. 부하. k6가 실패로 끝나면(스크립트 오류 등) 실행도 실패다.
 log "부하 ${RATE}/s × ${DURATION_SECONDS}s = ${PLANNED}건"
-k6 run -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" \
+k6_flags=()
+[[ $K6_NO_CONNECTION_REUSE == true ]] && k6_flags+=(--no-connection-reuse)
+k6 run "${k6_flags[@]}" -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" \
   -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e MAX_VUS="$MAX_VUS" -e LOOKUP_RATE="$LOOKUP_RATE" -e RUN_ID="$NAME" \
   --log-output=file="$OUT/k6-log.txt" --log-format=raw \
   --summary-export="$OUT/k6-summary.json" load/chain.js > "$OUT/k6-stdout.txt" 2>&1 \
