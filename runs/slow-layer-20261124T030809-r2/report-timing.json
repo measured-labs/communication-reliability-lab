@@ -3,6 +3,12 @@
   "expect" : null,
   "differences" : [ ],
   "answers" : 3000,
+  "clients" : {
+    "noResponse" : 0,
+    "notReachedServer" : 0,
+    "notReachedServerFirstSentMs" : null,
+    "notReachedServerLastSentMs" : null
+  },
   "delays" : {
     "inventory" : {
       "count" : 0,
@@ -44,7 +50,28 @@
         "p99" : 1026.297,
         "max" : 1073.673
       },
-      "injectedCalleeDelayAtLeastTimeout" : 0
+      "injectedCalleeDelayAtLeastTimeout" : 0,
+      "belowDelay" : {
+        "timeouts" : 0,
+        "calleeServiceAtLeastTimeout" : 0,
+        "calleeEndedAfterGiveUp" : 0,
+        "calleeEndedBeforeGiveUp" : 0,
+        "calleeNotStarted" : 0,
+        "callToCalleeStartMs" : {
+          "count" : 0,
+          "p50" : null,
+          "p90" : null,
+          "p99" : null,
+          "max" : null
+        },
+        "calleeServiceBeyondDelayMs" : {
+          "count" : 0,
+          "p50" : null,
+          "p90" : null,
+          "p99" : null,
+          "max" : null
+        }
+      }
     },
     "inventory->payment" : {
       "timeoutMs" : 1000,
@@ -63,7 +90,28 @@
         "p99" : 1001.94,
         "max" : 1044.061
       },
-      "injectedCalleeDelayAtLeastTimeout" : 1200
+      "injectedCalleeDelayAtLeastTimeout" : 1200,
+      "belowDelay" : {
+        "timeouts" : 569,
+        "calleeServiceAtLeastTimeout" : 0,
+        "calleeEndedAfterGiveUp" : 569,
+        "calleeEndedBeforeGiveUp" : 0,
+        "calleeNotStarted" : 0,
+        "callToCalleeStartMs" : {
+          "count" : 569,
+          "p50" : 5565.404,
+          "p90" : 9203.624,
+          "p99" : 9982.853,
+          "max" : 10029.037
+        },
+        "calleeServiceBeyondDelayMs" : {
+          "count" : 569,
+          "p50" : 6.224,
+          "p90" : 23.229,
+          "p99" : 51.379,
+          "max" : 57.444
+        }
+      }
     }
   },
   "layers" : {
@@ -103,6 +151,7 @@
       "wasted" : 0,
       "wastedProcessed" : 0,
       "startedAfterGiveUp" : 0,
+      "startedAfterGiveUpMsSum" : 0.0,
       "wastedMsSum" : 0.0,
       "wastedMs" : {
         "count" : 0,
@@ -116,6 +165,7 @@
       "wasted" : 0,
       "wastedProcessed" : 0,
       "startedAfterGiveUp" : 0,
+      "startedAfterGiveUpMsSum" : 0.0,
       "wastedMsSum" : 0.0,
       "wastedMs" : {
         "count" : 0,
@@ -129,6 +179,7 @@
       "wasted" : 1769,
       "wastedProcessed" : 1769,
       "startedAfterGiveUp" : 1569,
+      "startedAfterGiveUpMsSum" : 5012295.2,
       "wastedMsSum" : 5813818.1,
       "wastedMs" : {
         "count" : 1769,
@@ -224,6 +275,12 @@
         "failed" : 0,
         "unknown" : 0
       },
+      "during" : {
+        "count" : 0,
+        "completed" : 0,
+        "failed" : 0,
+        "unknown" : 0
+      },
       "after" : {
         "count" : 1200,
         "completed" : 631,
@@ -237,8 +294,16 @@
       "failed" : 0,
       "unknown" : 1200
     },
+    "badAfter" : {
+      "chainNot2xx" : 569,
+      "chainSlow2xx" : 2,
+      "lookupsNot200" : 0,
+      "lookupsSlow200" : 0
+    },
     "baselineOrderLoad" : 3,
+    "recoveredBySamples" : true,
     "recoveryBySamplesMs" : 18183,
+    "recoveredByClients" : true,
     "recoveryByClientsMs" : 9516
   }
 }

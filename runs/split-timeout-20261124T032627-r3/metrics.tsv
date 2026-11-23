@@ -1,4 +1,8 @@
 answers	800
+clients.noResponse	0
+clients.notReachedServer	0
+clients.notReachedServerFirstSentMs	
+clients.notReachedServerLastSentMs	
 delays.inventory.count	0
 delays.inventory.p50	
 delays.inventory.p90	
@@ -27,6 +31,21 @@ edges.order->inventory.callMs.p90	1013.27
 edges.order->inventory.callMs.p99	1022.652
 edges.order->inventory.callMs.max	1036.836
 edges.order->inventory.injectedCalleeDelayAtLeastTimeout	0
+edges.order->inventory.belowDelay.timeouts	0
+edges.order->inventory.belowDelay.calleeServiceAtLeastTimeout	0
+edges.order->inventory.belowDelay.calleeEndedAfterGiveUp	0
+edges.order->inventory.belowDelay.calleeEndedBeforeGiveUp	0
+edges.order->inventory.belowDelay.calleeNotStarted	0
+edges.order->inventory.belowDelay.callToCalleeStartMs.count	0
+edges.order->inventory.belowDelay.callToCalleeStartMs.p50	
+edges.order->inventory.belowDelay.callToCalleeStartMs.p90	
+edges.order->inventory.belowDelay.callToCalleeStartMs.p99	
+edges.order->inventory.belowDelay.callToCalleeStartMs.max	
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.count	0
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.p50	
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.p90	
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.p99	
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.max	
 edges.inventory->payment.timeoutMs	1000
 edges.inventory->payment.calls	800
 edges.inventory->payment.timeouts	400
@@ -40,6 +59,21 @@ edges.inventory->payment.callMs.p90	1000.444
 edges.inventory->payment.callMs.p99	1000.676
 edges.inventory->payment.callMs.max	1000.832
 edges.inventory->payment.injectedCalleeDelayAtLeastTimeout	400
+edges.inventory->payment.belowDelay.timeouts	0
+edges.inventory->payment.belowDelay.calleeServiceAtLeastTimeout	0
+edges.inventory->payment.belowDelay.calleeEndedAfterGiveUp	0
+edges.inventory->payment.belowDelay.calleeEndedBeforeGiveUp	0
+edges.inventory->payment.belowDelay.calleeNotStarted	0
+edges.inventory->payment.belowDelay.callToCalleeStartMs.count	0
+edges.inventory->payment.belowDelay.callToCalleeStartMs.p50	
+edges.inventory->payment.belowDelay.callToCalleeStartMs.p90	
+edges.inventory->payment.belowDelay.callToCalleeStartMs.p99	
+edges.inventory->payment.belowDelay.callToCalleeStartMs.max	
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.count	0
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.p50	
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.p90	
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.p99	
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.max	
 layers.order.records	800
 layers.order.serviceMs.count	800
 layers.order.serviceMs.p50	575.188
@@ -61,6 +95,7 @@ layers.payment.serviceMs.max	2527.156
 waste.order.wasted	0
 waste.order.wastedProcessed	0
 waste.order.startedAfterGiveUp	0
+waste.order.startedAfterGiveUpMsSum	0.0
 waste.order.wastedMsSum	0.0
 waste.order.wastedMs.count	0
 waste.order.wastedMs.p50	
@@ -70,6 +105,7 @@ waste.order.wastedMs.max
 waste.inventory.wasted	0
 waste.inventory.wastedProcessed	0
 waste.inventory.startedAfterGiveUp	0
+waste.inventory.startedAfterGiveUpMsSum	0.0
 waste.inventory.wastedMsSum	0.0
 waste.inventory.wastedMs.count	0
 waste.inventory.wastedMs.p50	
@@ -79,6 +115,7 @@ waste.inventory.wastedMs.max
 waste.payment.wasted	400
 waste.payment.wastedProcessed	400
 waste.payment.startedAfterGiveUp	0
+waste.payment.startedAfterGiveUpMsSum	0.0
 waste.payment.wastedMsSum	403208.8
 waste.payment.wastedMs.count	400
 waste.payment.wastedMs.p50	543.478

@@ -3,6 +3,12 @@
   "expect" : null,
   "differences" : [ ],
   "answers" : 1200,
+  "clients" : {
+    "noResponse" : 0,
+    "notReachedServer" : 0,
+    "notReachedServerFirstSentMs" : null,
+    "notReachedServerLastSentMs" : null
+  },
   "delays" : {
     "inventory" : {
       "count" : 0,
@@ -44,7 +50,28 @@
         "p99" : 98.456,
         "max" : 111.709
       },
-      "injectedCalleeDelayAtLeastTimeout" : 0
+      "injectedCalleeDelayAtLeastTimeout" : 0,
+      "belowDelay" : {
+        "timeouts" : 0,
+        "calleeServiceAtLeastTimeout" : 0,
+        "calleeEndedAfterGiveUp" : 0,
+        "calleeEndedBeforeGiveUp" : 0,
+        "calleeNotStarted" : 0,
+        "callToCalleeStartMs" : {
+          "count" : 0,
+          "p50" : null,
+          "p90" : null,
+          "p99" : null,
+          "max" : null
+        },
+        "calleeServiceBeyondDelayMs" : {
+          "count" : 0,
+          "p50" : null,
+          "p90" : null,
+          "p99" : null,
+          "max" : null
+        }
+      }
     },
     "inventory->payment" : {
       "timeoutMs" : 80,
@@ -63,7 +90,28 @@
         "p99" : 80.702,
         "max" : 91.061
       },
-      "injectedCalleeDelayAtLeastTimeout" : 592
+      "injectedCalleeDelayAtLeastTimeout" : 592,
+      "belowDelay" : {
+        "timeouts" : 90,
+        "calleeServiceAtLeastTimeout" : 47,
+        "calleeEndedAfterGiveUp" : 19,
+        "calleeEndedBeforeGiveUp" : 24,
+        "calleeNotStarted" : 0,
+        "callToCalleeStartMs" : {
+          "count" : 90,
+          "p50" : 1.235,
+          "p90" : 1.719,
+          "p99" : 1.952,
+          "max" : 1.952
+        },
+        "calleeServiceBeyondDelayMs" : {
+          "count" : 90,
+          "p50" : 4.828,
+          "p90" : 7.452,
+          "p99" : 9.733,
+          "max" : 9.733
+        }
+      }
     }
   },
   "layers" : {
@@ -103,6 +151,7 @@
       "wasted" : 0,
       "wastedProcessed" : 0,
       "startedAfterGiveUp" : 0,
+      "startedAfterGiveUpMsSum" : 0.0,
       "wastedMsSum" : 0.0,
       "wastedMs" : {
         "count" : 0,
@@ -116,6 +165,7 @@
       "wasted" : 0,
       "wastedProcessed" : 0,
       "startedAfterGiveUp" : 0,
+      "startedAfterGiveUpMsSum" : 0.0,
       "wastedMsSum" : 0.0,
       "wastedMs" : {
         "count" : 0,
@@ -129,6 +179,7 @@
       "wasted" : 658,
       "wastedProcessed" : 658,
       "startedAfterGiveUp" : 0,
+      "startedAfterGiveUpMsSum" : 0.0,
       "wastedMsSum" : 41466.2,
       "wastedMs" : {
         "count" : 658,
