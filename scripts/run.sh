@@ -2,6 +2,7 @@
 # 실행 한 번: 확인 → 이미지 확인 → 워밍업 → 상태 초기화 → 부하 → 가라앉기 → DB 상태 내보내기 → 분석.
 #   scripts/run.sh <시나리오> <반복 번호>
 #   시나리오: calibration | duplicate (task 01) · false-timeout | slow-layer | split-timeout | cal-false-timeout | cal-sampler (task 02)
+#             · retry-mix | retry-outage-burst | retry-budget | cal-retry-first | cal-retry-second | cal-retry-outage | cal-retry-burst (task 03)
 #   반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행(config.env에 discard_run=yes — 결과 표에 넣지 않는다).
 # task 02의 조건은 환경 변수로 준다(서비스도 같은 값으로 띄워 둔다 — scripts/up.sh): ORDER_TO_INVENTORY_TIMEOUT,
 #   INVENTORY_TO_PAYMENT_TIMEOUT(예: 2000ms), VIRTUAL_THREADS(true|false). 주지 않으면 task 01의 값(2000ms, 1000ms, false).
@@ -26,7 +27,8 @@ REP=${2:?"반복 번호"}
 # VU 1500개를 돌려 쓰면 한 연결이 25s 쉬었다 다시 쓰여 주문 서비스의 keep-alive(20s)를 넘는다. 스레드가 모두 찬 Tomcat은
 # 그 연결을 닫는 일을 실행기의 큐에 넣어 늦게 닫으므로, k6가 그 사이 그 연결에 보낸 요청이 EOF로 끊겼다
 # (2026-11-24 — docs/results/task-02-timeouts.md "실험 나" R02-1). 서비스 사이의 HttpClient는 15s < 20s로 이미 피한다.
-LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no; K6_NO_CONNECTION_REUSE=false
+# RETRY = 재시도 분석(task 03 — analyzer retry)을 하나. task 03의 시나리오는 모두 k6의 연결 재사용을 끈다(task 02 R02-1과 같은 까닭).
+LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no; K6_NO_CONNECTION_REUSE=false; RETRY=no
 case "$SCENARIO" in
   calibration)       RATE=20; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
   duplicate)         RATE=20; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
@@ -36,6 +38,14 @@ case "$SCENARIO" in
   split-timeout)     RATE=20; DURATION_SECONDS=40; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
   cal-false-timeout) RATE=20; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
   cal-sampler)       RATE=50; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
+  # task 03 (docs/experiments/task-03-design.md)
+  cal-retry-first)    RATE=20; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
+  cal-retry-second)   RATE=20; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
+  cal-retry-outage)   RATE=20; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
+  cal-retry-burst)    RATE=40; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
+  retry-mix)          RATE=40; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
+  retry-outage-burst) RATE=40; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
+  retry-budget)       RATE=40; DURATION_SECONDS=40; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
   *) die "모르는 시나리오 '$SCENARIO'" ;;
 esac
 SETTLE_TIMEOUT_SECONDS=${SETTLE_TIMEOUT_SECONDS:-$DEFAULT_SETTLE_TIMEOUT}
@@ -43,6 +53,19 @@ SETTLE_TIMEOUT_SECONDS=${SETTLE_TIMEOUT_SECONDS:-$DEFAULT_SETTLE_TIMEOUT}
 ORDER_TO_INVENTORY_TIMEOUT=${ORDER_TO_INVENTORY_TIMEOUT:-2000ms}
 INVENTORY_TO_PAYMENT_TIMEOUT=${INVENTORY_TO_PAYMENT_TIMEOUT:-1000ms}
 VIRTUAL_THREADS=${VIRTUAL_THREADS:-false}
+# task 03의 조건: 층마다의 재시도(기본값 = 꺼짐, compose.yaml과 같다). 규칙: docs/retry.md
+for p in ORDER INVENTORY; do
+  for kv in ENABLED=false MAX_ATTEMPTS=1 ON=failed,unknown BACKOFF=none BASE_DELAY=0ms MAX_DELAY=0ms BUDGET_ENABLED=false BUDGET_CAPACITY=0 BUDGET_DEPOSIT=0; do
+    var="${p}_RETRY_${kv%%=*}"
+    [[ -n ${!var:-} ]] || printf -v "$var" '%s' "${kv#*=}"
+  done
+done
+# 재시도 분석의 기대 파일(보정). 주면 꼭 있어야 한다. 주지 않으면 load/expectations/<시나리오>.retry.json이 있을 때만.
+if [[ -n ${RETRY_EXPECT:-} ]]; then
+  [[ -f $RETRY_EXPECT ]] || die "RETRY_EXPECT '$RETRY_EXPECT' 가 없다"
+elif [[ -f load/expectations/${SCENARIO}.retry.json ]]; then
+  RETRY_EXPECT=load/expectations/${SCENARIO}.retry.json
+fi
 # 분석기가 견줄 시각 지표의 기대 파일(보정). 주면 꼭 있어야 한다. 주지 않으면 load/expectations/<시나리오>.timing.json이 있을 때만.
 if [[ -n ${TIMING_EXPECT:-} ]]; then
   [[ -f $TIMING_EXPECT ]] || die "TIMING_EXPECT '$TIMING_EXPECT' 가 없다"
@@ -102,6 +125,12 @@ fi
   echo "inventory_to_payment_timeout=$INVENTORY_TO_PAYMENT_TIMEOUT"
   echo "virtual_threads=$VIRTUAL_THREADS"
   echo "timing_expect=${TIMING_EXPECT:-}"
+  echo "retry_expect=${RETRY_EXPECT:-}"
+  for p in ORDER INVENTORY; do
+    for k in ENABLED MAX_ATTEMPTS ON BACKOFF BASE_DELAY MAX_DELAY BUDGET_ENABLED BUDGET_CAPACITY BUDGET_DEPOSIT; do
+      var="${p}_RETRY_${k}"; echo "$(tr '[:upper:]' '[:lower:]' <<< "$var")=${!var}"
+    done
+  done
   [[ $REP == 0 ]] && echo "discard_run=yes" || echo "discard_run=no"
   echo "settle_timeout_seconds=$SETTLE_TIMEOUT_SECONDS"
   echo "warmup=${WARMUP_RATE}/s x ${WARMUP_SECONDS}s"
@@ -125,6 +154,32 @@ want_settings "$OUT/settings-order.json" "\"requestTimeoutMs\":$(ms_of "$ORDER_T
 want_settings "$OUT/settings-inventory.json" "\"requestTimeoutMs\":$(ms_of "$INVENTORY_TO_PAYMENT_TIMEOUT")," "재고→결제 요청 타임아웃"
 for svc in order inventory payment; do
   want_settings "$OUT/settings-${svc}.json" "\"executorVirtualThreads\":$VIRTUAL_THREADS" "$svc 의 스레드 방식"
+done
+# task 03: 떠 있는 재시도 감싸개의 값(/settings의 retry)과 조건을 견준다. 숫자 뒤에는 , 나 } 가 와야 한다(3이 30에 맞지 않게).
+want_settings_re() { # <파일> <정규식> <뜻>
+  grep -qE "$2" "$1" || die "$3: $1 에 /$2/ 가 없다 — 서비스를 이 조건으로 다시 띄운다(scripts/up.sh에 같은 환경 변수)"
+}
+for p in ORDER INVENTORY; do
+  svc=$(tr '[:upper:]' '[:lower:]' <<< "$p"); f="$OUT/settings-${svc}.json"
+  v() { local n="${p}_RETRY_$1"; echo "${!n}"; }
+  if [[ $(v ENABLED) == false ]]; then
+    want_settings "$f" '"retry":{"enabled":false}' "$svc 의 재시도 꺼짐"
+    continue
+  fi
+  [[ $(v ENABLED) == true ]] || die "${p}_RETRY_ENABLED '$(v ENABLED)' 는 true|false"
+  on=$(tr ',' '\n' <<< "$(v ON)" | sort | sed 's/.*/"&"/' | paste -sd, -)
+  want_settings_re "$f" '"retry":\{"enabled":true[,}]' "$svc 의 재시도 켜짐"
+  want_settings_re "$f" "\"maxAttempts\":$(v MAX_ATTEMPTS)[,}]" "$svc 의 최대 시도"
+  want_settings "$f" "\"retryOn\":[$on]" "$svc 의 다시 시도하는 실패"
+  want_settings "$f" "\"backoff\":\"$(v BACKOFF)\"" "$svc 의 간격"
+  want_settings_re "$f" "\"baseDelayMs\":$(ms_of "$(v BASE_DELAY)")[,}]" "$svc 의 간격 시작값"
+  want_settings_re "$f" "\"maxDelayMs\":$(ms_of "$(v MAX_DELAY)")[,}]" "$svc 의 간격 상한"
+  if [[ $(v BUDGET_ENABLED) == true ]]; then
+    want_settings "$f" "\"capacity\":\"$(v BUDGET_CAPACITY)\"" "$svc 의 예산 용량(정규형 — 끝의 0 없이)"
+    want_settings "$f" "\"depositPerCall\":\"$(v BUDGET_DEPOSIT)\"" "$svc 의 예산 넣는 양(정규형)"
+  else
+    want_settings "$f" '"budget":{"enabled":false}' "$svc 의 예산 꺼짐"
+  fi
 done
 
 # 3. 워밍업(장애 없음). 한 회차가 모두 201이 될 때까지 최대 3회차 — 셋 다 아니면 서비스가 정상이 아닌 채로 재는 것이라 멈춘다.
@@ -153,6 +208,8 @@ for entry in "${SERVICE_PORTS[@]}"; do
   curl -sf -X DELETE "localhost:${entry#*:}/faults" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/timings" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/samples" > /dev/null
+  curl -sf -X DELETE "localhost:${entry#*:}/attempt-faults" > /dev/null
+  curl -sf -X DELETE "localhost:${entry#*:}/attempts" > /dev/null
 done
 left_o=$(psql_lab order_db "select count(*) from orders")
 left_i=$(psql_lab inventory_db "select count(*) from reservations")
@@ -201,6 +258,16 @@ for entry in "${SERVICE_PORTS[@]}"; do
   curl -sf "localhost:${port}/timings" > "$OUT/timing/timings-${svc}.json" || die "$svc 의 /timings를 받지 못했다"
   curl -sf "localhost:${port}/samples" > "$OUT/timing/samples-${svc}.json" || die "$svc 의 /samples를 받지 못했다"
 done
+# task 03: 시도 기록(재시도 감싸개)과 서비스가 센 넣은 실패(X-Attempt-Fault). 받지 못하면 실패.
+if [[ $RETRY == yes ]]; then
+  for entry in "${SERVICE_PORTS[@]}"; do
+    svc=${entry%%:*}; port=${entry#*:}
+    curl -sf "localhost:${port}/attempts" > "$OUT/timing/attempts-${svc}.json" || die "$svc 의 /attempts를 받지 못했다"
+  done
+  a_order=$(curl -sf localhost:8081/attempt-faults) && a_inventory=$(curl -sf localhost:8082/attempt-faults) && a_payment=$(curl -sf localhost:8083/attempt-faults) \
+    || die "/attempt-faults를 받지 못했다"
+  printf '{"order":%s,"inventory":%s,"payment":%s}\n' "$a_order" "$a_inventory" "$a_payment" > "$OUT/attempt-faults.json"
+fi
 
 # 8. 분석(컨테이너 안). 기대 파일이 있으면 실행 기록에 함께 넣고 견준다.
 args=(--run "/runs/${NAME}" --planned "$PLANNED")
@@ -227,6 +294,20 @@ if [[ $TIMING == yes && $rc != 1 ]]; then
   set -e
   log "시각 분석 종료 코드 $trc"
   ((trc > rc)) && rc=$trc
+fi
+# 10. 재시도 지표(task 03 — docs/measurement.md 8절). 대조 분석이 입력 오류(1)면 하지 않는다. 종료 코드는 큰 것.
+if [[ $RETRY == yes && $rc != 1 ]]; then
+  rargs=(retry --run "/runs/${NAME}")
+  if [[ -n ${RETRY_EXPECT:-} ]]; then
+    cp "$RETRY_EXPECT" "$OUT/expect.retry.json"
+    rargs+=(--expect "/runs/${NAME}/expect.retry.json")
+  fi
+  set +e
+  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${rargs[@]}"
+  rrc=$?
+  set -e
+  log "재시도 분석 종료 코드 $rrc"
+  ((rrc > rc)) && rc=$rrc
 fi
 log "기록: $OUT (종료 코드 $rc)"
 exit "$rc"
