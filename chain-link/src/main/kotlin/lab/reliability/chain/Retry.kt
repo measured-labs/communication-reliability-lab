@@ -1,5 +1,6 @@
 package lab.reliability.chain
 
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -231,6 +232,19 @@ class AttemptLog {
     fun snapshot(): List<AttemptRecord> = records.toList()
 
     fun reset() = records.clear()
+}
+
+/**
+ * task 04(ledger R03-7): 떠 있는 감싸개의 예산 토큰 — 실행 스크립트가 부하 직전에 읽어 실행 기록에 남긴다(예산은 실행 사이에 비우지 않는다).
+ * 예산이 켜져 있으면 {"enabled":true,"tokens":"10"}(끝의 0을 뺀 10진 문자열), 아니면 {"enabled":false}(재시도가 꺼졌거나 맨 아래 층 포함).
+ */
+@RestController
+class RetryBudgetController(private val nextLayerCall: ObjectProvider<NextLayerCall>) {
+    @GetMapping("/retry-budget")
+    fun budget(): Map<String, Any?> {
+        val budget = (nextLayerCall.ifAvailable as? RetryingNextLayerCall)?.budget ?: return mapOf("enabled" to false)
+        return linkedMapOf("enabled" to true, "tokens" to budget.tokens().stripTrailingZeros().toPlainString())
+    }
 }
 
 @RestController

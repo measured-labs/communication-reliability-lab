@@ -47,6 +47,10 @@ chain:
       enabled: ${RETRY_BUDGET_ENABLED:false}
       capacity: ${RETRY_BUDGET_CAPACITY:0}
       deposit-per-call: ${RETRY_BUDGET_DEPOSIT:0}
+  # task 04: 멱등 키(docs/idempotency.md). 기본은 꺼짐 — 꺼져 있으면 키 헤더를 읽지 않고 idempotency_keys를 쓰지 않는다(task 01~03 그대로).
+  # 실제로 쓰인 값은 GET /settings 의 idempotency. compose.yaml이 세 서비스에 같은 IDEMPOTENCY_ENABLED를 준다.
+  idempotency:
+    enabled: ${IDEMPOTENCY_ENABLED:false}
 
 management:
   endpoints:

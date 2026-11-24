@@ -62,13 +62,23 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
         .connectTimeout(settings.connectTimeout)
         .build()
 
-    private fun request(requestId: String, rawFault: String?, amount: Long, rawAttemptFault: String? = null): HttpRequest =
+    private fun request(
+        requestId: String,
+        rawFault: String?,
+        amount: Long,
+        rawAttemptFault: String? = null,
+        rawDropFault: String? = null,
+        idempotencyKey: String? = null,
+    ): HttpRequest =
         HttpRequest.newBuilder(settings.url)
             .timeout(settings.requestTimeout)
             .header("Content-Type", "application/json")
             .header(ChainHeaders.REQUEST_ID, requestId)
             .apply { rawFault?.let { header(ChainHeaders.FAULT, it) } }
             .apply { rawAttemptFault?.let { header(ChainHeaders.ATTEMPT_FAULT, it) } }
+            // task 04: 받은 그대로 넘긴다(없으면 붙이지 않는다 — task 01~03의 요청 그대로)
+            .apply { rawDropFault?.let { header(ChainHeaders.DROP_FAULT, it) } }
+            .apply { idempotencyKey?.let { header(ChainHeaders.IDEMPOTENCY_KEY, it) } }
             .POST(HttpRequest.BodyPublishers.ofString("""{"amount":$amount}"""))
             .build()
 
@@ -86,7 +96,7 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
 
     override fun call(amount: Long): LayerOutcome {
         val ctx = ChainContext.current()
-        val request = request(ctx.requestId, ctx.rawFault, amount, ctx.rawAttemptFault)
+        val request = request(ctx.requestId, ctx.rawFault, amount, ctx.rawAttemptFault, ctx.rawDropFault, ctx.idempotencyKey)
         val start = epochMicros()
         return send(request).also { outcome ->
             ctx.call = CallRecord(start, epochMicros(), outcome.label())

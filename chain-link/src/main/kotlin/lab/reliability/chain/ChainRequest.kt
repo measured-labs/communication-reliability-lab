@@ -17,6 +17,15 @@ object ChainHeaders {
 
     /** task 03: 시도마다 넣는 실패. 문법은 [AttemptFaultDirectives.parse]. 사슬을 따라 그대로 넘어간다. */
     const val ATTEMPT_FAULT = "X-Attempt-Fault"
+
+    /** task 04: 커밋한 뒤 응답 없이 끊는 장애. 문법은 [DropFaultDirectives.parse]. 사슬을 따라 그대로 넘어간다. */
+    const val DROP_FAULT = "X-Drop-Fault"
+
+    /** task 04: 멱등 키(docs/idempotency.md). 사슬을 따라 그대로 넘어간다. 키가 꺼진 서비스는 읽지 않는다. */
+    const val IDEMPOTENCY_KEY = "Idempotency-Key"
+
+    /** task 04: 저장한 응답을 돌려줄 때 붙이는 응답 헤더(값 "true"). */
+    const val REPLAYED = "Idempotent-Replayed"
 }
 
 /** 세 서비스가 받는 요청 본문(주문 → 재고 → 결제 모두 금액 하나). */
@@ -34,9 +43,19 @@ class ChainContext(
     val faults: List<FaultDirective>,
     /** 받은 X-Attempt-Fault 헤더 그대로(없으면 null) — 아래 층에 그대로 넘긴다. */
     val rawAttemptFault: String? = null,
+    /** task 04: 받은 X-Drop-Fault 헤더 그대로(없으면 null) — 아래 층에 그대로 넘긴다. */
+    val rawDropFault: String? = null,
+    /** task 04: 받은 Idempotency-Key 그대로(없으면 null) — 아래 층에 그대로 넘긴다. 키가 켜진 서비스만 키로 쓴다. */
+    val idempotencyKey: String? = null,
 ) {
     /** 아래 층을 부른 기록(부르지 않았으면 null). [HttpNextLayerCall]이 채우고 입구 필터가 시각 기록에 옮긴다. */
     var call: CallRecord? = null
+
+    /** task 04: 이 요청을 끊어야 하면 입구 필터가 넣는 함수 — [FaultInjection.respond]가 응답을 낼 때 부른다(아니면 null). */
+    internal var dropConnection: (() -> Unit)? = null
+
+    /** task 04: 연결을 끊었나(시각 기록의 status를 0으로 남긴다). */
+    internal var dropped = false
 
     companion object {
         private val holder = ThreadLocal<ChainContext>()
@@ -86,12 +105,16 @@ class InFlightController(private val inFlight: InFlightRequests) {
  * 1. X-Request-Id가 없거나 X-Fault의 문법이 틀리면 400 — 측정이 조용히 틀어지지 않게.
  * 2. 이 서비스를 가리키는 `delay`는 처리 전에 잔다, `error`는 처리하지 않고 500을 낸다(둘 다 센다).
  * `fail-after-commit`은 처리 코드가 커밋한 뒤 [FaultInjection.respond]에서 낸다.
+ * 3. (task 04) X-Drop-Fault의 문법이 틀리면 400. 멱등 키가 켜져 있는데 Idempotency-Key가 없거나 비면 400.
+ *    이번에 든 것을 끊어야 하면 [ChainContext.dropConnection]을 넣는다 — 끊는 것은 [FaultInjection.respond].
  */
 class ChainEntryFilter(
     private val faultInjection: FaultInjection,
     private val inFlight: InFlightRequests,
     private val timings: RequestTimings,
     private val attemptFaults: AttemptFaultInjection,
+    private val dropFaults: DropFaultInjection = DropFaultInjection(),
+    private val idempotency: Idempotency? = null,
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) =
         inFlight.track { handle(request, response, chain) }
@@ -116,7 +139,29 @@ class ChainEntryFilter(
             reject(response, 400, """{"error":"bad ${ChainHeaders.ATTEMPT_FAULT}: ${e.message?.replace("\"", "'")}"}""")
             return
         }
-        val ctx = ChainContext(requestId, rawFault, directives.filter { it.service == faultInjection.service }, rawAttemptFault)
+        val rawDropFault = request.getHeader(ChainHeaders.DROP_FAULT)
+        val dropFault = try {
+            DropFaultDirectives.parse(rawDropFault).firstOrNull { it.service == faultInjection.service }
+        } catch (e: IllegalArgumentException) {
+            reject(response, 400, """{"error":"bad ${ChainHeaders.DROP_FAULT}: ${e.message?.replace("\"", "'")}"}""")
+            return
+        }
+        val idempotencyKey = request.getHeader(ChainHeaders.IDEMPOTENCY_KEY)
+        if (idempotency?.enabled == true && idempotencyKey.isNullOrBlank()) {
+            idempotency.counters.add(IdempotencyCounters.MISSING_KEY)
+            reject(response, 400, """{"error":"missing ${ChainHeaders.IDEMPOTENCY_KEY}"}""")
+            return
+        }
+        val ctx = ChainContext(
+            requestId, rawFault, directives.filter { it.service == faultInjection.service }, rawAttemptFault, rawDropFault, idempotencyKey,
+        )
+        if (dropFaults.decide(requestId, dropFault)) {
+            ctx.dropConnection = {
+                closeWithoutResponse(response)
+                dropFaults.counted()
+                ctx.dropped = true
+            }
+        }
         // 시각 기록: 입구에 든 때(지연 장애로 자기 전)부터 나갈 때까지. 예외로 끝나도 남긴다(finally).
         val start = epochMicros()
         try {
@@ -138,7 +183,8 @@ class ChainEntryFilter(
                 }
             }
         } finally {
-            timings.add(TimingRecord(requestId, start, epochMicros(), response.status, ctx.call))
+            // 끊은 요청은 응답을 보내지 않았으므로 status 0(task 04 — docs/measurement.md 9-1)
+            timings.add(TimingRecord(requestId, start, epochMicros(), if (ctx.dropped) 0 else response.status, ctx.call))
         }
     }
 

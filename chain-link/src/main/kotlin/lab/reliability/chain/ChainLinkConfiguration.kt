@@ -14,13 +14,25 @@ import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.Ordered
+import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import javax.sql.DataSource
 
 /** 세 서비스가 같은 규칙으로 쓰는 부품. 각 서비스는 `scanBasePackages`에 `lab.reliability.chain`을 넣는다. */
 @Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(IdempotencySettings::class)
 class ChainLinkConfiguration {
+    // task 04: 멱등 키(기본 꺼짐 — chain.idempotency.enabled)와 커밋 뒤 끊김 장애
+    @Bean
+    fun idempotencyKeys(jdbc: JdbcClient) = IdempotencyKeys(jdbc)
+
+    @Bean
+    fun idempotency(settings: IdempotencySettings, keys: IdempotencyKeys) = Idempotency(settings.enabled, keys, IdempotencyCounters())
+
+    @Bean
+    fun dropFaultInjection() = DropFaultInjection()
+
     @Bean
     fun faultInjection(@Value("\${chain.service}") service: String): FaultInjection {
         require(service in FaultDirectives.SERVICES) { "chain.service '$service' is not one of ${FaultDirectives.SERVICES}" }
@@ -49,8 +61,12 @@ class ChainLinkConfiguration {
         inFlightRequests: InFlightRequests,
         requestTimings: RequestTimings,
         attemptFaultInjection: AttemptFaultInjection,
+        dropFaultInjection: DropFaultInjection,
+        idempotency: Idempotency,
         @Value("\${chain.entry-path}") entryPath: String,
-    ) = FilterRegistrationBean(ChainEntryFilter(faultInjection, inFlightRequests, requestTimings, attemptFaultInjection)).apply {
+    ) = FilterRegistrationBean(
+        ChainEntryFilter(faultInjection, inFlightRequests, requestTimings, attemptFaultInjection, dropFaultInjection, idempotency),
+    ).apply {
         addUrlPatterns(entryPath)
         order = Ordered.HIGHEST_PRECEDENCE
     }
@@ -84,6 +100,7 @@ class SettingsController(
     private val dataSource: ObjectProvider<DataSource>,
     private val nextLayerCall: ObjectProvider<NextLayerCall>,
     private val faultInjection: FaultInjection,
+    private val idempotency: Idempotency,
 ) {
     @GetMapping("/settings")
     fun settings(): Map<String, Any?> = linkedMapOf(
@@ -112,6 +129,8 @@ class SettingsController(
                 else -> mapOf("enabled" to false)
             }
         },
+        // task 04: 떠 있는 멱등 키 객체의 값(꺼져 있으면 {"enabled":false})
+        "idempotency" to read { idempotency.settings() },
         "jdkSystemProperties" to SYSTEM_PROPERTIES.associateWith { System.getProperty(it) ?: "설정 안 됨(JDK 기본값)" },
         "runtime" to mapOf(
             "java.version" to System.getProperty("java.version"),
