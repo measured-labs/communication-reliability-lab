@@ -22,7 +22,10 @@
 | `budget.deposit-per-call` | `BUDGET_DEPOSIT` | 소수 ≥ 0 | `0` | 호출 하나마다 넣는 토큰 r |
 
 - 실제로 쓰인 값: `GET /settings`의 `retry` — 떠 있는 감싸개의 규칙·예산 객체에서 읽는다. 켜짐: `{"enabled":true,"maxAttempts":3,"retryOn":["failed","unknown"],"backoff":"exponential","baseDelayMs":100,"maxDelayMs":1000,"budget":{"enabled":false}}`(예산을 켜면 `"budget":{"enabled":true,"capacity":"10","depositPerCall":"0.1"}` — 끝의 0을 뺀 10진 문자열). 꺼짐: `{"enabled":false}`. 맨 아래 층(결제): `"없음(맨 아래 층)"`. `scripts/run.sh`가 실행마다 이 값을 조건과 견주고 다르면 실패한다.
-- 잘못된 값(시도 < 1, 음수 간격, 지수인데 C < B, 음수 예산)은 기동이 실패한다(`require`).
+- 잘못된 값을 거절하는 곳(코드에서 확인 — 동작은 그대로 적는다):
+  - **값의 꼴**(불이 아닌 `enabled`, 정수가 아닌 `max-attempts`, 모르는 `retry-on`·`backoff` 낱말, 기간이 아닌 `base-delay` 등): Spring이 `RetrySettings`를 묶을 때 — 아래 층이 있는 서비스(주문·재고)는 재시도가 꺼져 있어도 묶으므로 **기동이 실패한다**. 결제(아래 층 없음)는 `chain.retry.*`를 묶지 않는다.
+  - **값의 범위**(시도 < 1, 음수 간격, 지수·지수+지터인데 C < B): `RetryPolicy`의 `require` — 감싸개를 만들 때만 부른다. 그래서 **`enabled=true`일 때만 기동이 실패하고, 꺼져 있으면 이 값들은 검사되지 않은 채 기동한다**(쓰이지 않는다).
+  - **예산의 범위**(음수 용량·넣는 양): `RetryBudget`의 `require` — `enabled=true`이고 `budget.enabled=true`일 때만 기동이 실패한다.
 
 ## 2. 어느 실패에 다시 시도하나
 
@@ -73,10 +76,18 @@ E(n) = min(C, B · 2^(n−2)) (지수 간격의 위 끝, `RetryPolicy.exponentia
 
 ## 5. 시도 기록 — `GET /attempts`
 
-감싸개가 시도마다 한 줄을 남긴다(메모리, `DELETE /attempts`로 비운다. 꺼져 있는 서비스와 결제는 늘 `[]`). 형식은 `docs/measurement.md` 8-2: `requestId`, `callId`(이 프로세스에서 감싼 호출마다 1부터 1씩 — 같은 requestId로 여러 번 불리면 호출마다 다르다), `attempt`(1부터), `startUs`·`endUs`(그 시도의 앞뒤 시계), `outcome`(2절의 결과 이름), `delayBeforeMs`(이 시도 앞에서 잔 간격 — 첫 시도 0), `decision`(2절).
+감싸개가 시도마다 한 줄을 남긴다(메모리, `DELETE /attempts`로 비운다. 꺼져 있는 서비스와 결제는 늘 `[]`). 형식은 `docs/measurement.md` 8-2: `requestId`, `callId`(감싼 호출마다 1씩 느는 번호 — 같은 requestId로 여러 번 불리면 호출마다 다르다. **범위는 감싸개 하나 = 서비스 프로세스 하나**이고 프로세스가 뜬 뒤 첫 호출이 1이다. `DELETE /attempts`는 기록만 비우고 이 번호를 되돌리지 않으므로, 한 번 띄운 서비스로 여러 실행을 돌리면 뒤의 실행은 1부터 시작하지 않는다 — 워밍업의 호출도 번호를 쓴다. 분석기는 묶는 열쇠로만 쓴다), `attempt`(1부터), `startUs`·`endUs`(그 시도의 앞뒤 시계), `outcome`(2절의 결과 이름), `delayBeforeMs`(이 시도 앞에서 잔 간격 — 첫 시도 0), `decision`(2절).
 
 - 한 호출의 시도는 1, 2, …, k로 빈틈없이 이어지고, 마지막이 아닌 시도의 `decision`은 모두 `retry`, 마지막은 `retry`가 아니다.
 - 입구 필터의 시각 기록(`/timings`)의 call 칸(`callStartUs`·`callEndUs`·`callOutcome`)은 **마지막 시도**의 것이다(시도마다 덮어 쓴다).
+
+### 5-1. 기다리는 사이나 시도 중에 예외가 나면 (코드에서 확인한 동작 — 바꾸지 않았다)
+
+- 감싸개는 예외를 잡지 않는다. 차례는 시도 → 결정 → **기록** → (`retry`면) 간격 계산 → `sleeper`(기본 `Thread.sleep`)다.
+- **기다리는 사이**(`Thread.sleep`)에 스레드가 인터럽트되면 `InterruptedException`이 `call` 밖으로 그대로 나간다. 그 호출의 마지막 기록은 `decision` = `retry`인 시도로 남고 다음 시도의 기록은 없다. 결과(`LayerOutcome`)를 돌려주지 않으므로 앞 시도의 결과도 돌려주지 않는다.
+- **시도 중**(아래 층 호출 `HttpNextLayerCall`): 연결·요청 타임아웃·`IOException`은 결과(`Failed:…`·`Unknown:…`)로 바뀌어 정상 경로를 탄다(2절). 그 밖의 예외 — 보내는 중의 인터럽트(`InterruptedException`은 `IOException`이 아니다) 등 — 는 그 시도의 기록 없이 `call` 밖으로 나간다(앞 시도들의 마지막 `decision`은 `retry`).
+- 그 뒤: 주문·재고의 컨트롤러도 잡지 않으므로 그 층의 DB 행은 `PENDING`으로 남고(결과를 쓰는 둘째 커밋을 하지 않는다), 응답은 Spring MVC의 기본 오류 처리가 정한다(이 저장소의 실행에서 이 경로를 일으켜 본 적은 없다).
+- 측정에서 드러나는 곳: 대조 분석(`docs/measurement.md` 5-3)의 `pendingRows`가 0이 아니게 되어 불일치, 재시도 분석은 "마지막 시도의 `decision`이 `retry`"(8-3)로 **입력 오류**가 된다 — 조용히 통과하지 않는다. 이번 72+4개 실행에서 이 경로는 일어나지 않았다(모든 실행의 `pendingRows` 0, 재시도 분석 입력 오류 0).
 
 ## 6. 테스트 입구 — 시계와 난수를 바꿔 끼우는 자리
 
