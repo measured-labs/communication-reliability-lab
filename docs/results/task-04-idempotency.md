@@ -248,3 +248,7 @@
 - 꺼진 상태 확인 12개는 보고가 바이트까지 같다(그 실행들에는 멱등 키 분석이 없다). 대조·재시도·시각 분석의 보고는 62개 모두 바이트까지 같다.
 - 멱등 키 분석의 보고 50개: **뺀 지표 없음**. 더한 지표: `dropFaults.*.observedAbove`, `layers.*.responses.*`, `layers.*.processedClient{Failed,Unknown}`, (중복 요청이 있는 실행) `duplicates.arrivalTies`·`arrivalGapMs.*`·`conflict409.*`, (맞추기가 있는 실행) `reconcile.candidates`·`notResent`·`resentNotCandidate`. **값이 바뀐 지표는 `duplicates.laterArrivalStatus` 하나**(규칙을 바꾼 지표 — 같은 μs의 쌍을 뺀다): 동시에·끔 r0/r1/r3 `201` 400 → 398/397/397, 동시에·켬 r1/r2/r3 `409` 320/275/259 → 316/229/236(r0은 바뀌지 않음). 그 밖의 지표는 값이 모두 같았다.
 - 뒤의 34개 실행은 처음부터 고친 분석기로 분석했고, `row_ids_exported=yes`라 `keyLinks`가 있다.
+
+**분석기를 한 번 더 고친 뒤 96개 모두 다시 만든 것**(2026-11-24 22:17~22:30 견주기, 22:30~22:41 `WRITE=yes`로 다시 씀 — 두 번 모두 종료 코드와 값이 같았다): 고친 것 셋 — `--no-row-ids`를 row_id를 내보낸 실행에 주면 입력 오류, 보고에 `rowIdsChecked`(짝 대조를 했으면 1), `responses.0Repeat`은 그 끊긴 기록보다 **먼저(같은 μs 포함) 든** 같은 requestId의 기록이 있을 때만 센다(`docs/measurement.md` 9-3·9-4). `scripts/task04-recompute.sh`는 분석의 종료 코드가 하나라도 0이 아닌 실행을 `WRITE`와 상관없이 실패로 세고 그 보고를 쓰지 않는다. 결과:
+- 96개 모두 분석의 종료 코드 0(대조 96, 재시도 31, 시각 3, 멱등 키 84) — 색인의 처음 종료 코드(96개 모두 0)와 같다.
+- 값이 바뀐 지표는 없다. `0Repeat`은 고치기 전에도 84개 모두 0이었고 그대로 0이다. 더한 지표는 `rowIdsChecked` 하나 — 첫 62개 가운데 멱등 키 분석이 있는 50개는 0(`--no-row-ids`), 뒤의 34개는 1. 그래서 멱등 키 보고 84개(`report-idem.json`·`metrics-idem.tsv`)만 바이트가 바뀌었고, 꺼진 상태 확인 12개와 대조·재시도·시각 분석의 보고는 바이트까지 같다.
