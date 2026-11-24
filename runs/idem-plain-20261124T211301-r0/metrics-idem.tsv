@@ -2,6 +2,7 @@ answers	1200
 enabled.order	0
 enabled.inventory	0
 enabled.payment	0
+rowIdsChecked	1
 clients.answers	1200
 clients.requestIds	1200
 clients.completed	1200

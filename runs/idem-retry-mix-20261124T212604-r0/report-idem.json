@@ -8,6 +8,7 @@
     "inventory" : 1,
     "payment" : 1
   },
+  "rowIdsChecked" : 1,
   "clients" : {
     "answers" : 800,
     "requestIds" : 800,
