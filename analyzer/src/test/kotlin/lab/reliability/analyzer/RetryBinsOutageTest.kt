@@ -242,5 +242,118 @@ class RetryBinsOutageTest {
             .counted("payment", "outage", 2)
             .analyze()
         assertEquals(-886L, r.long("outage", "retryTailMs"))
+        // 구간이 t0 에서 시작하므로 "칸 끝 ≤ from"인 칸이 없다 — 칸이 없으면 칸 최대는 0
+        assertEquals(0L, r.long("outage", "calleePeakPer50msBefore"))
+    }
+
+    // ---- series 의 꼴 ----
+
+    @Test
+    fun series의_배열_셋은_길이가_같고_마지막_시각까지_덮는다() {
+        // last = max(든 시각 T+1000, 정답의 sentAtMs + elapsedMs = T+995+20) = T+1015 → n = ⌊1015/100⌋ + 1 = 11
+        val r = burst().analyze()
+        assertEquals(100L, r.long("series", "binMs"))
+        val sizes = listOf("paymentArrivals", "inventoryRetries", "orderRetries").map { (r.at("series", it) as List<*>).size }
+        assertEquals(listOf(11, 11, 11), sizes)
+    }
+
+    @Test
+    fun series의_마지막_칸은_경과의_끝이_정한다() {
+        // 정답 하나(T) 경과 250.9ms → last = T+250(소수 버림) → n = 3. 든 시각은 T+1·T+3·T+5
+        val r = RetryRecord(root).okChain("a", T)
+        r.base.answersText = """{"type":"answer","requestId":"a","fault":"","amount":${amountFor("a")},"sentAtMs":$T,"status":201,"errorCode":0,"elapsedMs":250.9,"attemptFault":""}""" + "\n"
+        assertEquals(3, (r.analyze().at("series", "paymentArrivals") as List<*>).size)
+    }
+
+    // ---- 구간 안 재시도만의 칸: retryBinsDuring, retriesInCrowdedBinsDuring ----
+
+    private val WIDE = "payment:outage=${T + 1000}-${T + 3000}"
+
+    /**
+     * 구간 [T+1000, T+3000), 재고 최대 2·고정 100ms(재시도 시작 = s+114).
+     * - A: 15건을 T+1000 에 → 재시도 T+1114(22칸) 15
+     * - B: 14건을 T+1500 에 → 재시도 T+1614(32칸) 14
+     * - C: 1건을 T+2000 에 → 재시도 T+2114(42칸) 1
+     * - D: 1건을 T+2950 에 → 재시도 T+3064 — 구간 뒤(칸 밖), 2번째에 성공
+     * 모두 첫 시도는 구간 안에 결제에 든다(500). A·B·C 는 둘째도 500.
+     * 구간 안 재시도 30 = A 15 + B 14 + C 1. 재시도가 든 칸 [15, 14, 1].
+     */
+    private fun crowded(): RetryRecord {
+        val r = RetryRecord(root)
+        fun group(prefix: String, n: Int, s: Long) = repeat(n) { i ->
+            r.inventoryRetried("$prefix$i", s, listOf("Failed:HTTP_500", "Failed:HTTP_500"), attemptFault = WIDE)
+        }
+        group("a", 15, T + 1000)
+        group("b", 14, T + 1500)
+        group("c", 1, T + 2000)
+        r.inventoryRetried("d0", T + 2950, listOf("Failed:HTTP_500", "Completed"), attemptFault = WIDE)
+        // 결제에 구간 안에 든 수: A·B·C 각 2번(T+1005·T+1115 등 — 모두 구간 안) + D 1번(T+2955)
+        return r.counted("payment", "outage", 30 * 2 + 1)
+    }
+
+    @Test
+    fun 재시도가_몰린_기록은_통과한다() {
+        val r = crowded()
+        assertEquals(0, r.runRetry(), r.lastOutput)
+    }
+
+    @Test
+    fun 재시도가_든_칸의_수는_빈_칸을_뺀_칸의_수다() {
+        assertEquals(3L, crowded().analyze().long("outage", "retryBinsDuring", "count"))
+    }
+
+    @Test
+    fun 재시도가_든_칸들의_분위수() {
+        // [1, 14, 15]: p50 = 2번째 14, p90 = 3번째 15
+        val r = crowded().analyze()
+        assertEquals(
+            listOf(14.0, 15.0, 15.0),
+            listOf("p50", "p90", "max").map { r.double("outage", "retryBinsDuring", it) },
+        )
+    }
+
+    @Test
+    fun 재시도가_든_칸의_최대는_구간_안_재시도_칸의_꼭대기와_같다() {
+        val r = crowded().analyze()
+        assertEquals(15L, r.long("outage", "retriesPeakPer50msDuring"))
+    }
+
+    @Test
+    fun 꽉_찬_칸은_15건_이상이고_14건은_아니다() {
+        // 15건 칸만 꽉 찬 칸 — 15 / 30 = 0.5 (14건 칸까지 넣으면 29/30)
+        assertEquals(0.5, crowded().analyze().double("outage", "retriesInCrowdedBinsDuring")!!, 1e-9)
+    }
+
+    @Test
+    fun 구간_뒤의_재시도는_구간_안_칸에_넣지_않는다() {
+        // D 의 재시도(T+3064)는 구간 뒤 — 회복 ①에는 든다
+        val r = crowded().analyze()
+        assertEquals(64L, r.long("outage", "retryTailMs"))
+        assertEquals(3L, r.long("outage", "retryBinsDuring", "count"))
+    }
+
+    @Test
+    fun 구간_안에_재시도가_없으면_꽉_찬_칸의_몫은_null이고_칸의_분위수는_0건이다() {
+        val r = edges().analyze()
+        assertNull(r.at("outage", "retriesInCrowdedBinsDuring"))
+        assertEquals(0L, r.long("outage", "retryBinsDuring", "count"))
+        assertNull(r.at("outage", "retryBinsDuring", "p50"))
+        assertEquals(0L, r.long("outage", "retriesPeakPer50msDuring"))
+    }
+
+    @Test
+    fun 구간_안_재시도_칸은_불린_층의_도착이_아니라_부르는_층의_시도_시작으로_나눈다() {
+        // t0 = T(z). k0~k7: 재시도 시작 T+1149(22칸), 결제 도착 T+1150(23칸). m0~m6: 시작 T+1150, 도착 T+1151(23칸).
+        // 시도 시작으로 나누면 [8, 7] — 꽉 찬 칸 없음. 도착으로 나누면 23칸에 15(꽉 찬 칸)가 된다
+        val r = RetryRecord(root).okChain("z", T, WIDE)
+        repeat(8) { i -> r.inventoryRetried("k$i", T + 1035, listOf("Failed:HTTP_500", "Failed:HTTP_500"), attemptFault = WIDE) }
+        repeat(7) { i -> r.inventoryRetried("m$i", T + 1036, listOf("Failed:HTTP_500", "Failed:HTTP_500"), attemptFault = WIDE) }
+        r.counted("payment", "outage", 30)
+        val rep = r.analyze()
+        assertEquals(8L, rep.long("outage", "retriesPeakPer50msDuring"))
+        assertEquals(2L, rep.long("outage", "retryBinsDuring", "count"))
+        assertEquals(0.0, rep.double("outage", "retriesInCrowdedBinsDuring")!!, 1e-9)
+        // 불린 쪽의 칸은 도착으로 — 23칸에 15
+        assertEquals(15L, rep.long("outage", "calleePeakPer50msDuring"))
     }
 }

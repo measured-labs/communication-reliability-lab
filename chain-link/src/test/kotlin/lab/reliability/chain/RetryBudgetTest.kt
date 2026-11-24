@@ -126,4 +126,21 @@ class RetryBudgetTest {
         assertTrue(pool.awaitTermination(30, TimeUnit.SECONDS))
         assertTrue(sameValue("200", b.tokens()), "실제 ${b.tokens()}")
     }
+
+    // ---- 1절: 예산의 범위는 RetryBudget 의 require ----
+
+    @Test
+    fun 음수_용량은_IllegalArgumentException() {
+        kotlin.test.assertFailsWith<IllegalArgumentException> { RetryBudget(dec("-0.1"), dec("0")) }
+    }
+
+    @Test
+    fun 음수_넣는_양은_IllegalArgumentException() {
+        kotlin.test.assertFailsWith<IllegalArgumentException> { RetryBudget(dec("1"), dec("-0.1")) }
+    }
+
+    @Test
+    fun 용량과_넣는_양이_0이면_받는다() {
+        assertTrue(sameValue("0", RetryBudget(dec("0"), dec("0")).tokens()))
+    }
 }

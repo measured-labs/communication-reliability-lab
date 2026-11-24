@@ -271,7 +271,7 @@ class RetryingNextLayerCallTest {
         // 잠은 앞 시도의 끝 시계 뒤, 다음 시도의 시작 시계 앞
         assertEquals(
             listOf("clock", "call", "clock", "sleep", "clock", "call", "clock", "sleep", "clock", "call", "clock"),
-            h.events,
+            h.events.filter { it != "record" },
         )
     }
 
@@ -367,5 +367,99 @@ class RetryingNextLayerCallTest {
         h.call()
         assertEquals(0, h.randomCalls)
         assertEquals(emptyList<Long>(), h.sleeps)
+    }
+
+    // ---- 5절: callId 의 범위 = 감싸개 하나 ----
+
+    @Test
+    fun 새_감싸개의_첫_호출은_callId_1이다() {
+        val h = Harness(none(2), outcomes = listOf(HTTP_500, OK, OK))
+        h.call()
+        h.call()
+        assertEquals(listOf(1L, 1L, 2L), h.records.map { it.callId })
+    }
+
+    @Test
+    fun 감싸개마다_callId를_따로_센다() {
+        val h1 = Harness(none(1), outcomes = listOf(OK, OK))
+        h1.call()
+        h1.call()
+        val h2 = Harness(none(1), outcomes = listOf(OK))
+        h2.call()
+        assertEquals(1L, h2.records.single().callId)
+    }
+
+    // ---- 5-1절: 차례(시도 → 결정 → 기록 → 간격 계산 → sleeper)와 예외 ----
+
+    @Test
+    fun 기록은_간격_계산과_잠보다_먼저다() {
+        val h = Harness(
+            RetryPolicy(2, BOTH, Backoff.EXPONENTIAL_JITTER, 100, 1000),
+            outcomes = listOf(HTTP_500, OK),
+            randoms = listOf(0.5),
+        )
+        h.call()
+        assertEquals(
+            listOf("clock", "call", "clock", "record", "random", "sleep", "clock", "call", "clock", "record"),
+            h.events,
+        )
+    }
+
+    private class Boom : RuntimeException("boom")
+
+    @Test
+    fun 기다리는_사이의_예외는_call_밖으로_나가고_마지막_기록은_retry다() {
+        val records = mutableListOf<AttemptRecord>()
+        var calls = 0
+        val w = RetryingNextLayerCall(
+            NextLayerCall { calls++; HTTP_500 },
+            RetryPolicy(3, BOTH, Backoff.FIXED, 10, 10),
+            null,
+            { records += it },
+            { "r" },
+            { throw InterruptedException("깨움") },
+            { 0.0 },
+            { 1L },
+        )
+        kotlin.test.assertFailsWith<InterruptedException> { w.call(1) }
+        assertEquals(1, calls, "잠에서 예외가 나면 다음 시도를 하지 않는다")
+        assertEquals(listOf(1 to "retry"), records.map { it.attempt to it.decision })
+    }
+
+    @Test
+    fun 시도_중의_예외는_그_시도의_기록_없이_call_밖으로_나간다() {
+        val records = mutableListOf<AttemptRecord>()
+        var calls = 0
+        val w = RetryingNextLayerCall(
+            NextLayerCall { calls++; if (calls == 1) HTTP_500 else throw Boom() },
+            RetryPolicy(3, BOTH, Backoff.NONE, 0, 0),
+            null,
+            { records += it },
+            { "r" },
+            { },
+            { 0.0 },
+            { 1L },
+        )
+        kotlin.test.assertFailsWith<Boom> { w.call(1) }
+        assertEquals(listOf(1 to "retry"), records.map { it.attempt to it.decision })
+    }
+
+    @Test
+    fun 시도_중의_예외는_예산에서_토큰을_더_빼지_않는다() {
+        // K=5: 재시도 1번(−1) 뒤 둘째 시도에서 예외 — 4
+        val budget = RetryBudget(dec("5"), dec("0"))
+        var calls = 0
+        val w = RetryingNextLayerCall(
+            NextLayerCall { calls++; if (calls == 1) HTTP_500 else throw Boom() },
+            RetryPolicy(3, BOTH, Backoff.NONE, 0, 0),
+            budget,
+            { },
+            { "r" },
+            { },
+            { 0.0 },
+            { 1L },
+        )
+        kotlin.test.assertFailsWith<Boom> { w.call(1) }
+        assertTrue(sameValue("4", budget.tokens()), "실제 ${budget.tokens()}")
     }
 }

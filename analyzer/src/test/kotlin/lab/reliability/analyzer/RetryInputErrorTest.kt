@@ -92,6 +92,77 @@ class RetryInputErrorTest {
         good().assertInputError("--expect", writeExpect(root, """{"answers": {"min": 2, "max": 1}}""").toString())
     }
 
+    // ---- 설정(8-2: settings-order.json·settings-inventory.json 의 retry.enabled) ----
+
+    @Test
+    fun 주문의_설정_파일이_없으면_입력_오류() {
+        good().apply { omit += "settings-order.json" }.assertInputError()
+    }
+
+    @Test
+    fun 재고의_설정_파일이_없으면_입력_오류() {
+        good().apply { omit += "settings-inventory.json" }.assertInputError()
+    }
+
+    @Test
+    fun 설정_파일이_비었으면_입력_오류() {
+        good().apply { settingsText["order"] = "" }.assertInputError()
+    }
+
+    @Test
+    fun 설정_파일이_JSON이_아니면_입력_오류() {
+        good().apply { settingsText["order"] = "{retry" }.assertInputError()
+    }
+
+    @Test
+    fun 설정_파일이_객체가_아니면_입력_오류() {
+        good().apply { settingsText["order"] = "[]" }.assertInputError()
+    }
+
+    @Test
+    fun retry가_없으면_입력_오류() {
+        good().apply { settingsText["order"] = """{"service":"order"}""" }.assertInputError()
+    }
+
+    @Test
+    fun retry_enabled가_없으면_입력_오류() {
+        good().apply { settingsText["order"] = """{"retry":{}}""" }.assertInputError()
+    }
+
+    @Test
+    fun retry_enabled가_문자열이면_입력_오류() {
+        good().apply { settingsText["inventory"] = """{"retry":{"enabled":"true"}}""" }.assertInputError()
+    }
+
+    @Test
+    fun retry_enabled가_null이면_입력_오류() {
+        good().apply { settingsText["order"] = """{"retry":{"enabled":null}}""" }.assertInputError()
+    }
+
+    @Test
+    fun retry_enabled가_수면_입력_오류() {
+        good().apply { settingsText["order"] = """{"retry":{"enabled":0}}""" }.assertInputError()
+    }
+
+    @Test
+    fun 설정의_다른_칸은_읽지_않는다() {
+        // /settings 의 실제 꼴(켜짐 — 다른 칸들, 맨 위의 다른 객체)도 받는다
+        val r = good().apply {
+            settingsText["inventory"] =
+                """{"service":"inventory","nextLayer":{"requestTimeoutMs":"x"},"retry":{"enabled":true,"maxAttempts":3,"retryOn":["failed","unknown"],"backoff":"exponential","baseDelayMs":100,"maxDelayMs":1000,"budget":{"enabled":false}}}"""
+            settingsText["order"] = """{"retry":{"enabled":false}}"""
+        }
+        assertEquals(0, r.runRetry(), r.lastOutput)
+    }
+
+    @Test
+    fun 결제의_설정_파일은_없어도_받는다() {
+        // 기준 기록은 settings-payment.json 을 쓰지 않는다 — 그런데도 통과하는 것을 다시 본다
+        val r = good()
+        assertEquals(0, r.runRetry(), r.lastOutput)
+        kotlin.test.assertFalse(r.dir.resolve("settings-payment.json").toFile().exists())
+    }
+
     // ---- 정답 ----
 
     @Test
@@ -227,6 +298,51 @@ class RetryInputErrorTest {
         assertEquals(0, r.runRetry(), r.lastOutput)
     }
 
+    @Test
+    fun 지시의_앞뒤와_쌍점의_앞뒤_공백은_받는다() {
+        // 지시가 읽혔는지는 넣은 실패의 수로 본다 — 읽히지 않으면 기록에서 다시 센 수가 4 에 머물러 불일치(2)
+        val r = withFault(" payment : fail-first=1 ").counted("payment", "fail-first", 5)
+        assertEquals(0, r.runRetry(), r.lastOutput)
+    }
+
+    @Test
+    fun 쉼표_뒤의_공백도_받는다() {
+        val r = withFault("inventory:fail-first=1 , payment:fail-first=1")
+            .counted("inventory", "fail-first", 1).counted("payment", "fail-first", 5)
+        assertEquals(0, r.runRetry(), r.lastOutput)
+    }
+
+    @Test
+    fun 공백만_있는_값은_없음이다() {
+        val r = withFault("   ")
+        assertEquals(0, r.runRetry(), r.lastOutput)
+    }
+
+    @Test
+    fun 등호의_앞뒤_공백은_입력_오류() {
+        withFault("payment:fail-first = 1").assertInputError()
+    }
+
+    @Test
+    fun 등호_뒤의_공백은_입력_오류() {
+        withFault("payment:fail-first= 1").assertInputError()
+    }
+
+    @Test
+    fun 값_안의_공백은_입력_오류() {
+        withFault("payment:slow-first=1 @100").assertInputError()
+    }
+
+    @Test
+    fun 끝의_쉼표는_입력_오류() {
+        withFault("payment:fail-first=1,").assertInputError()
+    }
+
+    @Test
+    fun 가운데의_빈_지시는_입력_오류() {
+        withFault("inventory:fail-first=1,,payment:fail-first=1").assertInputError()
+    }
+
     // ---- 시각 기록 ----
 
     @Test
@@ -236,12 +352,7 @@ class RetryInputErrorTest {
         assertEquals(0, r.runRetry(), r.lastOutput)
     }
 
-    @Test
-    fun DB_행은_있는데_시각_기록이_없어도_받는다() {
-        // n: 502 를 받았고 주문 행(FAILED)은 있는데 어느 층에도 시각 기록이 없다
-        val r = good().answer("n", T + 500, 502, elapsedMs = 30).row("order", "n", "FAILED")
-        assertEquals(0, r.runRetry(), r.lastOutput)
-    }
+    // "DB 행은 있는데 시각 기록이 없음"은 입력 오류가 아니라 불일치다(8-3, 8-5 ③) — RetryJudgeTest 가 지킨다.
 
     @Test
     fun 정답에_없는_requestId의_시각_기록은_입력_오류() {
@@ -395,6 +506,40 @@ class RetryInputErrorTest {
         val end1 = r.attempts.getValue("inventory").first { it.requestId == "c" && it.attempt == 1 }.endUs
         r.changeAttempt("c", 2) { it.copy(startUs = end1) }
         assertEquals(0, r.runRetry(), r.lastOutput)
+    }
+
+    @Test
+    fun 시도_기록이_파일에서_뒤섞여_있어도_받는다() {
+        // 8-2: 원소의 차례는 보지 않는다 — c 의 시도를 3, 2, 1 로, 그리고 맨 앞으로
+        val r = good().apply {
+            val list = attempts.getValue("inventory")
+            val cs = list.filter { it.requestId == "c" }
+            list.removeAll(cs)
+            list.addAll(0, cs.reversed())
+        }
+        assertEquals(0, r.runRetry(), r.lastOutput)
+    }
+
+    @Test
+    fun 뒤섞인_시도_기록도_빈틈은_입력_오류다() {
+        val r = good().apply {
+            val list = attempts.getValue("inventory")
+            val cs = list.filter { it.requestId == "c" }
+            list.removeAll(cs)
+            list.addAll(0, cs.filter { it.attempt != 2 }.reversed())
+        }
+        r.assertInputError()
+    }
+
+    @Test
+    fun callId의_값과_시작은_보지_않는다() {
+        // 서비스를 한 번 띄워 여러 실행을 돌리면 callId 는 1부터가 아니다(docs/retry.md 5절)
+        val r = good().apply {
+            val list = attempts.getValue("inventory")
+            list.replaceAll { it.copy(callId = it.callId * 7 + 900) }
+        }
+        assertEquals(0, r.runRetry(), r.lastOutput)
+        assertEquals(5L, r.report().long("edges", "inventory->payment", "calls"))
     }
 
     // ---- attempt-faults.json ----

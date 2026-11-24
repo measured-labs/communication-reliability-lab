@@ -40,7 +40,7 @@ class Harness(
     var clockCalls = 0
     var delegateCalls = 0
 
-    /** 시계를 부른 차례와 아래 층을 부른 차례를 한 줄로 — "clock", "call", "sleep", "random". */
+    /** 시계를 부른 차례와 아래 층을 부른 차례를 한 줄로 — "clock", "call", "record", "sleep", "random". */
     val events = mutableListOf<String>()
 
     val delegate = NextLayerCall { amount ->
@@ -54,7 +54,7 @@ class Harness(
         delegate,
         policy,
         budget,
-        { records += it },
+        { records += it; events += "record" },
         { requestId },
         { ms -> sleeps += ms; events += "sleep" },
         { events += "random"; randoms[randomCalls++] },

@@ -11,7 +11,8 @@ import kotlin.test.assertFalse
 // docs/measurement.md 8절(재시도 지표 — `analyzer retry`)의 입력(8-2)대로 작은 실행 기록을 손으로 만든다.
 // 이 파일은 분석기의 구현을 보지 않고 문서(8절, docs/retry.md, docs/experiments/task-03-design.md)만으로 쓴다.
 // 1·2절의 정답 줄·DB 행은 RunRecord 로 쓰고, 그 위에 sentAtMs·attemptFault·시각 기록·시도 기록·넣은 실패의 수를 더한다.
-// 8-2의 입력이 아닌 파일(표본, 설정, 조회)은 쓰지 않는다.
+// 8-2의 입력이 아닌 파일(표본, 조회, settings-payment.json)은 쓰지 않는다. 설정은 settings-order.json·settings-inventory.json 의
+// `retry.enabled`(8-2 — 그 층의 재시도 감싸개가 떠 있었나)만 쓴다. 기본: 주문 꺼짐, 재고 켜짐.
 
 val ATTEMPT_KINDS = listOf("fail-first", "slow-first", "outage")
 
@@ -45,8 +46,12 @@ class RetryRecord(root: Path, name: String = "retry-20261124T000000-r1") {
     val timingsText = mutableMapOf<String, String>()
     val attemptsText = mutableMapOf<String, String>()
     var attemptFaultsText: String? = null
+    val settingsText = mutableMapOf<String, String>()
 
-    /** 쓰지 않을 파일: "timing/attempts-order.json", "attempt-faults.json", "timing/timings-payment.json" … */
+    /** 층마다 `retry.enabled`(settings-<층>.json). */
+    val retryEnabled = mutableMapOf("order" to false, "inventory" to true)
+
+    /** 쓰지 않을 파일: "timing/attempts-order.json", "attempt-faults.json", "timing/timings-payment.json", "settings-order.json" … */
     val omit = mutableSetOf<String>()
 
     private val counted = mutableMapOf<Pair<String, String>, Int>()
@@ -187,6 +192,12 @@ class RetryRecord(root: Path, name: String = "retry-20261124T000000-r1") {
             if ("timing/attempts-$layer.json" !in omit) {
                 timingDir.resolve("attempts-$layer.json")
                     .writeText(attemptsText[layer] ?: list.joinToString(",", "[", "]") { it.json() })
+            }
+        }
+        for ((layer, enabled) in retryEnabled) {
+            if ("settings-$layer.json" !in omit) {
+                dir.resolve("settings-$layer.json")
+                    .writeText(settingsText[layer] ?: """{"service":"$layer","retry":{"enabled":$enabled}}""")
             }
         }
         if ("attempt-faults.json" !in omit) {

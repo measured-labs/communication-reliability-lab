@@ -3,7 +3,9 @@ package lab.reliability.analyzer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import kotlin.io.path.readLines
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 // docs/measurement.md 8-4 — clients·layers·edges·attemptFaults·mix 의 식. 기준 기록은 RetryRecord.kt 의 goodRetryRecord
@@ -159,18 +161,30 @@ class RetryMetricsTest {
     }
 
     @Test
-    fun 연결_거부로_결제에_들지_않은_시도를_센다() {
-        // x: 시도 1 연결 거부(결제에 들지 않음), 시도 2 성공 → 시도 2, 도착 1
-        val r = good().inventoryRetried("x", T + 500, listOf("Failed:CONNECT_REFUSED", "Completed")).analyze()
-        assertEquals(1L, r.long("edges", INV, "attemptsNotArrived"))
+    fun 연결_거부로_결제에_들지_않은_시도를_세고_켜진_층에서_0이_아니면_불일치다() {
+        // x: 시도 1 연결 거부(결제에 들지 않음), 시도 2 성공 → 시도 2, 도착 1. 8-5 ④
+        val r = good().inventoryRetried("x", T + 500, listOf("Failed:CONNECT_REFUSED", "Completed"))
+        assertEquals(2, r.runRetry(), r.lastOutput)
+        val rep = r.report()
+        assertEquals(1L, rep.long("edges", INV, "attemptsNotArrived"))
+        assertEquals(listOf("edges.inventory->payment.attemptsNotArrived: 늘 0, 실제 1"), rep.differences())
     }
 
     @Test
-    fun 재시도하지_않는_층의_시도_기록이_비면_호출과_시도는_0이다() {
+    fun 재시도가_꺼진_층은_attemptsNotArrived를_내지_않는다() {
+        // 기준 기록의 주문은 재시도 꺼짐(settings-order.json retry.enabled=false), 시도 기록 []
+        val g = good()
+        val r = g.analyze()
+        @Suppress("UNCHECKED_CAST")
+        val edge = r.at("edges", ORD) as Map<String, Any?>
+        assertFalse("attemptsNotArrived" in edge, "꺼진 층에 attemptsNotArrived 가 있다: ${edge.keys}")
+        assertFalse(g.metricsTsv.readLines().any { it.startsWith("edges.order->inventory.attemptsNotArrived") })
+    }
+
+    @Test
+    fun 재시도가_꺼진_층의_호출과_시도는_0이다() {
         val r = good().analyze()
         assertEquals(listOf(0L, 0L, 0L), listOf("calls", "attempts", "retries").map { r.long("edges", ORD, it) })
-        // 식 그대로: 시도 0 − 재고 도착 5
-        assertEquals(-5L, r.long("edges", ORD, "attemptsNotArrived"))
     }
 
     @Test
@@ -211,6 +225,9 @@ class RetryMetricsTest {
         assertEquals(0L, r.long("edges", ORD, "attemptsNotArrived"))
         assertEquals(listOf(2L, 1L, 1L), r.perLayer("arrivals").let { listOf(it[1], it[2], r.long("layers", "inventory", "repeatArrivals")) })
         assertEquals(50.0, r.double("edges", ORD, "delayMs", "attempt2", "max"))
+        // 재고는 재시도 꺼짐 — 재고→결제에는 attemptsNotArrived 가 없다
+        @Suppress("UNCHECKED_CAST")
+        assertFalse("attemptsNotArrived" in (r.at("edges", INV) as Map<String, Any?>))
     }
 
     @Test
@@ -223,6 +240,7 @@ class RetryMetricsTest {
     private fun orderRetryRecord(): RetryRecord {
         val s = T
         return RetryRecord(root)
+            .apply { retryEnabled["order"] = true; retryEnabled["inventory"] = false }
             .attempt("order", Attempt("y", 1, 1, us(s + 2), us(s + 6), "Failed:HTTP_500", 0, "retry"))
             .attempt("order", Attempt("y", 1, 2, us(s + 56), us(s + 70), "Completed", 50, "success"))
             .timing("inventory", "y", us(s + 3), us(s + 5), 500)
@@ -310,5 +328,19 @@ class RetryMetricsTest {
     fun 섞음의_라벨마다_경과_분위수() {
         val r = good().analyze()
         assertEquals(listOf(1.0, 1120.0), listOf("count", "max").map { r.double("mix", "payment:slow-first=1@1500", "elapsedMs", it) })
+    }
+
+    // ---- t0 ----
+
+    @Test
+    fun t0는_파일의_첫_줄이_아니라_가장_이른_sentAtMs다() {
+        // 정답 파일에 b(T+100)를 먼저, a(T)를 뒤에 쓴다. t0 = T 이면 a 의 결제(T+5)·b 의 결제(T+105)는 0칸·2칸,
+        // t0 = T+100 이면 a 의 결제가 t0 앞이라 series 의 칸 밖이다. series.originSentAtMs 로 본다
+        val r = RetryRecord(root).okChain("b", T + 100).okChain("a", T).analyze()
+        assertEquals(T, r.long("series", "originSentAtMs"))
+        assertEquals(1L, r.long("bins", "payment", "peakPer50ms"))
+        @Suppress("UNCHECKED_CAST")
+        val arrivals = (r.at("series", "paymentArrivals") as List<Number>).map { it.toLong() }
+        assertEquals(listOf(1L, 1L), listOf(arrivals[0], arrivals[1]))
     }
 }

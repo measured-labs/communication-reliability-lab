@@ -201,4 +201,41 @@ class RetryPolicyTest {
     fun 지터에서_u가_음수면_IllegalArgumentException() {
         assertFailsWith<IllegalArgumentException> { jitter.delayBeforeMs(2, -0.01) }
     }
+
+    // ---- 1절: 값의 범위는 RetryPolicy 의 require(감싸개를 만들 때) ----
+
+    @Test
+    fun 최대_시도가_0이면_IllegalArgumentException() {
+        assertFailsWith<IllegalArgumentException> { RetryPolicy(0, BOTH, Backoff.NONE, 0, 0) }
+    }
+
+    @Test
+    fun 최대_시도가_1이면_받는다() {
+        RetryPolicy(1, BOTH, Backoff.NONE, 0, 0)
+    }
+
+    @Test
+    fun 음수_base_delay는_IllegalArgumentException() {
+        assertFailsWith<IllegalArgumentException> { RetryPolicy(3, BOTH, Backoff.FIXED, -1, 0) }
+    }
+
+    @Test
+    fun 음수_max_delay는_IllegalArgumentException() {
+        assertFailsWith<IllegalArgumentException> { RetryPolicy(3, BOTH, Backoff.NONE, 0, -1) }
+    }
+
+    @Test
+    fun 지수인데_C가_B보다_작으면_IllegalArgumentException() {
+        assertFailsWith<IllegalArgumentException> { RetryPolicy(3, BOTH, Backoff.EXPONENTIAL, 100, 99) }
+    }
+
+    @Test
+    fun 지수_지터인데_C가_B보다_작으면_IllegalArgumentException() {
+        assertFailsWith<IllegalArgumentException> { RetryPolicy(3, BOTH, Backoff.EXPONENTIAL_JITTER, 100, 99) }
+    }
+
+    @Test
+    fun 지수에서_C와_B가_같으면_받는다() {
+        assertEquals(100L, RetryPolicy(3, BOTH, Backoff.EXPONENTIAL, 100, 100).delayBeforeMs(3, 0.5))
+    }
 }
