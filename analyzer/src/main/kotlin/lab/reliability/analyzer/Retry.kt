@@ -196,7 +196,7 @@ private fun peak(times: List<Long>, binMs: Long, origin: Long, keep: (Long) -> B
     binCounts(times, binMs, origin, keep).maxOrNull() ?: 0
 
 /** settings-<서비스>.json의 retry.enabled — 떠 있는 감싸개에서 읽은 값(docs/retry.md 1절). */
-private fun retryEnabled(run: Path, service: String): Boolean {
+internal fun retryEnabled(run: Path, service: String): Boolean {
     val path = run.resolve("settings-$service.json")
     val v = readJson(path).get("retry")?.get("enabled")
     if (v == null || !v.isBoolean) throw InputException("$path: retry.enabled가 불 값이 아니다")
