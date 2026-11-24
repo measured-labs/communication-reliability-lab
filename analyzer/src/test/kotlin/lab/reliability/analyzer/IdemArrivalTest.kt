@@ -129,6 +129,57 @@ class IdemArrivalTest {
         assertEquals(30.0, rep.double("duplicates", "arrivalGapMs", "p50"))
     }
 
+    /**
+     * 응답이 `201+409`가 아닌 쌍 넷 — 모두 주문에 정확히 두 번 들었고, 넷째를 빼면 주문의 시각 기록에 409 가 있다.
+     * - q1(T): 201+201, 주문에 같은 μs(T+1)로 듦(둘째는 저장한 응답 — 주문에만).
+     * - q2(T+100): 409+409, 주문 409 둘(T+101, T+105).
+     * - q3(T+200): 201+201, 주문의 시각 기록은 201(T+201, 세 층)과 409(T+205) — 응답의 쌍으로 가르는지 본다.
+     * - q4(T+300): 502+409, 주문 502(T+301, 아래가 실패)와 409(T+305).
+     * 센 수: 주문 new 3(q1·q3·q4)·in-progress 4(409 기록 수)·replayed 1, 재고·결제 new 2.
+     */
+    private fun notConflictPairs(): IdemRecord {
+        val r = IdemRecord(root)
+        r.answer("q1", T, 201, copy = 1).answer("q1", T, 201, copy = 2, replayed = true)
+            .chainTimings("q1", T).timing("order", "q1", us(T + 1), us(T + 3), 201)
+            .processedRows("q1").keys("q1")
+        r.answer("q2", T + 100, 409, copy = 1).answer("q2", T + 100, 409, copy = 2)
+            .timing("order", "q2", us(T + 101), us(T + 102), 409).timing("order", "q2", us(T + 105), us(T + 106), 409)
+        r.answer("q3", T + 200, 201, copy = 1).answer("q3", T + 200, 201, copy = 2)
+            .chainTimings("q3", T + 200).timing("order", "q3", us(T + 205), us(T + 206), 409)
+            .processedRows("q3").keys("q3")
+        r.answer("q4", T + 300, 502, copy = 1).answer("q4", T + 300, 409, copy = 2)
+            .timing("order", "q4", us(T + 301), us(T + 309), 502, us(T + 302), us(T + 308), "Failed:HTTP_500")
+            .timing("order", "q4", us(T + 305), us(T + 306), 409)
+            .row("order", "q4", "FAILED").key("order", "q4", "FAILED", 502)
+        return r.counts("order", "new", 3).counts("order", "in-progress", 4).counts("order", "replayed", 1)
+            .counts("inventory", "new", 2).counts("payment", "new", 2)
+    }
+
+    private fun conflictCells(rep: Map<String, Any?>): List<Long> =
+        listOf("earlierGot409", "laterGot409", "sameMicros").map { rep.long("duplicates", "conflict409", it) }
+
+    @Test
+    fun conflict409는_201과_409가_아닌_쌍을_어느_갈래에도_넣지_않는다() {
+        val rep = notConflictPairs().analyze()
+        assertEquals(4L, rep.long("duplicates", "requestIds"))
+        assertEquals(2L, rep.long("duplicates", "pairs", "201+201"))
+        assertEquals(1L, rep.long("duplicates", "pairs", "409+409"))
+        assertEquals(1L, rep.long("duplicates", "pairs", "409+502"))
+        assertEquals(1L, rep.long("duplicates", "arrivalTies"))
+        assertEquals(listOf(0L, 0L, 0L), conflictCells(rep))
+    }
+
+    @Test
+    fun 다른_쌍_사이에서도_201과_409_쌍만_센다() {
+        // 위 기록에 q5(201+409, 주문 201 T+401 · 409 T+405 — 나중이 409)를 더하면 laterGot409 만 1
+        val r = notConflictPairs()
+        r.answer("q5", T + 400, 201, copy = 1).answer("q5", T + 400, 409, copy = 2)
+            .chainTimings("q5", T + 400).timing("order", "q5", us(T + 405), us(T + 406), 409)
+            .processedRows("q5").keys("q5")
+            .counts("order", "new", 4).counts("order", "in-progress", 5).counts("inventory", "new", 3).counts("payment", "new", 3)
+        assertEquals(listOf(0L, 1L, 0L), conflictCells(r.analyze()))
+    }
+
     // ---- responses 와 ⑤ ----
 
     @Test
