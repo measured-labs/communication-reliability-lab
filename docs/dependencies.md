@@ -141,3 +141,27 @@ keep-alive 두 설정의 출처(2026-11-24 확인):
 - 정말 필요한가: 실험 나(지터)에만. 고르게 오는 부하에서는 실패도 고르게 나서 지터가 흩을 몰림이 없다.
 - 선택지: (가) `http.batch`로 N건을 한 번에 — 단점: 요청마다의 경과를 따로 재기 어렵고 `batch`·`batchPerHost` 옵션을 더 맞춰야 한다. (나) `constant-arrival-rate`의 반복이 자기 무리의 시각(시나리오 시작 + (무리 + 1) × 500ms)까지 `sleep`한 뒤 보낸다 — 이미 쓰는 실행기, 요청마다 경과를 그대로 잰다. 2026-11-24에 k6 v2.4.0에서 20건이 같은 ms에 보내지는 것을 확인했다(`exec.scenario.startTime`은 시나리오 시작의 벽시계 ms).
 - 고른 것: (나).
+
+## task 04에서 정한 것 — 새 의존성 없음
+
+### 멱등 키 — 직접 짠 코드(`chain-link/…/Idempotency.kt`)와 서비스마다의 표 `idempotency_keys`, 라이브러리가 아니라
+
+- 정말 필요한가: 예. 명세 task 04의 계약(키를 업무 행과 같은 트랜잭션에, 다시 온 키는 처음의 결과, 동시에 온 같은 키의 동작 하나, 다른 금액은 거절).
+- 선택지: (가) 라이브러리 — Spring에는 멱등 키 기능이 없고, 따로 된 것(예: 캐시에 응답을 두는 필터들)은 키를 업무 행과 **다른 저장소·다른 트랜잭션**에 둔다 — 계약("같은 트랜잭션")과 맞지 않고 명세 2절이 직접 짠다고 정했다. (나) Redis 같은 다른 저장소 — 새 컨테이너·새 의존성, 그리고 같은 트랜잭션이 될 수 없다. (다) 업무 표의 `request_id`에 유일 제약을 거는 것 — 가장 짧지만 "처음의 결과를 돌려준다"(응답 저장)와 "처리 중"·"결과 모름"을 가를 상태가 없다. (라) 서비스마다 같은 DB에 키 표를 두고 업무 행과 한 트랜잭션에 — 이미 있는 `JdbcClient`·`@Transactional`(④)과 PostgreSQL의 `insert … on conflict do nothing`(⑤ 이미 있는 DB의 기능).
+- 고른 것: (라). 동시에 온 같은 키는 거절(409) — 까닭은 `docs/experiments/task-04-design.md` 1절. 트랜잭션을 되돌리는 것은 `TransactionAspectSupport.currentTransactionStatus().setRollbackOnly()`(Spring 기본 기능).
+- 응답 본문의 JSON: 이미 들인 Jackson(`tools.jackson.databind.json.JsonMapper`)으로 문자열을 만들어 그 문자열을 저장하고 그대로 돌려준다(처음 응답과 되돌려 주는 응답이 같은 바이트가 되게).
+
+### 커밋 뒤 끊김 — 새 헤더 `X-Drop-Fault`와 Tomcat 내부(`ResponseFacade`의 필드 + `setSuspended` + `ActionCode.CLOSE_NOW`), 프록시나 컨테이너 죽이기가 아니라
+
+- 정말 필요한가: 예. R01-13 — 커밋한 뒤 위 층이 결과를 모르는 꼴이 보정 섞음에 없었다.
+- 선택지: (가) 컨테이너를 죽인다 — 요청 단위가 아니고 처리 중인 다른 요청도 죽는다. (나) Toxiproxy·`tc netem`으로 연결을 끊는다 — 요청 단위가 아니고 "커밋한 뒤"라는 시점을 맞출 수 없다, 새 컨테이너. (다) 응답 전에 잠들어 위 층의 타임아웃을 부른다 — "결과 모름"은 되지만 끊김이 아니라 늦음이다(이미 `slow-first`가 한다). (라) 서블릿 안에서 응답을 보내지 않고 연결을 닫는다 — 서블릿 API에는 없어서 Tomcat 내부를 쓴다. 처음에는 `CLOSE_NOW`만 썼는데 응답(201과 본문)이 그대로 나갔다(2026-11-24 — `nc`로 바이트를 봄). Tomcat 11.0.27의 소스(`connector/OutputBuffer`의 `suspended`, `coyote/AbstractProcessor`·`Http11Processor`의 오류 상태)를 읽고 `setSuspended(true)`를 더해 0바이트가 되는 것을 `nc`와 `curl`(52 Empty reply)로 확인했다.
+- 고른 것: (라). `X-Fault`에 kind를 더하지 않은 까닭은 task 03의 `X-Attempt-Fault`와 같다(task 01 분석기의 계약·테스트·커밋한 실행의 다시 계산). 단점: Tomcat을 올리면 다시 확인해야 한다(`DropFault.kt`의 `단순화:` 주석) — 보정 `cal-idem`이 끊긴 수·결과 모름을 건수까지 견주므로 조용히 바뀌지는 않는다.
+
+### 맞추기 단계 — 같은 k6 스크립트의 두 번째 실행(`PHASE=resend`, `open()`으로 정답 파일을 읽음), 새 도구가 아니라
+
+- 선택지: (가) 실행 스크립트에서 `curl`로 한 건씩 — 응답 헤더·경과·정답 줄의 꼴을 다시 짜야 한다. (나) 같은 k6 스크립트를 한 번 더(이미 있는 도구 — ②) — 같은 헤더를 만드는 함수와 정답 줄의 꼴을 그대로 쓴다.
+- 고른 것: (나). 무엇을 다시 보낼지는 k6와 실행 스크립트(`jq` — 이 컴퓨터에 있음)가 같은 규칙으로 센다(0건이면 그 단계를 건너뛴다).
+
+### Testcontainers — 들이지 않았다(task 04에서 다시 보기로 한 것)
+
+- 정말 필요한가: 지금은 아니다. 멱등 키의 순수한 갈래(`IdempotencyRules.onRepeat`)·헤더 해석·분석기는 DB 없이 시험할 수 있고, 저장과 동시성(같은 트랜잭션, `on conflict`의 기다림, 409)은 보정 실행 `cal-idem`이 실제 PostgreSQL로 건수까지 본다. 테스트를 쓰는 워커가 SQL(`IdempotencyKeys`)을 단위로 시험해야 한다고 판단하면 그때 덜 만드는 순서대로 다시 본다(이 컴퓨터의 Docker를 테스트가 쓰게 되므로 `scripts/test.sh`의 빌드 방식도 함께 바뀐다).

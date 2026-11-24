@@ -467,3 +467,99 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 - 50ms 칸은 t0에 맞춘 고정 칸이다 — 한 무리가 칸 경계에 걸치면 두 칸으로 나뉘어 최대가 작게 나온다.
 - 시도 기록과 시각 기록은 메모리에만 있다. 서비스가 다시 뜨면 사라진다.
 - `outage`의 판정은 서비스의 시계로 한다. 부하 도구는 그 구간을 시나리오의 시작 시각(`exec.scenario.startTime`)에서 계산해 헤더에 싣는다 — 둘이 같은 시계라는 것에 기댄다.
+
+## 9. 멱등 키 지표 (task 04) — `analyzer idem`
+
+> task 04의 실험(`docs/experiments/task-04-design.md`)이 쓰는 지표. 멱등 키와 끊김 장애의 규칙은 `docs/idempotency.md`. 1~6절의 대조 분석은 그대로 돌고(두 번 처리됨·잃음은 거기서 — 맞추기 단계가 있으면 다시 보낸 것이 만든 행까지 든 끝 상태로), 이 절의 분석이 그 뒤에 따로 돈다(`scripts/run.sh`의 11단계 — 시나리오가 task 04의 것일 때). 재시도가 켜진 시나리오(`idem-retry-mix`)는 8절의 재시도 분석도 돈다.
+> 1~8절의 형식과 동작은 바꾸지 않았다. 바뀐 것은 서비스 쪽 셋뿐이다: `GET /settings`에 `idempotency`가 더해졌고, 끊긴 요청(task 04의 `X-Drop-Fault`가 있을 때만)의 시각 기록 `status`가 0이며, 실행 스크립트가 부하 직전에 재시도 예산의 시작 토큰을 남긴다(R03-7 — 9-6).
+> **첫 결과 뒤에 바꾼 것**(2026-11-24 20:30 — 첫 62개 실행의 보고는 바꾼 분석기로 다시 만들었다): 업무 행 id와 키 행의 `row_id`를 새 파일로 내보내 짝을 견준다(9-2 — 첫 62개에는 그 입력이 없어 `--no-row-ids`로 다시 계산했다, 그 보고에는 `keyLinks`가 없다), 동시 요청의 "나중에 든 것"에서 같은 μs의 쌍을 따로 센다, 맞추기의 후보를 정답에서 다시 센다, 끊은 수를 위 층이 본 결과와 견준다, 서비스가 센 409·422를 시각 기록과 견준다(9-4·9-5). 서비스 쪽에는 설정 하나(`chain.idempotency.in-progress-as-unknown`, 기본 꺼짐 — `docs/idempotency.md` 3-1절)가 더해졌다.
+
+### 9-1. 넣는 장애 — `X-Drop-Fault`
+
+`<service>:drop-after-commit=<n>[,…]` — 그 requestId로 그 서비스에 든 횟수 k(1부터, 이번 것 포함)가 k ≤ n이면 처리하고 마지막 커밋을 한 뒤 응답을 한 바이트도 보내지 않고 연결을 닫는다. 문법·공백·틀린 헤더는 `X-Attempt-Fault`(8-1)와 같은 규칙(`docs/idempotency.md` 4절). 해석하는 코드는 한 곳: `fault-header/…/DropFaultDirectives.kt`. 서비스 쪽 끝점: `GET /drop-faults` → `{"drop-after-commit":n}`, `DELETE /drop-faults`. 끊긴 요청의 시각 기록은 남고 `status`는 0이다.
+
+### 9-2. 입력
+
+| 파일 | 만드는 곳 | 형식 |
+|---|---|---|
+| `answers.jsonl` | k6 | 7-1절(`sentAtMs` 필수) + **`key`**(비지 않은 문자열 — 보낸 `Idempotency-Key`), **`copy`**(정수 ≥ 1 — 같은 요청을 두 번 보낸 것의 몇 번째, 한 번이면 1), **`attemptFault`**·**`dropFault`**(문자열, `""` = 없음 — 8-1·9-1의 문법), **`replayed`**(불 — 응답 헤더 `Idempotent-Replayed: true`였나. 판정에 쓰지 않는다). 같은 `requestId`가 여러 줄이어도 된다(같은 요청을 두 번 보낸 것) |
+| `resends.jsonl` | k6(맞추기 단계 — 있을 때만) | 줄마다 `{"type":"resend", …}` — 정답 줄과 같은 칸(`type`만 다르다. `requestId`는 정답에 있어야 한다). **파일이 없으면 맞추기 단계가 없는 실행**이고 `reconcile`이 보고에 없다. 빈 파일 = 맞추기 단계는 있었는데 다시 보낼 것이 없었다 |
+| `db/*.csv` | 실행 스크립트 | 2절 그대로 |
+| `db/idempotency-<서비스>.csv` | 실행 스크립트 | 머리줄 `key,request_id,amount,state,response_status`. `key`·`request_id`는 비지 않은 값(비면 입력 오류), `amount`는 정수, `state` ∈ `IN_PROGRESS`·`COMPLETED`·`FAILED`·`UNKNOWN`, `response_status`는 세 자리 정수나 **빈 값**(빈 값 = 저장한 응답 없음 — `IN_PROGRESS`). 줄끝·따옴표·칸 수의 규칙은 2절과 같다. 행이 0개여도 머리줄은 있다. **정답에 없는 `request_id`는 입력 오류로 하지 않는다** — 그 키 행은 업무 행이 없으면 `keysWithoutRow`·`keyLinks`(늘 0)에서, 업무 행이 있으면 그 업무 행이 대조 분석의 "정답에 없는 행"(늘 0, 5-3)에서 불일치로 드러난다 |
+| `db/row-ids-<서비스>.csv` | 실행 스크립트(2026-11-24 20:30 뒤의 실행 — `config.env`의 `row_ids_exported=yes`) | 머리줄 `id,request_id` — 그 층의 업무 행(`orders`·`reservations`·`payments`)마다 id와 requestId, id 차례로 낸다(분석기는 id의 차례를 견주지 않는다). `id`는 1 이상의 정수이고 겹치지 않는다, `request_id`는 비지 않는다. requestId의 차례가 `db/<업무>.csv`(2절)와 같아야 한다(다르면 두 내보내기가 서로 맞지 않는 것 — 입력 오류). 대조 분석이 읽는 `db/<업무>.csv`의 꼴은 바꾸지 않으려고 따로 낸다 |
+| `db/idempotency-row-ids-<서비스>.csv` | 실행 스크립트(같은 실행) | 머리줄 `key,row_id` — 키 행마다 그 키 행이 가리키는 업무 행의 id(`docs/idempotency.md` 3절). `key`는 비지 않고 겹치지 않는다, `row_id`는 1 이상의 정수. key의 집합이 `db/idempotency-<서비스>.csv`와 같아야 한다(다르면 입력 오류) |
+| `timing/attempts-<서비스>.json` | 서비스(8-2) | 주문·재고 가운데 **재시도가 켜진 층만**(`settings-<서비스>.json`의 `retry.enabled`) 필수 — 끊김을 그 아래 층에 대해 위 층이 본 수로 세려고(9-4 `observedAbove`). 형식과 검사는 8-3 |
+| `idempotency-counts.json` | 실행 스크립트(세 서비스의 `GET /idempotency-counts`) | `{"order":{"new":n,"replayed":n,"in-progress":n,"mismatch":n,"resumed":n,"missing-key":n},"inventory":{…},"payment":{…}}` — 서비스 셋·종류 여섯 모두, 0 이상의 JSON 정수, 여분의 키는 입력 오류 |
+| `drop-faults.json` | 실행 스크립트 | `{"order":{"drop-after-commit":n},…}` — 같은 규칙 |
+| `attempt-faults.json` | 실행 스크립트 | 8-2절 그대로 |
+| `timing/timings-<서비스>.json` | 서비스 | 8-2절 그대로(한 층에 한 requestId의 기록이 여럿이어도 된다) |
+| `settings-<서비스>.json` | 실행 스크립트 | 세 서비스 모두 **`idempotency.enabled`(불)**, 주문·재고는 **`retry.enabled`(불)**도 읽는다(없거나 불이 아니면 입력 오류) |
+
+### 9-3. 입력 오류 (종료 코드 1, `report-idem.json`·`metrics-idem.tsv`를 쓰지 않고 있던 것은 지운다)
+
+- 1·2·7-2절의 정답·CSV·시각 기록 검사(같은 읽기 코드) — 다만 같은 `requestId`가 정답에 여러 줄인 것, 한 층에 한 requestId의 시각 기록이 여럿인 것은 받는다. 정답에 없는 requestId의 시각 기록은 입력 오류. **시각 기록이 빠진 것**(DB에 행이 있는데 그 층의 시각 기록이 없는 requestId, 보낸 것보다 주문의 시각 기록이 적은 것)은 입력 오류가 아니라 **불일치**다(9-5 ①·③).
+- 정답·다시 보낸 줄의 task 04 칸이 없거나 형이 틀림(위 표), `attemptFault`·`dropFault`의 문법이 틀림. `attemptFault`에 `outage`가 있음(이 분석은 다루지 않는다).
+- `resends.jsonl`: JSON 객체가 아님, `type`이 `resend`가 아님, 정답에 없는 requestId, `status`가 0도 아니고 100~599도 아님, `elapsedMs`가 0 이상의 수가 아님, `sentAtMs`가 음수, CR이 있음.
+- `db/idempotency-*.csv`·`db/row-ids-*.csv`·`db/idempotency-row-ids-*.csv`·`idempotency-counts.json`·`drop-faults.json`·`attempt-faults.json`·(재시도가 켜진 층의) `timing/attempts-*.json`의 꼴과 서로의 맞음(위 표), 설정의 `idempotency.enabled`·`retry.enabled`가 불이 아님. `db/row-ids-*.csv`·`db/idempotency-row-ids-*.csv`가 없으면 입력 오류다(`--no-row-ids`를 준 때만 읽지 않는다). `--no-row-ids`를 줬는데 실행 폴더의 `db/`에 `row-ids-*.csv`·`idempotency-row-ids-*.csv`가 하나라도 있어도 입력 오류다(row_id를 내보낸 실행의 짝 대조를 건너뛰지 않게 — 파일이 있는지로만 가린다, `config.env`는 읽지 않는다).
+- 인자: `idem` 뒤에 `--run`(필수), `--expect` 짝, 그리고 값 없는 `--no-row-ids`(한 번까지). 기대 파일은 7-4절과 같은 꼴. **`--no-row-ids`는 row_id를 내보내기 전의 실행(첫 62개)을 다시 계산할 때만 쓴다**(`scripts/task04-recompute.sh`가 `config.env`에 `row_ids_exported=yes`가 없는 실행에만 준다) — 주면 두 파일을 읽지 않고 `layers.<L>.keyLinks`와 그 대조(9-5 ④의 뒤 둘)가 보고에 없다(`rowIdsChecked` 0).
+
+### 9-4. 지표의 식
+
+분위수는 7-3절의 규칙. "보낸 것" = 정답 줄 + 다시 보낸 줄. "처리 행"은 4-2절.
+
+| 지표(`report-idem.json`의 자리) | 식 |
+|---|---|
+| `enabled.<서비스>` | 설정의 `idempotency.enabled`(켬 1, 끔 0) |
+| `rowIdsChecked` | 업무 행 id와 키 행의 `row_id`를 읽어 짝을 견주었나(1) — `--no-row-ids`면 0 |
+| `clients.answers`·`requestIds` | 정답 줄 수, requestId 수 |
+| `clients.completed`·`failed`·`unknown`·`noResponse` | 4-1절의 판정마다의 정답 줄 수, `status` 0인 줄 수 |
+| `clients.notReachedServer` | requestId마다 max(0, 보낸 것의 수 − 주문의 시각 기록 수)의 합 — **늘 0이어야 한다**(8-4의 같은 이름과 같은 뜻을 requestId를 두 번 보내는 실행으로 넓힌 것) |
+| `clients.replayed` | `replayed`가 참인 정답 줄 수 |
+| `clients.status.<상태>` | 정답 줄의 `status`마다의 수 |
+| `clients.elapsedMs` | 정답 줄의 `elapsedMs` 분위수 |
+| `doubledTotal` | 어느 층이든 처리 행이 둘 이상인 requestId 수(4-2절과 같다) |
+| `layers.<L>.arrivals` | L의 시각 기록 수 |
+| `layers.<L>.rows`·`processedRows`·`doubled`·`extraProcessedRows` | 8-4절과 같다 |
+| `layers.<L>.processedNotCompleted` | 정답에 `completed`가 하나도 없는 requestId의 L의 처리 행 수(부하 단계에서 클라이언트가 성공으로 받지 못한 요청에 L이 한 일) |
+| `layers.<L>.processedClientFailed`·`processedClientUnknown` | 위를 클라이언트의 판정으로 가른 것: 그 requestId의 정답에 결과 모름(4-1)이 하나라도 있으면 `Unknown`, 아니면(모두 실패) `Failed`. 둘의 합 = `processedNotCompleted` |
+| `layers.<L>.responses.409`·`422`·`0`·`0Repeat` | L의 시각 기록 가운데 `status`가 409·422·0인 것의 수(L이 낸 응답 — 0은 끊은 것). `0Repeat` = status 0인 기록 가운데 **같은 requestId의 다른 기록이 L에 그 기록보다 먼저(같은 μs 포함 — 다른 기록의 `startUs` ≤ 그 기록의 `startUs`) 든 것** — 다시 온 키라서 409·422였을 수 있는 끊긴 응답(409·422는 다시 온 키에만 나온다. 처음 든 요청을 끊은 기록은, 다른 기록이 그것이 끝나기 전에 들었어도 넣지 않는다. 이 실험은 키 = requestId) |
+| `layers.<L>.keyLinks.*` | (`--no-row-ids`가 아닐 때만) `rowsNotLinked` = L의 업무 행 가운데 그 id를 가리키는 키 행이 없는 것, `rowsMultiLinked` = 둘 이상인 것, `keysToMissingRow` = 키 행 가운데 `row_id`가 L의 업무 행 id에 없는 것, `requestIdDiffers` = 키 행 가운데 가리키는 업무 행의 requestId가 키 행의 `request_id`와 다른 것. 꺼진 층에도 내지만(키 행이 없어 `rowsNotLinked` = 업무 행 수) 견주는 것은 켜진 층뿐이다(9-5 ④) |
+| `layers.<L>.keyRows`, `keyStates.<상태>` | L의 `idempotency-<L>.csv`의 행 수, 상태마다의 수 |
+| `layers.<L>.rowsWithoutKey` | L의 업무 행 가운데 그 requestId의 키 행이 L에 없는 것 |
+| `layers.<L>.keysWithoutRow` | L의 키 행 가운데 그 `request_id`의 업무 행이 L에 없는 것 |
+| `layers.<L>.counts.<종류>` | `idempotency-counts.json`의 값(서비스가 센 수) |
+| `layers.<L>.selfMs` | L의 시각 기록마다 `end − start − (callEnd − callStart)`(call 칸이 없으면 `end − start`)의 분위수 — L 자기 몫의 시간(넣은 지연 포함) |
+| `layers.<L>.serviceMs` | `end − start`의 분위수 |
+| `dropFaults.<서비스>.counted`·`expected` | `drop-faults.json`의 값 / 기록에서 다시 센 수: requestId마다(그 requestId의 **첫 보낸 것** — 정답 파일에서 그 requestId가 처음 나오는 줄. 정답 줄은 다시 보낸 줄보다 늘 앞선다 — 의 `dropFault`로) 그 서비스를 가리키는 지시가 있으면 min(n, 그 서비스의 그 requestId 시각 기록 수)의 합 |
+| `dropFaults.<서비스>.observedAbove` | 서비스 밖에서 본 끊김: 주문 = 보낸 것(정답 줄 + 다시 보낸 줄) 가운데 `status` 0인 것, 재고 = 주문이 재고를 부른 결과 가운데 `Unknown:IO_`로 시작하는 것, 결제 = 재고가 결제를 부른 결과 가운데 같은 것. "부른 결과"는 부르는 층의 재시도가 켜져 있으면 시도 기록(`attempts-<부르는 층>.json`)의 `outcome`, 꺼져 있으면 시각 기록의 `callOutcome`(재시도가 없으면 호출 하나 = 시도 하나) |
+| `attemptFaults.<서비스>.<종류>.counted`·`expected` | 8-4절과 같은 식(requestId마다 첫 보낸 것의 `attemptFault`로) |
+| `duplicates.*` | **정답 줄이 둘 이상인 requestId가 있을 때만**: `requestIds`(그 수), `pairs.<상태들>`(그 requestId들의 정답 `status`를 오름차순으로 `+`로 이은 것마다의 수 — 예 `201+409`), `secondCopyStatus.<상태>`(`copy` 2인 줄의 상태마다), `secondCopyReplayed`(`copy` 2인 줄이 `replayed`인 requestId 수), `laterArrivalStatus.<상태>`(주문의 시각 기록 가운데 `startUs`가 가장 늦은 것의 `status`마다 — 동시에 보낸 쌍에서 "나중에 든 것". **가장 늦은 둘의 `startUs`가 같으면 넣지 않고** `arrivalTies`로 센다), `arrivalTies`(그 수 — 같은 μs에 들어 나중을 가릴 수 없는 requestId), `arrivalGapMs`(정답 줄이 둘 이상인 requestId 가운데 주문의 시각 기록이 정확히 둘인 것의 두 `startUs`의 차 /1000 — 분위수, 같은 μs면 0), `conflict409.earlierGot409`·`laterGot409`·`sameMicros`(정답이 `201+409`이고 주문의 시각 기록이 정확히 둘인 requestId 가운데, 주문의 시각 기록에서 409를 낸 것이 먼저 든 것 / 나중에 든 것 / 둘이 같은 μs — 셋의 합은 그런 requestId 가운데 주문의 시각 기록에 409가 있는 것), `doubled`(그 가운데 두 번 처리됨) |
+| `reconcile.*` | **`resends.jsonl`이 있을 때만**: `candidates`(정답에서 다시 센 다시 보낼 후보 — 9-6의 규칙 그대로: requestId마다 정답에 2xx가 하나도 없고 `status` 0 또는 504가 있는 것), `notResent`(후보 가운데 다시 보낸 줄이 없는 것), `resentNotCandidate`(다시 보낸 requestId 가운데 후보가 아닌 것), `resent`(다시 보낸 줄 수), `resentRequestIds`, `completed`(그 가운데 2xx), `replayed`, `status.<상태>`, `finalOnce`(다시 보낸 requestId 가운데 세 층의 처리 행이 모두 정확히 1인 것), `finalDoubled`(어느 층이든 2 이상), `finalMissing`(어느 층이든 0), `elapsedMs` |
+
+### 9-5. 판정과 출력
+
+- 출력: `<실행 폴더>/report-idem.json`, `<실행 폴더>/metrics-idem.tsv`(수와 `null`만 편 것 — 7-4절과 같은 꼴), 표준 출력에 한 줄 요약, 표준 오류에 불일치.
+- **늘 견주는 것**(기대 파일이 없어도, 이 차례로):
+  ① `clients.notReachedServer`가 0이 아니면 `clients.notReachedServer: 늘 0, 실제 <n>`.
+  ② 서비스마다(order → inventory → payment) `dropFaults` counted ≠ expected이면 `dropFaults.<서비스>: 서비스가 센 수 <c>, 기록에서 다시 센 수 <e>`, counted ≠ observedAbove이면 `dropFaults.<서비스>: 서비스가 센 수 <c>, 위 층이 본 끊김 <o>`, 이어서 서비스·종류마다 `attemptFaults.<서비스>.<종류>: …`(8-5 ②와 같은 꼴). counted와 expected의 대조가 잡는 것과 잡지 못하는 것은 8-5 ②와 같다(같은 시각 기록을 두 번 센다) — 끊김을 넣었는데 그 요청이 응답을 내는 자리(`respond`)에 이르지 못하면(같은 서비스에 다른 장애를 함께 넣은 경우) 둘이 다르다. **observedAbove와의 대조는 서비스 밖의 관측**이라, 서비스가 끊었다고 셌는데 응답이 실제로 나간 것(Tomcat이 바뀌어 끊는 법이 듣지 않음)을 잡는다. 그 대신 끊김이 아닌 까닭의 `IO_` 실패나 status 0(k6의 요청 타임아웃 등), 위 층이 이미 타임아웃으로 포기한 뒤의 끊김(위 층은 `REQUEST_TIMEOUT`을 본다)이 있으면 둘이 달라진다 — task 04의 시나리오는 그런 섞음을 넣지 않으므로 다르면 원시 기록으로 까닭을 본다.
+  ③ 층마다 DB에 행이 있는데 그 층의 시각 기록이 없는 requestId가 있으면 `layers.<L>: DB 행은 있는데 시각 기록이 없는 requestId <n>건([…])`(8-5 ③과 같다).
+  ④ 층마다(order → inventory → payment): 멱등 키가 켜져 있으면 `layers.<L>.rowsWithoutKey: 늘 0, 실제 <n>`, `layers.<L>.keysWithoutRow: 늘 0, 실제 <n>`, `layers.<L>.counts.new: 키 행 <k>와 다르다(<n>)`, 그리고(`--no-row-ids`가 아니면) `layers.<L>.keyRows: 업무 행 <r>과 다르다(<k>)`, `layers.<L>.keyLinks.<이름>: 늘 0, 실제 <n>`(`rowsNotLinked` → `rowsMultiLinked` → `keysToMissingRow` → `requestIdDiffers`). 꺼져 있으면 키 행이 하나라도 있거나 센 수가 0이 아니면 `layers.<L>: 멱등 키가 꺼져 있는데(settings-<L>.json) …`.
+  **이 대조가 받치는 것**: 켜진 층에서 업무 행과 키 행이 **하나씩 짝을 이룬다**(업무 행 수 = 키 행 수, 업무 행마다 그것을 가리키는 키 행이 정확히 하나, 같은 requestId) — 실행 끝의 DB 상태로. `rowsWithoutKey`·`keysWithoutRow`는 requestId의 집합만 견주어(이 실험은 키 = requestId), 같은 requestId에 업무 행이 둘 남고 키 행이 하나인 꼴(진 쪽의 되돌림이 듣지 않음)을 잡지 못한다 — `keyRows`·`keyLinks`가 그것을 잡는다. **받치지 못하는 것**: 두 행이 같은 트랜잭션에서 들어갔다는 것 자체(원자성). 그것은 코드(`docs/idempotency.md` 3절 — 같은 `@Transactional` 메서드, 0행이면 `setRollbackOnly`)와, 남은 행이 PENDING이 아님(대조 분석의 `pendingRows` 0)·두 번 처리됨 0이 함께 받친다. 첫 62개 실행에는 `keyLinks`가 없다(`--no-row-ids`) — 그 실행들에서 본 것은 `rows`·`keyRows`(보고에 있다)가 같다는 것까지다.
+  ⑤ 층마다(④와 한 바퀴로 — 층마다 ④ 다음 ⑤, order → inventory → payment): `layers.<L>.responses.409` ≤ `counts.in-progress`, `responses.422` ≤ `counts.mismatch`, 그리고 넘친 몫의 합 (in-progress − 409) + (mismatch − 422) ≤ `responses.0Repeat`이 아니면 `layers.<L>.counts: in-progress <a>·mismatch <b>가 시각 기록의 409 <x>·422 <y>와 맞지 않는다(409·422였을 수 있는 끊긴 응답 <z>)`. 끊긴 요청은 시각 기록의 status가 0이라 그것이 409·422였는지 모른다 — 다시 온 키였을 수 있는 끊긴 응답만큼만 서비스가 센 수가 시각 기록보다 많아도 받는다(그런 것이 없으면 정확히 같아야 한다. 처음 온 키를 끊은 것 — 보정의 칸 1~3, 실험 가·라의 끊김 — 은 409·422일 수 없어 넣지 않는다). `X-Fault`의 `fail-after-commit`이 그 층의 409·422를 500으로 바꾸면 맞지 않는다(task 04의 시나리오는 넣지 않는다). `replayed`·`resumed`는 이렇게 견줄 시각 기록의 표시가 없어 견주지 않는다 — `replayed`는 "되돌려 주기로 한 수"다(`docs/idempotency.md` 3절).
+  ⑥ (`resends.jsonl`이 있을 때) 후보의 집합과 다시 보낸 requestId의 집합이 다르면 `reconcile: 다시 보낼 후보 <c>건 가운데 다시 보내지 못한 것 <n>건, 후보가 아닌데 다시 보낸 것 <m>건` — 다시 보낸 기록이 빠지면 `finalOnce`·`resent`가 함께 작아져 맞춘 것처럼 보이는 것을 막는다.
+  그 뒤에 기대 파일의 차이(7-4절과 같은 꼴).
+- 종료 코드: 0 · 1 입력 오류(9-3) · 2 불일치. `scripts/run.sh`의 종료 코드는 대조·(재시도)·멱등 키 분석 가운데 큰 것(대조 분석이 1이면 이 분석을 돌리지 않는다).
+
+### 9-6. 실행 폴더에 더해지는 것과 실행 차례
+
+- 실행 차례(`scripts/run.sh`, task 04의 시나리오): 6절의 차례에 더해 — 설정 기록 뒤 세 서비스의 `idempotency`를 조건(`IDEMPOTENCY_ENABLED`)과 견줌(다르면 실패) → 워밍업(키가 켜져 있으면 워밍업 요청에도 키) → 상태 초기화에서 세 DB의 `idempotency_keys`도 비우고 `/drop-faults`·`/idempotency-counts`를 0으로 → **부하 직전에 주문·재고의 `GET /retry-budget`을 `retry-budget-start.json`에, 토큰을 `config.env`의 `order_retry_budget_start_tokens`·`inventory_retry_budget_start_tokens`에(예산이 꺼져 있으면 빈 값)** → 부하 → 가라앉기 → **(맞추기 단계가 있는 시나리오) 정답에서 requestId마다 2xx가 하나도 없고 결과 모름(`status` 0 또는 504)이 있는 것을 골라, 그 requestId의 `copy` 1 정답과 같은 헤더·키·금액으로 20/s로 다시 보낸다(k6 `PHASE=resend`) → 다시 가라앉기** → 내보내기(키 표, 센 수, 끊은 수, 시도마다의 실패) → 분석.
+- 더해지는 파일: `db/idempotency-<서비스>.csv`, `db/row-ids-<서비스>.csv`·`db/idempotency-row-ids-<서비스>.csv`(2026-11-24 20:30 뒤의 실행 — `config.env`에 `row_ids_exported=yes`), `idempotency-counts.json`, `drop-faults.json`, `attempt-faults.json`, `retry-budget-start.json`(모든 시나리오), `resends.jsonl`·`resend-k6-*`(맞추기 단계), `expect.idem.json`(기대 파일을 줬으면), `report-idem.json`, `metrics-idem.tsv`. `config.env`에 `idempotency_in_progress_as_unknown`(20:30 뒤의 실행), `planned_answers`(정답 줄 수의 계획 — 같은 요청을 두 번 보내는 시나리오는 반복 수보다 많다. 대조 분석의 `--planned`가 이것), `idempotency_enabled`, `recon_expect`·`idem_expect`, `resend`, `resend_candidates`, `settled_after_resend_ms`.
+- 대조 분석의 기대 파일은 `RECON_EXPECT`로 바꿔 줄 수 있다(키 켬/끔의 보정이 같은 시나리오라서 — 주지 않으면 6절 그대로 `load/expectations/<시나리오>.json`).
+- 조건 하나는 `scripts/task04.sh`, 모두는 `scripts/task04-all.sh`, 표는 `scripts/task04-table.sh`(`runs/task-04-index.tsv`와 `metrics-idem.tsv`), 묶기·다시 계산은 `scripts/task04-pack.sh`·`task04-recompute.sh`.
+
+### 9-7. 알려진 한계
+
+- 시계: 7-5절과 같다.
+- `laterArrivalStatus`는 주문의 입구에 든 시각으로 "나중"을 가린다 — 두 요청이 같은 μs에 들면 가릴 수 없어 `arrivalTies`로 따로 센다(첫 62개 실행의 보고를 만든 분석기는 그 쌍을 늘 "나중 = 목록의 첫 기록"으로 셌다 — 시각 기록은 요청이 **끝난** 차례로 쌓이므로 먼저 끝나는 409 쪽으로 치우쳤다. 다시 만든 보고는 새 규칙이다). 409를 받는 쪽은 입구에 든 차례가 아니라 키 행을 넣는 차례로 정해지므로 "나중에 든 것"이 "둘째"를 뜻하지 않는다.
+- `selfMs`는 그 층의 필터 안 시간에서 아래 층 호출 시간을 뺀 것이다 — 아래 층 호출의 연결·전달 시간 가운데 호출 밖에서 쓴 몫(직렬화 등)은 자기 몫에 든다.
+- 키 행·센 수는 실행 끝의 값이다. 실행 중 키의 상태가 어떻게 바뀌었는지는 남지 않는다(서비스가 센 수와 시각 기록의 `status`로만 본다).

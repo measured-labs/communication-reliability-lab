@@ -45,8 +45,9 @@ data class NextLayerSettings(
  * JDK HttpClient를 직접 쓴다. 숨은 기본값을 코드에서 명시한다:
  * HTTP/1.1 고정, 리다이렉트 NEVER, 연결 타임아웃, 요청마다 요청 타임아웃(안 주면 무한).
  * 연결 실패 자동 재시도는 시스템 속성으로만 끌 수 있어서, 꺼져 있지 않으면 기동을 멈춘다.
+ * task 04: [inProgressAsUnknown]이 true면 409(아래 층이 같은 키를 처리 중)를 `Unknown:HTTP_409`로 읽는다(기본 false — `Failed:HTTP_409`).
  */
-class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall {
+class HttpNextLayerCall(private val settings: NextLayerSettings, private val inProgressAsUnknown: Boolean = false) : NextLayerCall {
     init {
         check(System.getProperty("jdk.httpclient.disableRetryConnect") == "true") {
             "-Djdk.httpclient.disableRetryConnect=true 가 없다 — JDK HttpClient가 연결 실패를 몰래 재시도한다"
@@ -62,13 +63,23 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
         .connectTimeout(settings.connectTimeout)
         .build()
 
-    private fun request(requestId: String, rawFault: String?, amount: Long, rawAttemptFault: String? = null): HttpRequest =
+    private fun request(
+        requestId: String,
+        rawFault: String?,
+        amount: Long,
+        rawAttemptFault: String? = null,
+        rawDropFault: String? = null,
+        idempotencyKey: String? = null,
+    ): HttpRequest =
         HttpRequest.newBuilder(settings.url)
             .timeout(settings.requestTimeout)
             .header("Content-Type", "application/json")
             .header(ChainHeaders.REQUEST_ID, requestId)
             .apply { rawFault?.let { header(ChainHeaders.FAULT, it) } }
             .apply { rawAttemptFault?.let { header(ChainHeaders.ATTEMPT_FAULT, it) } }
+            // task 04: 받은 그대로 넘긴다(없으면 붙이지 않는다 — task 01~03의 요청 그대로)
+            .apply { rawDropFault?.let { header(ChainHeaders.DROP_FAULT, it) } }
+            .apply { idempotencyKey?.let { header(ChainHeaders.IDEMPOTENCY_KEY, it) } }
             .POST(HttpRequest.BodyPublishers.ofString("""{"amount":$amount}"""))
             .build()
 
@@ -86,7 +97,7 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
 
     override fun call(amount: Long): LayerOutcome {
         val ctx = ChainContext.current()
-        val request = request(ctx.requestId, ctx.rawFault, amount, ctx.rawAttemptFault)
+        val request = request(ctx.requestId, ctx.rawFault, amount, ctx.rawAttemptFault, ctx.rawDropFault, ctx.idempotencyKey)
         val start = epochMicros()
         return send(request).also { outcome ->
             ctx.call = CallRecord(start, epochMicros(), outcome.label())
@@ -99,6 +110,7 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
             when (status) {
                 in 200..299 -> LayerOutcome.Completed
                 504 -> LayerOutcome.Unknown("HTTP_504")
+                409 -> if (inProgressAsUnknown) LayerOutcome.Unknown("HTTP_409") else LayerOutcome.Failed("HTTP_409")
                 else -> LayerOutcome.Failed("HTTP_$status")
             }
         } catch (e: HttpConnectTimeoutException) {

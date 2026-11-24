@@ -1,0 +1,169 @@
+{
+  "run" : "idem-reconcile-20261124T194127-r2",
+  "expect" : null,
+  "planned" : 800,
+  "differences" : [ ],
+  "reconciliation" : {
+    "amountMismatch" : 0,
+    "answers" : 800,
+    "doubledTotal" : 400,
+    "elapsedMs" : {
+      "all" : {
+        "count" : 800,
+        "max" : 2021.0,
+        "p50" : 30.0,
+        "p95" : 2012.0,
+        "p99" : 2019.0
+      },
+      "completed" : {
+        "count" : 400,
+        "max" : 45.0,
+        "p50" : 29.0,
+        "p95" : 32.0,
+        "p99" : 39.0
+      },
+      "failed" : {
+        "count" : 0,
+        "max" : null,
+        "p50" : null,
+        "p95" : null,
+        "p99" : null
+      },
+      "unknown" : {
+        "count" : 400,
+        "max" : 2021.0,
+        "p50" : 32.0,
+        "p95" : 2013.0,
+        "p99" : 2020.0
+      }
+    },
+    "faultCounts" : [ {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "payment"
+    } ],
+    "faultCountsMatch" : true,
+    "labels" : {
+      "" : {
+        "answers" : 800,
+        "elapsedMs" : {
+          "count" : 800,
+          "max" : 2021.0,
+          "p50" : 30.0,
+          "p95" : 2012.0,
+          "p99" : 2019.0
+        },
+        "requestIds" : 800,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 400,
+          "unknown | COMPLETED+COMPLETED | RESERVED+RESERVED | APPROVED+APPROVED" : 80,
+          "unknown | COMPLETED+UNKNOWN | RESERVED+RESERVED | APPROVED+APPROVED" : 160,
+          "unknown | COMPLETED+UNKNOWN | RESERVED+UNKNOWN | APPROVED+APPROVED" : 160
+        },
+        "verdicts" : {
+          "completed" : 400,
+          "failed" : 0,
+          "unknown" : 400
+        }
+      }
+    },
+    "layerMismatch" : 320,
+    "layers" : {
+      "order" : {
+        "amountMismatch" : 0,
+        "doubled" : 80,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 880,
+        "rows" : 1200,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 400
+      },
+      "inventory" : {
+        "amountMismatch" : null,
+        "doubled" : 240,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 1040,
+        "rows" : 1200,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 400
+      },
+      "payment" : {
+        "amountMismatch" : 0,
+        "doubled" : 400,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 1200,
+        "rows" : 1200,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 400
+      }
+    },
+    "lostTotal" : 0,
+    "orphanRows" : 0,
+    "pendingRows" : 0,
+    "requestIds" : 800,
+    "verdicts" : {
+      "completed" : 400,
+      "failed" : 0,
+      "unknown" : 400
+    }
+  }
+}

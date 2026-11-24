@@ -32,11 +32,18 @@ class FaultInjection(val service: String) {
     /**
      * 처리 코드가 마지막 커밋을 마친 뒤 응답을 이것으로 낸다.
      * `fail-after-commit`이 이 서비스를 가리키면 응답 대신 500을 낸다(처리 결과와 무관하게 — 커밋은 이미 끝났다).
+     * task 04: 입구 필터가 이 요청을 끊기로 했으면(X-Drop-Fault) 여기서 연결을 닫는다 — 돌려준 응답은 쓰이지 않고 버려진다.
      */
     fun respond(response: ResponseEntity<*>): ResponseEntity<*> {
-        if (ChainContext.current().faults.none { it.kind == FaultKind.FAIL_AFTER_COMMIT }) return response
-        counts.getValue(FaultKind.FAIL_AFTER_COMMIT).incrementAndGet()
-        return ResponseEntity.status(500).body(mapOf("fault" to FaultKind.FAIL_AFTER_COMMIT.label, "service" to service))
+        val ctx = ChainContext.current()
+        val out = if (ctx.faults.none { it.kind == FaultKind.FAIL_AFTER_COMMIT }) {
+            response
+        } else {
+            counts.getValue(FaultKind.FAIL_AFTER_COMMIT).incrementAndGet()
+            ResponseEntity.status(500).body(mapOf("fault" to FaultKind.FAIL_AFTER_COMMIT.label, "service" to service))
+        }
+        ctx.dropConnection?.invoke()
+        return out
     }
 }
 

@@ -1,0 +1,20 @@
+{
+  "clients.completed": {"min": 350, "max": 350},
+  "clients.unknown": {"min": 200, "max": 200},
+  "clients.failed": {"min": 0, "max": 0},
+  "doubledTotal": {"min": 350, "max": 350},
+  "layers.order.keyRows": {"min": 0, "max": 0},
+  "layers.payment.processedRows": {"min": 750, "max": 750},
+  "dropFaults.order.counted": {"min": 50, "max": 50},
+  "dropFaults.inventory.counted": {"min": 50, "max": 50},
+  "dropFaults.payment.counted": {"min": 50, "max": 50},
+  "attemptFaults.payment.slow-first.counted": {"min": 50, "max": 50},
+  "duplicates.requestIds": {"min": 150, "max": 150},
+  "duplicates.doubled": {"min": 150, "max": 150},
+  "duplicates.pairs.201+201": {"min": 150, "max": 150},
+  "reconcile.resent": {"min": 200, "max": 200},
+  "reconcile.completed": {"min": 200, "max": 200},
+  "reconcile.replayed": {"min": 0, "max": 0},
+  "reconcile.finalOnce": {"min": 0, "max": 0},
+  "reconcile.finalDoubled": {"min": 200, "max": 200}
+}

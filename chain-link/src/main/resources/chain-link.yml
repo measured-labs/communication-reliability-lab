@@ -47,6 +47,13 @@ chain:
       enabled: ${RETRY_BUDGET_ENABLED:false}
       capacity: ${RETRY_BUDGET_CAPACITY:0}
       deposit-per-call: ${RETRY_BUDGET_DEPOSIT:0}
+  # task 04: 멱등 키(docs/idempotency.md). 기본은 꺼짐 — 꺼져 있으면 키 헤더를 읽지 않고 idempotency_keys를 쓰지 않는다(task 01~03 그대로).
+  # 실제로 쓰인 값은 GET /settings 의 idempotency. compose.yaml이 세 서비스에 같은 IDEMPOTENCY_ENABLED를 준다.
+  idempotency:
+    enabled: ${IDEMPOTENCY_ENABLED:false}
+    # 아래 층의 409(같은 키 처리 중)를 결과 모름(Unknown:HTTP_409)으로 읽나. 기본 false = Failed:HTTP_409(다시 시도하지 않고 키는 FAILED).
+    # 키가 꺼져 있으면 켤 수 없다(기동 실패). docs/idempotency.md 3-1절.
+    in-progress-as-unknown: ${IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN:false}
 
 management:
   endpoints:

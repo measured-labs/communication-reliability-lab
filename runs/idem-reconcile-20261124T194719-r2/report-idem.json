@@ -1,0 +1,261 @@
+{
+  "run" : "idem-reconcile-20261124T194719-r2",
+  "expect" : null,
+  "differences" : [ ],
+  "answers" : 800,
+  "enabled" : {
+    "order" : 1,
+    "inventory" : 1,
+    "payment" : 1
+  },
+  "rowIdsChecked" : 0,
+  "clients" : {
+    "answers" : 800,
+    "requestIds" : 800,
+    "completed" : 400,
+    "failed" : 0,
+    "unknown" : 400,
+    "noResponse" : 80,
+    "notReachedServer" : 0,
+    "replayed" : 0,
+    "status" : {
+      "0" : 80,
+      "201" : 400,
+      "504" : 320
+    },
+    "elapsedMs" : {
+      "count" : 800,
+      "p50" : 32.0,
+      "p90" : 1036.0,
+      "p99" : 2018.0,
+      "max" : 2025.0
+    }
+  },
+  "doubledTotal" : 0,
+  "layers" : {
+    "order" : {
+      "arrivals" : 1200,
+      "rows" : 800,
+      "processedRows" : 800,
+      "doubled" : 0,
+      "extraProcessedRows" : 0,
+      "processedNotCompleted" : 400,
+      "processedClientFailed" : 0,
+      "processedClientUnknown" : 400,
+      "keyRows" : 800,
+      "keyStates" : {
+        "IN_PROGRESS" : 0,
+        "COMPLETED" : 800,
+        "FAILED" : 0,
+        "UNKNOWN" : 0
+      },
+      "rowsWithoutKey" : 0,
+      "keysWithoutRow" : 0,
+      "counts" : {
+        "new" : 800,
+        "replayed" : 80,
+        "in-progress" : 0,
+        "mismatch" : 0,
+        "resumed" : 320,
+        "missing-key" : 0
+      },
+      "responses" : {
+        "409" : 0,
+        "422" : 0,
+        "0" : 80,
+        "0Repeat" : 0
+      },
+      "selfMs" : {
+        "count" : 1200,
+        "p50" : 10.472,
+        "p90" : 13.251,
+        "p99" : 18.911,
+        "max" : 27.32
+      },
+      "serviceMs" : {
+        "count" : 1200,
+        "p50" : 28.886,
+        "p90" : 1023.071,
+        "p99" : 2014.286,
+        "max" : 2021.903
+      }
+    },
+    "inventory" : {
+      "arrivals" : 1120,
+      "rows" : 800,
+      "processedRows" : 800,
+      "doubled" : 0,
+      "extraProcessedRows" : 0,
+      "processedNotCompleted" : 400,
+      "processedClientFailed" : 0,
+      "processedClientUnknown" : 400,
+      "keyRows" : 800,
+      "keyStates" : {
+        "IN_PROGRESS" : 0,
+        "COMPLETED" : 800,
+        "FAILED" : 0,
+        "UNKNOWN" : 0
+      },
+      "rowsWithoutKey" : 0,
+      "keysWithoutRow" : 0,
+      "counts" : {
+        "new" : 800,
+        "replayed" : 160,
+        "in-progress" : 0,
+        "mismatch" : 0,
+        "resumed" : 160,
+        "missing-key" : 0
+      },
+      "responses" : {
+        "409" : 0,
+        "422" : 0,
+        "0" : 80,
+        "0Repeat" : 0
+      },
+      "selfMs" : {
+        "count" : 1120,
+        "p50" : 9.883,
+        "p90" : 12.397,
+        "p99" : 2512.629,
+        "max" : 2526.027
+      },
+      "serviceMs" : {
+        "count" : 1120,
+        "p50" : 16.998,
+        "p90" : 1010.597,
+        "p99" : 2520.504,
+        "max" : 2537.615
+      }
+    },
+    "payment" : {
+      "arrivals" : 960,
+      "rows" : 800,
+      "processedRows" : 800,
+      "doubled" : 0,
+      "extraProcessedRows" : 0,
+      "processedNotCompleted" : 400,
+      "processedClientFailed" : 0,
+      "processedClientUnknown" : 400,
+      "keyRows" : 800,
+      "keyStates" : {
+        "IN_PROGRESS" : 0,
+        "COMPLETED" : 800,
+        "FAILED" : 0,
+        "UNKNOWN" : 0
+      },
+      "rowsWithoutKey" : 0,
+      "keysWithoutRow" : 0,
+      "counts" : {
+        "new" : 800,
+        "replayed" : 160,
+        "in-progress" : 0,
+        "mismatch" : 0,
+        "resumed" : 0,
+        "missing-key" : 0
+      },
+      "responses" : {
+        "409" : 0,
+        "422" : 0,
+        "0" : 80,
+        "0Repeat" : 0
+      },
+      "selfMs" : {
+        "count" : 960,
+        "p50" : 5.621,
+        "p90" : 8.375,
+        "p99" : 1507.795,
+        "max" : 1514.714
+      },
+      "serviceMs" : {
+        "count" : 960,
+        "p50" : 5.621,
+        "p90" : 8.375,
+        "p99" : 1507.795,
+        "max" : 1514.714
+      }
+    }
+  },
+  "dropFaults" : {
+    "order" : {
+      "counted" : 80,
+      "expected" : 80,
+      "observedAbove" : 80
+    },
+    "inventory" : {
+      "counted" : 80,
+      "expected" : 80,
+      "observedAbove" : 80
+    },
+    "payment" : {
+      "counted" : 80,
+      "expected" : 80,
+      "observedAbove" : 80
+    }
+  },
+  "attemptFaults" : {
+    "order" : {
+      "fail-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "slow-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "outage" : {
+        "counted" : 0,
+        "expected" : 0
+      }
+    },
+    "inventory" : {
+      "fail-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "slow-first" : {
+        "counted" : 80,
+        "expected" : 80
+      },
+      "outage" : {
+        "counted" : 0,
+        "expected" : 0
+      }
+    },
+    "payment" : {
+      "fail-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "slow-first" : {
+        "counted" : 80,
+        "expected" : 80
+      },
+      "outage" : {
+        "counted" : 0,
+        "expected" : 0
+      }
+    }
+  },
+  "reconcile" : {
+    "candidates" : 400,
+    "notResent" : 0,
+    "resentNotCandidate" : 0,
+    "resent" : 400,
+    "resentRequestIds" : 400,
+    "completed" : 400,
+    "replayed" : 80,
+    "status" : {
+      "201" : 400
+    },
+    "finalOnce" : 400,
+    "finalDoubled" : 0,
+    "finalMissing" : 0,
+    "elapsedMs" : {
+      "count" : 400,
+      "p50" : 19.0,
+      "p90" : 32.0,
+      "p99" : 41.0,
+      "max" : 48.0
+    }
+  }
+}
