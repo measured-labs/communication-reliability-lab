@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# task 04 결과 표: runs/task-04-index.tsv와 실행마다의 metrics-idem.tsv(analyzer idem의 출력 — METRICS=metrics-retry.tsv로 바꿀 수 있다)에서 다시 계산한다.
+# task 04 결과 표: 색인(환경 변수 INDEX, 기본 runs/task-04-index.tsv — task 04-b는 INDEX=runs/task-04b-index.tsv METRICS=metrics-overload.tsv)과 실행마다의 metrics-idem.tsv(analyzer idem의 출력 — METRICS=metrics-retry.tsv로 바꿀 수 있다)에서 다시 계산한다.
 #   scripts/task04-table.sh <실험 이름> <지표 이름>...
 #   예: scripts/task04-table.sh ga doubledTotal
 # 줄마다: | 조건 | 지표 | r1 | r2 | r3 | 가운데값 | 범위(최소~최대) |
@@ -15,7 +15,7 @@ EXPERIMENT=${1:?"실험 이름(ga|na|da|ra|cal|base)"}
 METRICS=${METRICS:-metrics-idem.tsv}
 shift
 (($# > 0)) || die "지표 이름을 하나 이상 준다"
-INDEX=runs/task-04-index.tsv
+INDEX=${INDEX:-runs/task-04-index.tsv}
 [[ -f $INDEX ]] || die "$INDEX 가 없다"
 
 SUPERSEDED=${SUPERSEDED:-no}

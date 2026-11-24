@@ -4,6 +4,7 @@
 #   시나리오: calibration | duplicate (task 01) · false-timeout | slow-layer | split-timeout | cal-false-timeout | cal-sampler (task 02)
 #             · retry-mix | retry-outage-burst | retry-budget | cal-retry-first | cal-retry-second | cal-retry-outage | cal-retry-burst (task 03)
 #             · cal-idem | idem-retry-mix | idem-dup-seq | idem-dup-conc | idem-plain | idem-reconcile (task 04)
+#             · cal-overload | overload-spike (task 04-b)
 #   반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행(config.env에 discard_run=yes — 결과 표에 넣지 않는다).
 # task 02의 조건은 환경 변수로 준다(서비스도 같은 값으로 띄워 둔다 — scripts/up.sh): ORDER_TO_INVENTORY_TIMEOUT,
 #   INVENTORY_TO_PAYMENT_TIMEOUT(예: 2000ms), VIRTUAL_THREADS(true|false). 주지 않으면 task 01의 값(2000ms, 1000ms, false).
@@ -31,7 +32,9 @@ REP=${2:?"반복 번호"}
 # RETRY = 재시도 분석(task 03 — analyzer retry)을 하나. task 03의 시나리오는 모두 k6의 연결 재사용을 끈다(task 02 R02-1과 같은 까닭).
 # IDEM = 멱등 키 분석(task 04 — analyzer idem)을 하나. RESEND = 부하가 가라앉은 뒤 결과 모름을 같은 키로 다시 보내나(맞추기 단계).
 # ANSWERS_PER_ITERATION = 반복 하나가 남기는 정답 줄 수(같은 요청을 두 번 보내는 시나리오는 2, cal-idem은 8칸 가운데 셋이 2 → 11/8).
+# OVERLOAD = 한도 분석(task 04-b — analyzer overload)을 하나. SPIKE_* = 평소 RATE 위에 SPIKE_FROM_SECONDS부터 SPIKE_SECONDS 동안 더하는 초당 수.
 LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no; K6_NO_CONNECTION_REUSE=false; RETRY=no; IDEM=no; RESEND=no; ANSWERS_PER_8_ITERATIONS=8
+OVERLOAD=no; SPIKE_RATE=0; SPIKE_FROM_SECONDS=0; SPIKE_SECONDS=0
 case "$SCENARIO" in
   calibration)       RATE=20; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
   duplicate)         RATE=20; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
@@ -56,6 +59,10 @@ case "$SCENARIO" in
   idem-dup-conc)  RATE=20; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; ANSWERS_PER_8_ITERATIONS=16; K6_NO_CONNECTION_REUSE=true ;;
   idem-plain)     RATE=40; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; K6_NO_CONNECTION_REUSE=true ;;
   idem-reconcile) RATE=40; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; RESEND=yes; K6_NO_CONNECTION_REUSE=true ;;
+  # task 04-b (docs/experiments/task-04b-design.md) — 평소 25/s × 35s, 10s부터 5s 동안 +75/s. 재시도 분석과 한도 분석. 연결 재사용을 끈다
+  cal-overload|overload-spike)
+                  RATE=25; DURATION_SECONDS=35; SPIKE_RATE=75; SPIKE_FROM_SECONDS=10; SPIKE_SECONDS=5; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s
+                  MAX_VUS=150; RETRY=yes; OVERLOAD=yes; K6_NO_CONNECTION_REUSE=true ;;
   *) die "모르는 시나리오 '$SCENARIO'" ;;
 esac
 SETTLE_TIMEOUT_SECONDS=${SETTLE_TIMEOUT_SECONDS:-$DEFAULT_SETTLE_TIMEOUT}
@@ -65,6 +72,18 @@ INVENTORY_TO_PAYMENT_TIMEOUT=${INVENTORY_TO_PAYMENT_TIMEOUT:-1000ms}
 VIRTUAL_THREADS=${VIRTUAL_THREADS:-false}
 # task 04의 조건: 멱등 키(기본 꺼짐 — compose.yaml과 같다). 규칙: docs/idempotency.md
 IDEMPOTENCY_ENABLED=${IDEMPOTENCY_ENABLED:-false}
+# task 04-b의 조건: 결제의 한도(기본 꺼짐 — compose.yaml과 같다). 규칙: docs/measurement.md 10절
+PAYMENT_OVERLOAD_ENABLED=${PAYMENT_OVERLOAD_ENABLED:-false}
+PAYMENT_OVERLOAD_LIMIT=${PAYMENT_OVERLOAD_LIMIT:-0}
+PAYMENT_OVERLOAD_WINDOW=${PAYMENT_OVERLOAD_WINDOW:-1000ms}
+[[ $PAYMENT_OVERLOAD_ENABLED == true || $PAYMENT_OVERLOAD_ENABLED == false ]] || die "PAYMENT_OVERLOAD_ENABLED '$PAYMENT_OVERLOAD_ENABLED' 는 true|false"
+[[ $OVERLOAD == no || $PAYMENT_OVERLOAD_ENABLED == true ]] || die "시나리오 $SCENARIO 는 결제의 한도가 켜져 있어야 한다(PAYMENT_OVERLOAD_ENABLED=true)"
+# 한도 분석의 기대 파일(보정). 주면 꼭 있어야 한다. 주지 않으면 load/expectations/<시나리오>.overload.json이 있을 때만.
+if [[ -n ${OVERLOAD_EXPECT:-} ]]; then
+  [[ -f $OVERLOAD_EXPECT ]] || die "OVERLOAD_EXPECT '$OVERLOAD_EXPECT' 가 없다"
+elif [[ -f load/expectations/${SCENARIO}.overload.json ]]; then
+  OVERLOAD_EXPECT=load/expectations/${SCENARIO}.overload.json
+fi
 [[ $IDEMPOTENCY_ENABLED == true || $IDEMPOTENCY_ENABLED == false ]] || die "IDEMPOTENCY_ENABLED '$IDEMPOTENCY_ENABLED' 는 true|false"
 # task 04(더 재는 조건): 위 층이 아래 층의 409(같은 키 처리 중)를 결과 모름으로 읽나(기본 false — 지금까지의 동작). 키가 켜져 있을 때만 켤 수 있다.
 IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN=${IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN:-false}
@@ -99,7 +118,7 @@ ms_of() { [[ $1 =~ ^([0-9]+)ms$ ]] || die "타임아웃 '$1' 은 <정수>ms 꼴�
 WARMUP_REQUEST_TIMEOUT=5s
 WARMUP_RATE=20
 WARMUP_SECONDS=15
-PLANNED=$((RATE * DURATION_SECONDS))
+PLANNED=$((RATE * DURATION_SECONDS + SPIKE_RATE * SPIKE_SECONDS)) # task 04-b: 구간 동안 더하는 요청까지
 # 정답 줄 수의 계획(분석기의 --planned). 같은 요청을 두 번 보내는 시나리오는 반복 수보다 많다(task 04).
 ((PLANNED % 8 == 0)) || ((ANSWERS_PER_8_ITERATIONS == 8)) || die "반복 수 $PLANNED 가 8의 배수가 아니다"
 PLANNED_ANSWERS=$((PLANNED * ANSWERS_PER_8_ITERATIONS / 8))
@@ -157,6 +176,13 @@ fi
   echo "recon_expect=${RECON_EXPECT:-}"
   echo "idem_expect=${IDEM_EXPECT:-}"
   echo "resend=$RESEND"
+  echo "payment_overload_enabled=$PAYMENT_OVERLOAD_ENABLED"
+  echo "payment_overload_limit=$PAYMENT_OVERLOAD_LIMIT"
+  echo "payment_overload_window=$PAYMENT_OVERLOAD_WINDOW"
+  echo "spike_rate_per_second=$SPIKE_RATE"
+  echo "spike_from_seconds=$SPIKE_FROM_SECONDS"
+  echo "spike_seconds=$SPIKE_SECONDS"
+  echo "overload_expect=${OVERLOAD_EXPECT:-}"
   for p in ORDER INVENTORY; do
     for k in ENABLED MAX_ATTEMPTS ON BACKOFF BASE_DELAY MAX_DELAY BUDGET_ENABLED BUDGET_CAPACITY BUDGET_DEPOSIT; do
       var="${p}_RETRY_${k}"; echo "$(tr '[:upper:]' '[:lower:]' <<< "$var")=${!var}"
@@ -168,6 +194,7 @@ fi
   echo "k6_version=$(k6 version | head -1)"
   echo "host_nproc=$(nproc)"
   echo "host_mem_total_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
+  echo "host_loadavg_start=$(cat /proc/loadavg)" # 이 컴퓨터의 다른 부하(task 04-b — 실행 끝의 값은 host_loadavg_end)
 } > "$OUT/config.env"
 "${COMPOSE[@]}" config > "$OUT/compose.resolved.yaml"
 "${COMPOSE[@]}" images > "$OUT/images.txt"
@@ -223,6 +250,16 @@ for svc in order inventory payment; do
   fi
 done
 
+# task 04-b: 떠 있는 한도 객체의 값과 조건을 견준다. 주문·재고는 늘 꺼짐(compose.yaml이 결제에만 준다).
+for svc in order inventory; do
+  want_settings "$OUT/settings-${svc}.json" '"overload":{"enabled":false}' "$svc 의 한도 꺼짐"
+done
+if [[ $PAYMENT_OVERLOAD_ENABLED == true ]]; then
+  want_settings "$OUT/settings-payment.json" "\"overload\":{\"enabled\":true,\"limit\":${PAYMENT_OVERLOAD_LIMIT},\"windowMs\":$(ms_of "$PAYMENT_OVERLOAD_WINDOW"),\"rule\":\"sliding-window\"}" "결제의 한도"
+else
+  want_settings "$OUT/settings-payment.json" '"overload":{"enabled":false}' "결제의 한도 꺼짐"
+fi
+
 # 3. 워밍업(장애 없음). 한 회차가 모두 201이 될 때까지 최대 3회차 — 셋 다 아니면 서비스가 정상이 아닌 채로 재는 것이라 멈춘다.
 #    막 뜬 JVM에서는 첫 회차의 일부가 층의 타임아웃(1000ms)을 넘는다(504 32/300 — 실측 2026-11-24).
 warmed=no
@@ -254,6 +291,7 @@ for entry in "${SERVICE_PORTS[@]}"; do
   curl -sf -X DELETE "localhost:${entry#*:}/attempts" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/drop-faults" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/idempotency-counts" > /dev/null
+  curl -sf -X DELETE "localhost:${entry#*:}/overload" > /dev/null # task 04-b(꺼져 있으면 늘 0)
 done
 left_o=$(psql_lab order_db "select count(*) from orders")
 left_i=$(psql_lab inventory_db "select count(*) from reservations")
@@ -272,6 +310,7 @@ k6_flags=()
 [[ $K6_NO_CONNECTION_REUSE == true ]] && k6_flags+=(--no-connection-reuse)
 k6 run "${k6_flags[@]}" -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" \
   -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e MAX_VUS="$MAX_VUS" -e LOOKUP_RATE="$LOOKUP_RATE" -e RUN_ID="$NAME" \
+  -e SPIKE_RATE="$SPIKE_RATE" -e SPIKE_FROM_SECONDS="$SPIKE_FROM_SECONDS" -e SPIKE_SECONDS="$SPIKE_SECONDS" \
   --log-output=file="$OUT/k6-log.txt" --log-format=raw \
   --summary-export="$OUT/k6-summary.json" load/chain.js > "$OUT/k6-stdout.txt" 2>&1 \
   || die "k6가 실패했다 — $OUT/k6-stdout.txt"
@@ -341,6 +380,14 @@ if [[ $IDEM == yes ]]; then
   printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${c[@]}" > "$OUT/idempotency-counts.json"
   printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${d[@]}" > "$OUT/drop-faults.json"
   printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${a[@]}" > "$OUT/attempt-faults.json"
+fi
+# task 04-b: 세 서비스가 센 든 수·거절 수(GET /overload). 받지 못하면 실패.
+if [[ $OVERLOAD == yes ]]; then
+  o=()
+  for entry in "${SERVICE_PORTS[@]}"; do
+    o+=("$(curl -sf "localhost:${entry#*:}/overload")") || die "/overload를 받지 못했다"
+  done
+  printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${o[@]}" > "$OUT/overload-counts.json"
 fi
 # 시각 기록과 표본(task 02 — docs/measurement.md 7절). 받지 못하면 실패.
 mkdir -p "$OUT/timing"
@@ -417,5 +464,20 @@ if [[ $IDEM == yes && $rc != 1 ]]; then
   log "멱등 키 분석 종료 코드 $irc"
   ((irc > rc)) && rc=$irc
 fi
+# 12. 한도 지표(task 04-b — docs/measurement.md 10절). 대조 분석이 입력 오류(1)면 하지 않는다. 종료 코드는 큰 것.
+if [[ $OVERLOAD == yes && $rc != 1 ]]; then
+  oargs=(overload --run "/runs/${NAME}")
+  if [[ -n ${OVERLOAD_EXPECT:-} ]]; then
+    cp "$OVERLOAD_EXPECT" "$OUT/expect.overload.json"
+    oargs+=(--expect "/runs/${NAME}/expect.overload.json")
+  fi
+  set +e
+  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${oargs[@]}"
+  orc=$?
+  set -e
+  log "한도 분석 종료 코드 $orc"
+  ((orc > rc)) && rc=$orc
+fi
+echo "host_loadavg_end=$(cat /proc/loadavg)" >> "$OUT/config.env"
 log "기록: $OUT (종료 코드 $rc)"
 exit "$rc"
