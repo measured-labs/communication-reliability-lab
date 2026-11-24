@@ -3,6 +3,7 @@
 #   scripts/run.sh <시나리오> <반복 번호>
 #   시나리오: calibration | duplicate (task 01) · false-timeout | slow-layer | split-timeout | cal-false-timeout | cal-sampler (task 02)
 #             · retry-mix | retry-outage-burst | retry-budget | cal-retry-first | cal-retry-second | cal-retry-outage | cal-retry-burst (task 03)
+#             · cal-idem | idem-retry-mix | idem-dup-seq | idem-dup-conc | idem-plain | idem-reconcile (task 04)
 #   반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행(config.env에 discard_run=yes — 결과 표에 넣지 않는다).
 # task 02의 조건은 환경 변수로 준다(서비스도 같은 값으로 띄워 둔다 — scripts/up.sh): ORDER_TO_INVENTORY_TIMEOUT,
 #   INVENTORY_TO_PAYMENT_TIMEOUT(예: 2000ms), VIRTUAL_THREADS(true|false). 주지 않으면 task 01의 값(2000ms, 1000ms, false).
@@ -28,7 +29,9 @@ REP=${2:?"반복 번호"}
 # 그 연결을 닫는 일을 실행기의 큐에 넣어 늦게 닫으므로, k6가 그 사이 그 연결에 보낸 요청이 EOF로 끊겼다
 # (2026-11-24 — docs/results/task-02-timeouts.md "실험 나" R02-1). 서비스 사이의 HttpClient는 15s < 20s로 이미 피한다.
 # RETRY = 재시도 분석(task 03 — analyzer retry)을 하나. task 03의 시나리오는 모두 k6의 연결 재사용을 끈다(task 02 R02-1과 같은 까닭).
-LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no; K6_NO_CONNECTION_REUSE=false; RETRY=no
+# IDEM = 멱등 키 분석(task 04 — analyzer idem)을 하나. RESEND = 부하가 가라앉은 뒤 결과 모름을 같은 키로 다시 보내나(맞추기 단계).
+# ANSWERS_PER_ITERATION = 반복 하나가 남기는 정답 줄 수(같은 요청을 두 번 보내는 시나리오는 2, cal-idem은 8칸 가운데 셋이 2 → 11/8).
+LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no; K6_NO_CONNECTION_REUSE=false; RETRY=no; IDEM=no; RESEND=no; ANSWERS_PER_8_ITERATIONS=8
 case "$SCENARIO" in
   calibration)       RATE=20; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
   duplicate)         RATE=20; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
@@ -46,6 +49,13 @@ case "$SCENARIO" in
   retry-mix)          RATE=40; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
   retry-outage-burst) RATE=40; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
   retry-budget)       RATE=40; DURATION_SECONDS=40; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
+  # task 04 (docs/experiments/task-04-design.md) — 모두 k6의 연결 재사용을 끈다
+  cal-idem)       RATE=16; DURATION_SECONDS=25; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; RESEND=yes; ANSWERS_PER_8_ITERATIONS=11; K6_NO_CONNECTION_REUSE=true ;;
+  idem-retry-mix) RATE=40; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; RETRY=yes; K6_NO_CONNECTION_REUSE=true ;;
+  idem-dup-seq)   RATE=20; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; ANSWERS_PER_8_ITERATIONS=16; K6_NO_CONNECTION_REUSE=true ;;
+  idem-dup-conc)  RATE=20; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; ANSWERS_PER_8_ITERATIONS=16; K6_NO_CONNECTION_REUSE=true ;;
+  idem-plain)     RATE=40; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; K6_NO_CONNECTION_REUSE=true ;;
+  idem-reconcile) RATE=40; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; RESEND=yes; K6_NO_CONNECTION_REUSE=true ;;
   *) die "모르는 시나리오 '$SCENARIO'" ;;
 esac
 SETTLE_TIMEOUT_SECONDS=${SETTLE_TIMEOUT_SECONDS:-$DEFAULT_SETTLE_TIMEOUT}
@@ -53,6 +63,9 @@ SETTLE_TIMEOUT_SECONDS=${SETTLE_TIMEOUT_SECONDS:-$DEFAULT_SETTLE_TIMEOUT}
 ORDER_TO_INVENTORY_TIMEOUT=${ORDER_TO_INVENTORY_TIMEOUT:-2000ms}
 INVENTORY_TO_PAYMENT_TIMEOUT=${INVENTORY_TO_PAYMENT_TIMEOUT:-1000ms}
 VIRTUAL_THREADS=${VIRTUAL_THREADS:-false}
+# task 04의 조건: 멱등 키(기본 꺼짐 — compose.yaml과 같다). 규칙: docs/idempotency.md
+IDEMPOTENCY_ENABLED=${IDEMPOTENCY_ENABLED:-false}
+[[ $IDEMPOTENCY_ENABLED == true || $IDEMPOTENCY_ENABLED == false ]] || die "IDEMPOTENCY_ENABLED '$IDEMPOTENCY_ENABLED' 는 true|false"
 # task 03의 조건: 층마다의 재시도(기본값 = 꺼짐, compose.yaml과 같다). 규칙: docs/retry.md
 for p in ORDER INVENTORY; do
   for kv in ENABLED=false MAX_ATTEMPTS=1 ON=failed,unknown BACKOFF=none BASE_DELAY=0ms MAX_DELAY=0ms BUDGET_ENABLED=false BUDGET_CAPACITY=0 BUDGET_DEPOSIT=0; do
@@ -66,6 +79,10 @@ if [[ -n ${RETRY_EXPECT:-} ]]; then
 elif [[ -f load/expectations/${SCENARIO}.retry.json ]]; then
   RETRY_EXPECT=load/expectations/${SCENARIO}.retry.json
 fi
+# task 04: 대조 분석의 기대 파일을 바꿔 줄 때(키 켬/끔의 보정이 같은 시나리오라서). 주면 꼭 있어야 한다.
+# 주지 않으면 load/expectations/<시나리오>.json이 있을 때만(task 01~03 그대로). 멱등 키 분석의 기대 파일은 IDEM_EXPECT.
+[[ -z ${RECON_EXPECT:-} || -f $RECON_EXPECT ]] || die "RECON_EXPECT '$RECON_EXPECT' 가 없다"
+[[ -z ${IDEM_EXPECT:-} || -f $IDEM_EXPECT ]] || die "IDEM_EXPECT '$IDEM_EXPECT' 가 없다"
 # 분석기가 견줄 시각 지표의 기대 파일(보정). 주면 꼭 있어야 한다. 주지 않으면 load/expectations/<시나리오>.timing.json이 있을 때만.
 if [[ -n ${TIMING_EXPECT:-} ]]; then
   [[ -f $TIMING_EXPECT ]] || die "TIMING_EXPECT '$TIMING_EXPECT' 가 없다"
@@ -78,6 +95,9 @@ WARMUP_REQUEST_TIMEOUT=5s
 WARMUP_RATE=20
 WARMUP_SECONDS=15
 PLANNED=$((RATE * DURATION_SECONDS))
+# 정답 줄 수의 계획(분석기의 --planned). 같은 요청을 두 번 보내는 시나리오는 반복 수보다 많다(task 04).
+((PLANNED % 8 == 0)) || ((ANSWERS_PER_8_ITERATIONS == 8)) || die "반복 수 $PLANNED 가 8의 배수가 아니다"
+PLANNED_ANSWERS=$((PLANNED * ANSWERS_PER_8_ITERATIONS / 8))
 BASE_URL=http://localhost:8081
 
 NAME="${SCENARIO}-$(date +%Y%m%dT%H%M%S)-r${REP}"
@@ -116,6 +136,7 @@ fi
   echo "rate_per_second=$RATE"
   echo "duration_seconds=$DURATION_SECONDS"
   echo "planned_requests=$PLANNED"
+  echo "planned_answers=$PLANNED_ANSWERS"
   echo "k6_request_timeout=$REQUEST_TIMEOUT"
   echo "k6_max_vus=$MAX_VUS"
   echo "k6_no_connection_reuse=$K6_NO_CONNECTION_REUSE"
@@ -126,6 +147,10 @@ fi
   echo "virtual_threads=$VIRTUAL_THREADS"
   echo "timing_expect=${TIMING_EXPECT:-}"
   echo "retry_expect=${RETRY_EXPECT:-}"
+  echo "idempotency_enabled=$IDEMPOTENCY_ENABLED"
+  echo "recon_expect=${RECON_EXPECT:-}"
+  echo "idem_expect=${IDEM_EXPECT:-}"
+  echo "resend=$RESEND"
   for p in ORDER INVENTORY; do
     for k in ENABLED MAX_ATTEMPTS ON BACKOFF BASE_DELAY MAX_DELAY BUDGET_ENABLED BUDGET_CAPACITY BUDGET_DEPOSIT; do
       var="${p}_RETRY_${k}"; echo "$(tr '[:upper:]' '[:lower:]' <<< "$var")=${!var}"
@@ -182,13 +207,22 @@ for p in ORDER INVENTORY; do
   fi
 done
 
+# task 04: 떠 있는 멱등 키 객체의 값과 조건을 견준다(세 서비스).
+for svc in order inventory payment; do
+  if [[ $IDEMPOTENCY_ENABLED == true ]]; then
+    want_settings "$OUT/settings-${svc}.json" '"idempotency":{"enabled":true,' "$svc 의 멱등 키 켬"
+  else
+    want_settings "$OUT/settings-${svc}.json" '"idempotency":{"enabled":false}' "$svc 의 멱등 키 꺼짐"
+  fi
+done
+
 # 3. 워밍업(장애 없음). 한 회차가 모두 201이 될 때까지 최대 3회차 — 셋 다 아니면 서비스가 정상이 아닌 채로 재는 것이라 멈춘다.
 #    막 뜬 JVM에서는 첫 회차의 일부가 층의 타임아웃(1000ms)을 넘는다(504 32/300 — 실측 2026-11-24).
 warmed=no
 for round in 1 2 3; do
   log "워밍업 ${round}회차 ${WARMUP_RATE}/s × ${WARMUP_SECONDS}s"
   k6 run -q -e SCENARIO=warmup -e BASE_URL="$BASE_URL" -e RATE="$WARMUP_RATE" -e DURATION_SECONDS="$WARMUP_SECONDS" \
-    -e REQUEST_TIMEOUT="$WARMUP_REQUEST_TIMEOUT" -e MAX_VUS=300 -e RUN_ID="warmup${round}-${NAME}" \
+    -e REQUEST_TIMEOUT="$WARMUP_REQUEST_TIMEOUT" -e MAX_VUS=300 -e RUN_ID="warmup${round}-${NAME}" -e WARMUP_KEYS="$IDEMPOTENCY_ENABLED" \
     --log-output=file="$OUT/warmup${round}-k6-log.txt" --log-format=raw load/chain.js > "$OUT/warmup${round}-k6-stdout.txt" 2>&1 \
     || die "워밍업 k6가 실패했다 — $OUT/warmup${round}-k6-stdout.txt"
   warm_sent=$(grep -c '^{"type":"answer"' "$OUT/warmup${round}-k6-log.txt" || true)
@@ -204,17 +238,26 @@ log "상태 초기화"
 psql_lab order_db "truncate orders restart identity"
 psql_lab inventory_db "truncate reservations restart identity"
 psql_lab payment_db "truncate payments restart identity"
+for db in order_db inventory_db payment_db; do psql_lab "$db" "truncate idempotency_keys"; done # task 04(꺼져 있으면 늘 비어 있다)
 for entry in "${SERVICE_PORTS[@]}"; do
   curl -sf -X DELETE "localhost:${entry#*:}/faults" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/timings" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/samples" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/attempt-faults" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/attempts" > /dev/null
+  curl -sf -X DELETE "localhost:${entry#*:}/drop-faults" > /dev/null
+  curl -sf -X DELETE "localhost:${entry#*:}/idempotency-counts" > /dev/null
 done
 left_o=$(psql_lab order_db "select count(*) from orders")
 left_i=$(psql_lab inventory_db "select count(*) from reservations")
 left_p=$(psql_lab payment_db "select count(*) from payments")
 [[ "$left_o $left_i $left_p" == "0 0 0" ]] || die "초기화 뒤에도 행이 남았다 ($left_o $left_i $left_p)"
+# R03-7: 재시도 예산의 시작 토큰 — 예산은 실행 사이에 비우지 않으므로 부하 직전의 값을 남긴다(꺼져 있으면 {"enabled":false})
+b_order=$(curl -sf localhost:8081/retry-budget) && b_inventory=$(curl -sf localhost:8082/retry-budget) || die "/retry-budget을 받지 못했다"
+printf '{"order":%s,"inventory":%s}\n' "$b_order" "$b_inventory" > "$OUT/retry-budget-start.json"
+budget_tokens() { sed -n 's/.*"tokens":"\([^"]*\)".*/\1/p' <<< "$1"; }
+echo "order_retry_budget_start_tokens=$(budget_tokens "$b_order")" >> "$OUT/config.env"
+echo "inventory_retry_budget_start_tokens=$(budget_tokens "$b_inventory")" >> "$OUT/config.env"
 
 # 5. 부하. k6가 실패로 끝나면(스크립트 오류 등) 실행도 실패다.
 log "부하 ${RATE}/s × ${DURATION_SECONDS}s = ${PLANNED}건"
@@ -242,6 +285,25 @@ echo "settled_after_ms=$settled_ms" >> "$OUT/config.env"
 log "가라앉음: ${settled_ms}ms"
 require_running
 
+# 6-1. (task 04) 맞추기 단계: 결과 모름을 같은 키로 다시 보낸다(고르는 규칙은 load/chain.js의 RESEND — 같은 규칙을 jq로 세어 0이면 건너뛴다).
+if [[ $RESEND == yes ]]; then
+  n_resend=$(jq -s 'group_by(.requestId) | map(select((map(.status >= 200 and .status < 300) | any | not) and (map(.status == 0 or .status == 504) | any))) | length' "$OUT/answers.jsonl")
+  echo "resend_candidates=$n_resend" >> "$OUT/config.env"
+  : > "$OUT/resends.jsonl"
+  if ((n_resend > 0)); then
+    log "맞추기 단계: 결과 모름 ${n_resend}건을 같은 키로 다시 보낸다(20/s)"
+    k6 run "${k6_flags[@]}" -e PHASE=resend -e ANSWERS_FILE="$PWD/$OUT/answers.jsonl" -e RESEND_RATE=20 -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" \
+      -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e MAX_VUS="$MAX_VUS" -e LOOKUP_RATE=0 -e RUN_ID="$NAME" \
+      --log-output=file="$OUT/resend-k6-log.txt" --log-format=raw --summary-export="$OUT/resend-k6-summary.json" load/chain.js > "$OUT/resend-k6-stdout.txt" 2>&1 \
+      || die "맞추기 단계의 k6가 실패했다 — $OUT/resend-k6-stdout.txt"
+    grep '^{"type":"resend"' "$OUT/resend-k6-log.txt" > "$OUT/resends.jsonl" || die "다시 보낸 줄이 하나도 없다 — $OUT/resend-k6-log.txt"
+    ! grep -q '"dropped_iterations"' "$OUT/resend-k6-summary.json" || die "맞추기 단계의 k6가 보내지 못한 반복이 있다"
+    settled_ms=$(wait_drained "$SETTLE_TIMEOUT_SECONDS")
+    echo "settled_after_resend_ms=$settled_ms" >> "$OUT/config.env"
+    require_running
+  fi
+fi
+
 # 7. 세 DB의 상태와 서비스가 센 장애 수를 내보낸다.
 psql_csv() { "${COMPOSE[@]}" exec -T postgres psql -U lab -d "$1" -v ON_ERROR_STOP=1 -q -c "\\copy ($2) to stdout with (format csv, header)"; }
 psql_csv order_db "select request_id, amount, status from orders order by id" > "$OUT/db/orders.csv"
@@ -251,6 +313,22 @@ f_order=$(curl -sf localhost:8081/faults)
 f_inventory=$(curl -sf localhost:8082/faults)
 f_payment=$(curl -sf localhost:8083/faults)
 printf '{"order":%s,"inventory":%s,"payment":%s}\n' "$f_order" "$f_inventory" "$f_payment" > "$OUT/fault-counts.json"
+# task 04: 키 표, 서비스가 센 키 수와 끊은 수, 시도마다 넣은 실패(재시도 분석을 하지 않는 실행도 대조하려고). 받지 못하면 실패.
+if [[ $IDEM == yes ]]; then
+  for db in order inventory payment; do
+    psql_csv "${db}_db" "select key, request_id, amount, state, response_status from idempotency_keys order by key" > "$OUT/db/idempotency-${db}.csv"
+  done
+  c=(); d=(); a=()
+  for entry in "${SERVICE_PORTS[@]}"; do
+    port=${entry#*:}
+    c+=("$(curl -sf "localhost:${port}/idempotency-counts")") || die "/idempotency-counts를 받지 못했다"
+    d+=("$(curl -sf "localhost:${port}/drop-faults")") || die "/drop-faults를 받지 못했다"
+    a+=("$(curl -sf "localhost:${port}/attempt-faults")") || die "/attempt-faults를 받지 못했다"
+  done
+  printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${c[@]}" > "$OUT/idempotency-counts.json"
+  printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${d[@]}" > "$OUT/drop-faults.json"
+  printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${a[@]}" > "$OUT/attempt-faults.json"
+fi
 # 시각 기록과 표본(task 02 — docs/measurement.md 7절). 받지 못하면 실패.
 mkdir -p "$OUT/timing"
 for entry in "${SERVICE_PORTS[@]}"; do
@@ -270,8 +348,11 @@ if [[ $RETRY == yes ]]; then
 fi
 
 # 8. 분석(컨테이너 안). 기대 파일이 있으면 실행 기록에 함께 넣고 견준다.
-args=(--run "/runs/${NAME}" --planned "$PLANNED")
-if [[ -f "load/expectations/${SCENARIO}.json" ]]; then
+args=(--run "/runs/${NAME}" --planned "$PLANNED_ANSWERS")
+if [[ -n ${RECON_EXPECT:-} ]]; then
+  cp "$RECON_EXPECT" "$OUT/expect.json"
+  args+=(--expect "/runs/${NAME}/expect.json")
+elif [[ -f "load/expectations/${SCENARIO}.json" ]]; then
   cp "load/expectations/${SCENARIO}.json" "$OUT/expect.json"
   args+=(--expect "/runs/${NAME}/expect.json")
 fi
@@ -308,6 +389,20 @@ if [[ $RETRY == yes && $rc != 1 ]]; then
   set -e
   log "재시도 분석 종료 코드 $rrc"
   ((rrc > rc)) && rc=$rrc
+fi
+# 11. 멱등 키 지표(task 04 — docs/measurement.md 9절). 대조 분석이 입력 오류(1)면 하지 않는다. 종료 코드는 큰 것.
+if [[ $IDEM == yes && $rc != 1 ]]; then
+  iargs=(idem --run "/runs/${NAME}")
+  if [[ -n ${IDEM_EXPECT:-} ]]; then
+    cp "$IDEM_EXPECT" "$OUT/expect.idem.json"
+    iargs+=(--expect "/runs/${NAME}/expect.idem.json")
+  fi
+  set +e
+  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${iargs[@]}"
+  irc=$?
+  set -e
+  log "멱등 키 분석 종료 코드 $irc"
+  ((irc > rc)) && rc=$irc
 fi
 log "기록: $OUT (종료 코드 $rc)"
 exit "$rc"

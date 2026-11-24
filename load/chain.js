@@ -4,6 +4,9 @@
 // 받는 값(모두 꼭 준다 — 기본값에 기대지 않는다):
 //   SCENARIO         warmup | calibration | duplicate | (task 02) false-timeout | slow-layer | split-timeout | cal-false-timeout | cal-sampler
 //                    | (task 03) retry-mix | retry-outage-burst | retry-budget | cal-retry-first | cal-retry-second | cal-retry-outage | cal-retry-burst
+//                    | (task 04) cal-idem | idem-retry-mix | idem-dup-seq | idem-dup-conc | idem-plain | idem-reconcile
+//   PHASE            (task 04, 주지 않으면 load) load | resend — resend는 맞추기 단계: ANSWERS_FILE의 결과 모름을 같은 키로 다시 보낸다
+//   ANSWERS_FILE     (resend만) 부하 단계의 answers.jsonl 절대 경로. RESEND_RATE(초당)도 준다
 //   BASE_URL         예: http://localhost:8081
 //   RATE             초당 요청 수
 //   DURATION_SECONDS 보내는 시간(초)
@@ -96,8 +99,11 @@ export const RETRY_MIX = [
   [0.94, 'payment:fail-first=9'],
   [1.00, 'payment:slow-first=1@1500'],
 ];
+export function retryU(i) {
+  return mulberry32((RETRY_SEED + Math.imul(i, 0x9e3779b9)) >>> 0)();
+}
 export function mixAttemptFault(i) {
-  const u = mulberry32((RETRY_SEED + Math.imul(i, 0x9e3779b9)) >>> 0)();
+  const u = retryU(i);
   for (const [p, f] of RETRY_MIX) if (u < p) return f;
   return RETRY_MIX[RETRY_MIX.length - 1][1];
 }
@@ -123,7 +129,71 @@ function attemptFault(i) {
   return '';
 }
 
-const SCENARIOS = ['warmup', 'calibration', 'duplicate', 'false-timeout', 'slow-layer', 'split-timeout', 'cal-false-timeout', 'cal-sampler', ...TASK03];
+// ── task 04 (docs/experiments/task-04-design.md) ── 키는 헤더 Idempotency-Key(값 = requestId), 끊김은 X-Drop-Fault(docs/measurement.md 9-1).
+// 키를 켜든 끄든 같은 요청을 보낸다(꺼진 서비스는 키를 읽지 않는다). 보내는 꼴(send): one 한 번 · seq 같은 요청을 잇달아 두 번 ·
+// conc 동시에 두 번(http.batch) · seq-amount 잇달아 두 번, 둘째는 금액 +1.
+const TASK04 = ['cal-idem', 'idem-retry-mix', 'idem-dup-seq', 'idem-dup-conc', 'idem-plain', 'idem-reconcile'];
+export const dropAt = (svc) => `${svc}:drop-after-commit=1`;
+// 보정: 요청 i의 칸 = i % 8
+export const CAL_IDEM_SLOTS = [
+  { send: 'one' },                                  // 0 정상
+  { send: 'one', dropFault: dropAt('order') },      // 1~3 층마다 커밋 뒤 끊김
+  { send: 'one', dropFault: dropAt('inventory') },
+  { send: 'one', dropFault: dropAt('payment') },
+  { send: 'one', attemptFault: 'payment:slow-first=1@1500' }, // 4 재고가 1000ms에 포기, 결제는 1500ms에 처리
+  { send: 'seq' },                                  // 5 잇달아 두 번
+  { send: 'conc' },                                 // 6 동시에 두 번
+  { send: 'seq-amount' },                           // 7 같은 키, 둘째는 금액 +1
+];
+// 실험 라: 요청 i의 칸 = i % 10
+export const RECONCILE_SLOTS = [
+  { send: 'one' }, { send: 'one' }, { send: 'one' }, { send: 'one' }, { send: 'one' }, // 0~4 정상
+  { send: 'one', attemptFault: 'inventory:slow-first=1@2500' },                        // 5 주문이 2000ms에 포기
+  { send: 'one', dropFault: dropAt('order') },
+  { send: 'one', dropFault: dropAt('inventory') },
+  { send: 'one', dropFault: dropAt('payment') },
+  { send: 'one', attemptFault: 'payment:slow-first=1@1500' },                          // 9 재고가 1000ms에 포기
+];
+function task04Request(i) {
+  switch (SCENARIO) {
+    case 'cal-idem': return CAL_IDEM_SLOTS[i % CAL_IDEM_SLOTS.length];
+    case 'idem-reconcile': return RECONCILE_SLOTS[i % RECONCILE_SLOTS.length];
+    case 'idem-dup-seq': return { send: 'seq' };
+    case 'idem-dup-conc': return { send: 'conc' };
+    case 'idem-plain': return { send: 'one' };
+    case 'idem-retry-mix': {
+      // task 03 retry-mix와 같은 u·같은 칸. "정상"(u < 0.50)의 위 몫 [0.40, 0.50)만 결제에서 커밋 뒤 끊김
+      const u = retryU(i);
+      if (u >= 0.40 && u < 0.50) return { send: 'one', dropFault: dropAt('payment') };
+      return { send: 'one', attemptFault: mixAttemptFault(i) };
+    }
+  }
+  throw new Error(`task 04가 아닌 시나리오 ${SCENARIO}`);
+}
+
+const PHASE = __ENV.PHASE || 'load';
+if (PHASE !== 'load' && PHASE !== 'resend') throw new Error(`PHASE '${PHASE}' 는 load | resend`);
+if (PHASE === 'resend' && !TASK04.includes(SCENARIO)) throw new Error('resend는 task 04 시나리오에서만');
+// 맞추기 단계: 부하 단계의 정답에서 requestId마다 2xx가 하나도 없고 결과 모름(status 0 또는 504)이 하나라도 있는 것을 고른다.
+// 다시 보내는 것은 그 requestId의 첫째(copy 1) 정답과 같은 요청(같은 헤더·키·금액).
+const RESEND = PHASE === 'resend' ? (() => {
+  const byId = new Map();
+  for (const line of open(required('ANSWERS_FILE')).split('\n')) {
+    if (!line) continue;
+    const a = JSON.parse(line);
+    if (!byId.has(a.requestId)) byId.set(a.requestId, []);
+    byId.get(a.requestId).push(a);
+  }
+  const out = [];
+  for (const list of byId.values()) {
+    const ok = list.some((a) => a.status >= 200 && a.status < 300);
+    const unknown = list.some((a) => a.status === 0 || a.status === 504);
+    if (!ok && unknown) out.push(list.find((a) => a.copy === 1) || list[0]);
+  }
+  return out.sort((a, b) => a.iteration - b.iteration);
+})() : [];
+
+const SCENARIOS = ['warmup', 'calibration', 'duplicate', 'false-timeout', 'slow-layer', 'split-timeout', 'cal-false-timeout', 'cal-sampler', ...TASK03, ...TASK04];
 if (!SCENARIOS.includes(SCENARIO)) throw new Error(`SCENARIO '${SCENARIO}' 는 ${SCENARIOS} 가 아니다`);
 
 // 끝난 뒤 아직 응답을 기다리는 반복을 끊지 않게: k6 요청 타임아웃보다 길게(k6 기본 30s에 기대지 않는다).
@@ -156,6 +226,23 @@ if (SCENARIO === 'slow-layer') {
   };
 }
 
+// task 04 맞추기 단계: 부하 시나리오 대신 다시 보내기 하나만(고른 수 n을 RESEND_RATE로 — n이 0이면 실행 스크립트가 이 단계를 건너뛴다)
+const RESEND_RATE = PHASE === 'resend' ? Number(required('RESEND_RATE')) : 0;
+if (PHASE === 'resend') {
+  if (RESEND.length === 0) throw new Error('다시 보낼 결과 모름이 없다 — 실행 스크립트가 건너뛰어야 한다');
+  for (const k of Object.keys(scenarios)) delete scenarios[k];
+  scenarios.resend = {
+    executor: 'constant-arrival-rate',
+    exec: 'resend',
+    rate: RESEND_RATE,
+    timeUnit: '1s',
+    duration: `${Math.ceil(RESEND.length / RESEND_RATE)}s`,
+    preAllocatedVUs: MAX_VUS,
+    maxVUs: MAX_VUS,
+    gracefulStop: GRACEFUL_STOP,
+  };
+}
+
 export const options = {
   scenarios,
   // 요약은 보고에 쓰지 않는다(보고는 정답 줄에서 계산한다). 실행 기록에 남기기만 한다.
@@ -183,14 +270,80 @@ function pick(i) {
 // 모자란 경우(VU 부족으로 떨어진 반복)는 분석기가 --planned로 잡는다.
 const PLANNED = RATE * DURATION_SECONDS;
 
+// task 04: 요청 하나(또는 같은 요청 둘)를 보내고 보낸 것마다 정답 한 줄. 정답 줄에 key·attemptFault·dropFault·copy·replayed를 더한다.
+function task04Headers(requestId, r) {
+  const headers = { 'Content-Type': 'application/json', 'X-Request-Id': requestId, 'Idempotency-Key': requestId };
+  if (r.attemptFault) headers['X-Attempt-Fault'] = r.attemptFault;
+  if (r.dropFault) headers['X-Drop-Fault'] = r.dropFault;
+  return headers;
+}
+function task04Line(type, i, requestId, r, amount, copy, sentAt, res, elapsedMs) {
+  return JSON.stringify({
+    type,
+    requestId,
+    key: requestId,
+    fault: '',
+    attemptFault: r.attemptFault || '',
+    dropFault: r.dropFault || '',
+    amount,
+    copy,
+    iteration: i,
+    sentAt: sentAt.toISOString(),
+    sentAtMs: sentAt.getTime(),
+    status: res.status,
+    errorCode: res.error_code,
+    error: res.error,
+    elapsedMs,
+    replayed: res.headers['Idempotent-Replayed'] === 'true', // 저장한 응답을 돌려받았나(판정에 쓰지 않고 기록만)
+  });
+}
+function task04Send(i) {
+  const requestId = `${RUN_ID}-${i}`;
+  const r = task04Request(i);
+  const amount = 1000 + i;
+  const params = { headers: task04Headers(requestId, r), timeout: REQUEST_TIMEOUT, responseType: 'none' };
+  const url = `${BASE_URL}/orders`;
+  if (r.send === 'conc') {
+    // 동시에 두 번: 두 요청을 한 batch로(연결 재사용을 끈 실행에서는 새 연결 둘을 함께 맺는다). elapsedMs는 둘 다 끝난 때까지.
+    const sentAt = new Date();
+    const body = JSON.stringify({ amount });
+    const rs = http.batch([['POST', url, body, params], ['POST', url, body, params]]);
+    const elapsedMs = Date.now() - sentAt.getTime();
+    rs.forEach((res, k) => console.log(task04Line('answer', i, requestId, r, amount, k + 1, sentAt, res, elapsedMs)));
+    return;
+  }
+  const copies = r.send === 'one' ? 1 : 2;
+  for (let copy = 1; copy <= copies; copy++) {
+    const a = r.send === 'seq-amount' && copy === 2 ? amount + 1 : amount;
+    const sentAt = new Date();
+    const res = http.post(url, JSON.stringify({ amount: a }), params);
+    console.log(task04Line('answer', i, requestId, r, a, copy, sentAt, res, Date.now() - sentAt.getTime()));
+  }
+}
+
+// task 04 맞추기 단계의 반복 하나: 고른 정답 하나를 같은 헤더·키·금액으로 다시 보낸다. 줄의 type은 "resend".
+export function resend() {
+  const i = exec.scenario.iterationInTest;
+  if (i >= RESEND.length) return;
+  const a = RESEND[i];
+  const r = { attemptFault: a.attemptFault, dropFault: a.dropFault };
+  const params = { headers: task04Headers(a.requestId, r), timeout: REQUEST_TIMEOUT, responseType: 'none' };
+  const sentAt = new Date();
+  const res = http.post(`${BASE_URL}/orders`, JSON.stringify({ amount: a.amount }), params);
+  console.log(task04Line('resend', a.iteration, a.requestId, r, a.amount, 1, sentAt, res, Date.now() - sentAt.getTime()));
+}
+
 export default function () {
   const i = exec.scenario.iterationInTest;
   if (i >= PLANNED) return;
+  if (TASK04.includes(SCENARIO)) return task04Send(i);
   const { requestId, fault } = pick(i);
   // 요청마다 다른 금액 — 서비스가 금액을 바꾸거나 다른 요청의 금액을 쓰면 분석기가 amountMismatch로 잡는다.
   const amount = 1000 + i;
   const headers = { 'Content-Type': 'application/json', 'X-Request-Id': requestId };
   if (fault) headers['X-Fault'] = fault;
+  // task 04: 키가 켜진 서비스의 워밍업은 키가 있어야 한다(없으면 400). 실행 스크립트가 키를 켰을 때만 WARMUP_KEYS=true를 준다.
+  if (SCENARIO === 'warmup' && __ENV.WARMUP_KEYS === 'true') headers['Idempotency-Key'] = requestId;
   const task03 = TASK03.includes(SCENARIO);
   const af = task03 ? attemptFault(i) : '';
   if (af) headers['X-Attempt-Fault'] = af;
