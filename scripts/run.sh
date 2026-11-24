@@ -4,7 +4,7 @@
 #   시나리오: calibration | duplicate (task 01) · false-timeout | slow-layer | split-timeout | cal-false-timeout | cal-sampler (task 02)
 #             · retry-mix | retry-outage-burst | retry-budget | cal-retry-first | cal-retry-second | cal-retry-outage | cal-retry-burst (task 03)
 #             · cal-idem | idem-retry-mix | idem-dup-seq | idem-dup-conc | idem-plain | idem-reconcile (task 04)
-#             · cal-overload | overload-spike (task 04-b)
+#             · cal-overload | overload-spike | overload-low | overload-edge | overload-burst (task 04-b)
 #   반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행(config.env에 discard_run=yes — 결과 표에 넣지 않는다).
 # task 02의 조건은 환경 변수로 준다(서비스도 같은 값으로 띄워 둔다 — scripts/up.sh): ORDER_TO_INVENTORY_TIMEOUT,
 #   INVENTORY_TO_PAYMENT_TIMEOUT(예: 2000ms), VIRTUAL_THREADS(true|false). 주지 않으면 task 01의 값(2000ms, 1000ms, false).
@@ -60,9 +60,11 @@ case "$SCENARIO" in
   idem-plain)     RATE=40; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; K6_NO_CONNECTION_REUSE=true ;;
   idem-reconcile) RATE=40; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s; MAX_VUS=300; IDEM=yes; RESEND=yes; K6_NO_CONNECTION_REUSE=true ;;
   # task 04-b (docs/experiments/task-04b-design.md) — 평소 25/s × 35s, 10s부터 5s 동안 +75/s. 재시도 분석과 한도 분석. 연결 재사용을 끈다
-  cal-overload|overload-spike)
+  #   리뷰 뒤 더 잰 세 자리(설계 10절)는 평소 도착률만 다르다: overload-low 15/s · overload-edge 17/s · overload-burst 평균 15/s(2s마다 30건 무리 — load/chain.js)
+  cal-overload|overload-spike|overload-low|overload-edge|overload-burst)
                   RATE=25; DURATION_SECONDS=35; SPIKE_RATE=75; SPIKE_FROM_SECONDS=10; SPIKE_SECONDS=5; DEFAULT_SETTLE_TIMEOUT=20; REQUEST_TIMEOUT=10s
-                  MAX_VUS=150; RETRY=yes; OVERLOAD=yes; K6_NO_CONNECTION_REUSE=true ;;
+                  MAX_VUS=150; RETRY=yes; OVERLOAD=yes; K6_NO_CONNECTION_REUSE=true
+                  case "$SCENARIO" in overload-low|overload-burst) RATE=15 ;; overload-edge) RATE=17 ;; esac ;;
   *) die "모르는 시나리오 '$SCENARIO'" ;;
 esac
 SETTLE_TIMEOUT_SECONDS=${SETTLE_TIMEOUT_SECONDS:-$DEFAULT_SETTLE_TIMEOUT}

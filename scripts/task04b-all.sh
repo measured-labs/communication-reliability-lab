@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # task 04-b의 꺼진 상태 확인, 보정, 실험 가·나를 설계(docs/experiments/task-04b-design.md)의 조건과 차례 그대로 돌린다.
-#   scripts/task04b-all.sh [base|cal|ga|na ...]   (인자가 없으면 base cal ga — na는 실험 가의 결과로 조건을 고른 뒤 NA_BACKOFF를 주고 돌린다)
+#   scripts/task04b-all.sh [base|cal|ga|na|pl ...]   (인자가 없으면 base cal ga — na는 실험 가의 결과로 조건을 고른 뒤 NA_BACKOFF를 주고 돌린다.
+#   pl은 리뷰 뒤 더 잰 세 자리 — 설계 10절)
 #   NA_BACKOFF=none|fixed|exponential|exponential-jitter scripts/task04b-all.sh na
 # 조건 하나 = scripts/task04.sh(INDEX=runs/task-04b-index.tsv): 서비스를 그 조건으로 다시 띄우고 → 버리는 실행(r0) → REP_LIST의 반복.
 # 실험 가·나는 반복을 조건 사이에 번갈아 돈다(설계 7절 — 둘째 바퀴는 거꾸로, 같은 조건이 이어지는 곳은 다시 띄우지 않고 이어 잰다).
@@ -35,17 +36,38 @@ inv() { # <backoff> [예산 켬: budget]
   [[ ${2:-} == budget ]] && o+=(INVENTORY_RETRY_BUDGET_ENABLED=true INVENTORY_RETRY_BUDGET_CAPACITY=10 INVENTORY_RETRY_BUDGET_DEPOSIT=0.1)
   echo "${o[@]}"
 }
-ga() { # <조건> <반복 번호들>
-  local c=$1 reps=$2 r=()
-  case "$c" in
-    off) ;;
-    none) read -ra r <<< "$(inv none)" ;;
-    fixed) read -ra r <<< "$(inv fixed)" ;;
-    exp) read -ra r <<< "$(inv exponential)" ;;
-    jitter) read -ra r <<< "$(inv exponential-jitter)" ;;
-    *) die "모르는 조건 '$c'" ;;
+ga_retry() { # <조건> — 실험 가의 조건 이름 → 재고의 재시도 값(끔이면 빈 줄)
+  case "$1" in
+    off) echo ;;
+    none) inv none ;;
+    fixed) inv fixed ;;
+    exp) inv exponential ;;
+    jitter) inv exponential-jitter ;;
+    *) die "모르는 조건 '$1'" ;;
   esac
+}
+ga() { # <조건> <반복 번호들>
+  local c=$1 reps=$2 r=() v
+  v=$(ga_retry "$c") # 모르는 조건이면 여기서 멈춘다(set -e)
+  read -ra r <<< "$v"
   REP_LIST="$reps" cond ga "ga-$c" overload-spike "${LIMIT[@]}" "${r[@]}"
+}
+# 리뷰 뒤 더 잰 세 자리(설계 10절): 서비스 조건은 실험 가의 다섯 그대로이고 부하만 다르다 — 시나리오 overload-low(①)·overload-edge(②)·overload-burst(③).
+# 조건을 바꿀 때만 다시 띄우고 버리는 실행 1회(그 블록의 첫 시나리오) 뒤, 그 바퀴의 자리들을 떠 있는 서비스로 이어 잰다.
+LAST_PL=""
+pl() { # <조건> <반복 번호(= 바퀴)> <시나리오들...>
+  local c=$1 rep=$2 r=() first=yes sc v; shift 2
+  v=$(ga_retry "$c") # 모르는 조건이면 여기서 멈춘다(set -e)
+  read -ra r <<< "$v"
+  for sc in "$@"; do
+    if [[ $first == yes && $c != "$LAST_PL" ]]; then
+      REP_LIST="$rep" cond pl "pl-$c" "$sc" "${LIMIT[@]}" "${r[@]}"
+    else
+      UP=no DISCARD=no REP_LIST="$rep" cond pl "pl-$c" "$sc" "${LIMIT[@]}" "${r[@]}"
+    fi
+    first=no
+  done
+  LAST_PL=$c
 }
 na() { # <off|on> <반복 번호들>
   local r=()
@@ -82,6 +104,14 @@ for part in "${parts[@]}"; do
     na) # 실험 나(설계 6·7절): on r1 · off r1·r2 · on r2·r3 · off r3 — 간격은 실험 가에서 고른 것(NA_BACKOFF)
       [[ -n ${NA_BACKOFF:-} ]] || die "NA_BACKOFF(실험 가에서 고른 간격)를 준다"
       na on 1; na off "1 2"; na on "2 3"; na off 3
+      ;;
+    pl) # 세 자리(설계 10절): 바퀴 1~3은 ①②③, 바퀴 4~5는 ②만(②는 반복 5). 바퀴마다 조건과 자리의 차례를 뒤집는다
+      fwd=(off none fixed exp jitter); rev=(jitter exp fixed none off)
+      for c in "${fwd[@]}"; do pl "$c" 1 overload-low overload-edge overload-burst; done
+      for c in "${rev[@]}"; do pl "$c" 2 overload-burst overload-edge overload-low; done
+      for c in "${fwd[@]}"; do pl "$c" 3 overload-low overload-edge overload-burst; done
+      for c in "${rev[@]}"; do pl "$c" 4 overload-edge; done
+      for c in "${fwd[@]}"; do pl "$c" 5 overload-edge; done
       ;;
     *) die "모르는 묶음 '$part'" ;;
   esac

@@ -5,7 +5,7 @@
 //   SCENARIO         warmup | calibration | duplicate | (task 02) false-timeout | slow-layer | split-timeout | cal-false-timeout | cal-sampler
 //                    | (task 03) retry-mix | retry-outage-burst | retry-budget | cal-retry-first | cal-retry-second | cal-retry-outage | cal-retry-burst
 //                    | (task 04) cal-idem | idem-retry-mix | idem-dup-seq | idem-dup-conc | idem-plain | idem-reconcile
-//                    | (task 04-b) overload-spike | cal-overload
+//                    | (task 04-b) overload-spike | cal-overload | overload-low | overload-edge | overload-burst
 //   PHASE            (task 04, 주지 않으면 load) load | resend — resend는 맞추기 단계: ANSWERS_FILE의 결과 모름을 같은 키로 다시 보낸다
 //   ANSWERS_FILE     (resend만) 부하 단계의 answers.jsonl 절대 경로. RESEND_RATE(초당)도 준다
 //   BASE_URL         예: http://localhost:8081
@@ -197,7 +197,12 @@ const RESEND = PHASE === 'resend' ? (() => {
 
 // ── task 04-b (docs/experiments/task-04b-design.md) ── 장애 헤더 없음: 평소 RATE 위에 정해진 구간 동안 SPIKE_RATE를 더한다(부하가 원인).
 // 평소 요청은 기본 시나리오(chain), 더하는 요청은 시나리오 spike(startTime = SPIKE_FROM_SECONDS). 정답 줄에 phase(base|spike)와 attemptFault ""를 더한다.
-const OVERLOAD = ['overload-spike', 'cal-overload'];
+const OVERLOAD = ['overload-spike', 'cal-overload', 'overload-low', 'overload-edge', 'overload-burst'];
+// 리뷰 뒤 더 잰 자리 ③(설계 10절): 평소 요청을 OVERLOAD_BURST_PERIOD_MS마다 OVERLOAD_BURST_SIZE건씩 같은 순간에 보낸다(task 03의 무리와 같은 꼴 —
+// 요청 i는 무리 floor(i / 크기)에 들고 시나리오 시작 + (무리 + 1) × 주기까지 기다렸다 보낸다). 평균 도착률 = RATE. 구간 요청은 고르게 그대로.
+export const OVERLOAD_BURST_SIZE = 30;
+export const OVERLOAD_BURST_PERIOD_MS = 2000;
+if (SCENARIO === 'overload-burst' && RATE * OVERLOAD_BURST_PERIOD_MS !== OVERLOAD_BURST_SIZE * 1000) throw new Error(`overload-burst는 RATE = ${OVERLOAD_BURST_SIZE * 1000 / OVERLOAD_BURST_PERIOD_MS} 이어야 한다`);
 const SPIKE_RATE = OVERLOAD.includes(SCENARIO) ? Number(required('SPIKE_RATE')) : 0;
 const SPIKE_FROM_SECONDS = OVERLOAD.includes(SCENARIO) ? Number(required('SPIKE_FROM_SECONDS')) : 0;
 const SPIKE_SECONDS = OVERLOAD.includes(SCENARIO) ? Number(required('SPIKE_SECONDS')) : 0;
@@ -399,7 +404,13 @@ export default function () {
   const i = exec.scenario.iterationInTest;
   if (i >= PLANNED) return;
   if (TASK04.includes(SCENARIO)) return task04Send(i);
-  if (OVERLOAD.includes(SCENARIO)) return overloadSend(`${RUN_ID}-${i}`, 1000 + i, i, 'base');
+  if (OVERLOAD.includes(SCENARIO)) {
+    if (SCENARIO === 'overload-burst') {
+      const wait = exec.scenario.startTime + (Math.floor(i / OVERLOAD_BURST_SIZE) + 1) * OVERLOAD_BURST_PERIOD_MS - Date.now();
+      if (wait > 0) sleep(wait / 1000);
+    }
+    return overloadSend(`${RUN_ID}-${i}`, 1000 + i, i, 'base');
+  }
   const { requestId, fault } = pick(i);
   // 요청마다 다른 금액 — 서비스가 금액을 바꾸거나 다른 요청의 금액을 쓰면 분석기가 amountMismatch로 잡는다.
   const amount = 1000 + i;
