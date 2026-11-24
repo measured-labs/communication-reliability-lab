@@ -1,0 +1,35 @@
+2026-11-25T00:50:30+09:00	base-calibration	 00:50:30 up 7 days,  9:06,  1 user,  load average: 17.96, 13.52, 13.71
+2026-11-25T00:52:13+09:00	base-duplicate	 00:52:13 up 7 days,  9:08,  1 user,  load average: 15.71, 14.13, 13.92
+2026-11-25T00:53:00+09:00	base-ft-t300	 00:53:00 up 7 days,  9:09,  1 user,  load average: 14.58, 14.09, 13.92
+2026-11-25T00:54:30+09:00	base-ft-t1000	 00:54:30 up 7 days,  9:10,  1 user,  load average: 17.05, 15.21, 14.34
+2026-11-25T00:55:42+09:00	base-sampler	 00:55:42 up 7 days,  9:11,  1 user,  load average: 17.37, 15.96, 14.68
+2026-11-25T00:57:31+09:00	retry-sampler	 00:57:31 up 7 days,  9:13,  1 user,  load average: 13.33, 15.18, 14.55
+2026-11-25T00:58:47+09:00	base-c1-max1	 00:58:47 up 7 days,  9:14,  1 user,  load average: 9.44, 13.44, 13.98
+2026-11-25T00:59:53+09:00	base-c2-fixed200	 00:59:53 up 7 days,  9:16,  1 user,  load average: 10.06, 12.79, 13.72
+2026-11-25T01:00:57+09:00	base-c6-outage	 01:00:57 up 7 days,  9:17,  1 user,  load average: 10.43, 12.33, 13.50
+2026-11-25T01:01:50+09:00	base-c7-burst	 01:01:50 up 7 days,  9:18,  1 user,  load average: 10.46, 12.22, 13.41
+2026-11-25T01:02:38+09:00	base-c3-exponential	 01:02:38 up 7 days,  9:18,  1 user,  load average: 10.41, 11.88, 13.22
+2026-11-25T01:03:42+09:00	base-c4-jitter	 01:03:42 up 7 days,  9:19,  1 user,  load average: 11.81, 12.15, 13.23
+2026-11-25T01:04:47+09:00	base-c5-budget0	 01:04:47 up 7 days,  9:20,  1 user,  load average: 12.28, 12.27, 13.21
+2026-11-25T01:05:50+09:00	base-cal-idem-off	 01:05:50 up 7 days,  9:22,  1 user,  load average: 12.26, 12.36, 13.18
+2026-11-25T01:07:38+09:00	base-cal-idem-on	 01:07:38 up 7 days,  9:23,  1 user,  load average: 9.62, 11.41, 12.75
+2026-11-25T01:09:29+09:00	cal-overload	 01:09:29 up 7 days,  9:25,  1 user,  load average: 16.31, 13.13, 13.21
+2026-11-25T01:11:19+09:00	ga-off 1	 01:11:19 up 7 days,  9:27,  1 user,  load average: 13.30, 13.38, 13.32
+2026-11-25T01:13:37+09:00	ga-none 1	 01:13:37 up 7 days,  9:29,  1 user,  load average: 10.49, 12.80, 13.15
+2026-11-25T01:16:09+09:00	ga-fixed 1	 01:16:09 up 7 days,  9:32,  1 user,  load average: 9.83, 11.10, 12.42
+2026-11-25T01:18:48+09:00	ga-exp 1	 01:18:48 up 7 days,  9:35,  1 user,  load average: 11.24, 11.56, 12.41
+2026-11-25T01:21:27+09:00	ga-jitter 1 2	 01:21:27 up 7 days,  9:37,  1 user,  load average: 8.18, 10.21, 11.77
+2026-11-25T01:25:12+09:00	ga-exp 2	 01:25:12 up 7 days,  9:41,  1 user,  load average: 9.33, 10.10, 11.41
+2026-11-25T01:27:47+09:00	ga-fixed 2	 01:27:47 up 7 days,  9:43,  1 user,  load average: 8.19, 9.14, 10.82
+2026-11-25T01:30:26+09:00	ga-none 2	 01:30:26 up 7 days,  9:46,  1 user,  load average: 13.18, 10.50, 11.04
+2026-11-25T01:33:06+09:00	ga-off 2 3	 01:33:06 up 7 days,  9:49,  1 user,  load average: 12.01, 11.09, 11.17
+2026-11-25T01:36:53+09:00	ga-none 3	 01:36:53 up 7 days,  9:53,  1 user,  load average: 10.28, 10.98, 11.15
+2026-11-25T01:39:32+09:00	ga-fixed 3	 01:39:32 up 7 days,  9:55,  1 user,  load average: 12.40, 11.31, 11.23
+2026-11-25T01:42:05+09:00	ga-exp 3	 01:42:05 up 7 days,  9:58,  1 user,  load average: 13.87, 11.53, 11.30
+2026-11-25T01:44:36+09:00	ga-jitter 3	 01:44:36 up 7 days, 10:00,  1 user,  load average: 8.68, 10.15, 10.80
+2026-11-25T01:47:19+09:00	끝	 01:47:19 up 7 days, 10:03,  1 user,  load average: 11.58, 10.70, 10.89
+2026-11-25T01:47:31+09:00	na-on 1	 01:47:31 up 7 days, 10:03,  1 user,  load average: 11.33, 10.69, 10.89
+2026-11-25T01:50:04+09:00	na-off 1 2	 01:50:04 up 7 days, 10:06,  1 user,  load average: 6.72, 9.53, 10.46
+2026-11-25T01:53:52+09:00	na-on 2 3	 01:53:52 up 7 days, 10:10,  1 user,  load average: 10.19, 9.86, 10.39
+2026-11-25T01:57:37+09:00	na-off 3	 01:57:37 up 7 days, 10:13,  1 user,  load average: 9.35, 9.82, 10.29
+2026-11-25T02:00:16+09:00	끝	 02:00:16 up 7 days, 10:16,  1 user,  load average: 9.95, 9.96, 10.27
