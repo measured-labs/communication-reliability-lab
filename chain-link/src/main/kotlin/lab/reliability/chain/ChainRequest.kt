@@ -107,7 +107,8 @@ class InFlightController(private val inFlight: InFlightRequests) {
  * `fail-after-commit`은 처리 코드가 커밋한 뒤 [FaultInjection.respond]에서 낸다.
  * 3. (task 04) X-Drop-Fault의 문법이 틀리면 400. 멱등 키가 켜져 있는데 Idempotency-Key가 없거나 비면 400.
  *    이번에 든 것을 끊어야 하면 [ChainContext.dropConnection]을 넣는다 — 끊는 것은 [FaultInjection.respond].
- * 4. (task 04-b) 한도가 켜져 있으면([OverloadLimit]) 1~3을 지난 호출마다 창에 넣고, 한도를 넘으면 처리하지 않고 503.
+ * 4. (task 04-b) 한도가 켜져 있으면([OverloadLimit]) 1~3의 헤더 검사를 지난 호출마다 3의 끊김 판정보다 먼저 창에 넣고, 한도를
+ *    넘으면 처리하지 않고 503 — 거절한 호출에는 다른 장애(끊김 포함)를 판정하지도 세지도 않는다.
  *    거절한 호출도 시각 기록에 남는다(status 503). 꺼져 있으면 한도를 부르지 않는다(task 01~04의 경로 그대로).
  */
 class ChainEntryFilter(
@@ -158,7 +159,10 @@ class ChainEntryFilter(
         val ctx = ChainContext(
             requestId, rawFault, directives.filter { it.service == faultInjection.service }, rawAttemptFault, rawDropFault, idempotencyKey,
         )
-        if (dropFaults.decide(requestId, dropFault)) {
+        // task 04-b: 한도를 끊김 장애보다 먼저 판정한다 — 한도에서 거절한 호출은 끊김의 든 횟수를 쓰지 않는다(docs/measurement.md 10-1).
+        // 꺼져 있으면 한도를 부르지 않고, 끊김을 판정한 뒤 시계를 읽는다(task 01~04의 차례 그대로).
+        val admission = if (overload.enabled) overload.arrive() else null
+        if (admission?.rejected != true && dropFaults.decide(requestId, dropFault)) {
             ctx.dropConnection = {
                 closeWithoutResponse(response)
                 dropFaults.counted()
@@ -167,7 +171,6 @@ class ChainEntryFilter(
         }
         // 시각 기록: 입구에 든 때(지연 장애로 자기 전)부터 나갈 때까지. 예외로 끝나도 남긴다(finally).
         // task 04-b: 한도가 켜져 있으면 든 시각은 한도가 잠금 안에서 읽어 판정에 쓴 그 값이다(docs/measurement.md 10-1).
-        val admission = if (overload.enabled) overload.arrive() else null
         val start = admission?.atUs ?: epochMicros()
         try {
             ChainContext.with(ctx) {
