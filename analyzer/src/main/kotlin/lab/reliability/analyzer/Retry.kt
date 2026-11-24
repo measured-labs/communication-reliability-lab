@@ -58,7 +58,7 @@ fun runRetry(args: Array<String>): Int {
         out.forEach(Files::deleteIfExists)
         val expect = options["--expect"]?.let { readTimingExpect(Path.of(it)) }
         val (report, alwaysDifferences) = retryReport(run)
-        val metrics = flatten(report)
+        val metrics = flatten(report - "series") // series는 보고에만(8-4)
         val differences = alwaysDifferences.toMutableList()
         expect?.forEach { (key, range) ->
             val v = metrics[key]
@@ -188,6 +188,14 @@ private fun peak(times: List<Long>, binMs: Long, origin: Long, keep: (Long) -> B
     return counts.filterKeys { keep(origin + it * binMs) }.values.maxOrNull() ?: 0
 }
 
+/** settings-<서비스>.json의 retry.enabled — 떠 있는 감싸개에서 읽은 값(docs/retry.md 1절). */
+private fun retryEnabled(run: Path, service: String): Boolean {
+    val path = run.resolve("settings-$service.json")
+    val v = readJson(path).get("retry")?.get("enabled")
+    if (v == null || !v.isBoolean) throw InputException("$path: retry.enabled가 불 값이 아니다")
+    return v.booleanValue()
+}
+
 private fun series(times: List<Long>, origin: Long, last: Long): List<Int> {
     val n = (Math.floorDiv(last - origin, SERIES_BIN_MS) + 1).coerceAtLeast(0).toInt()
     val out = IntArray(n)
@@ -214,6 +222,7 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
         Layer.INVENTORY to readAttempts(run.resolve("timing").resolve("attempts-inventory.json"), byId.keys),
     )
     val counted = readAttemptFaultCounts(run.resolve("attempt-faults.json"))
+    val retryOn = mapOf(Layer.ORDER to retryEnabled(run, "order"), Layer.INVENTORY to retryEnabled(run, "inventory"))
     val always = mutableListOf<String>()
 
     val t0 = answers.minOf { it.sentAtMs }
@@ -221,6 +230,12 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
         rows.getValue(layer).filter { it.status == layer.processedStatus }.groupingBy { it.requestId }.eachCount()
     }
     val arrivalsById = Layer.entries.associateWith { layer -> timings.getValue(layer).groupingBy { it.requestId }.eachCount() }
+
+    // DB 행이 있는 requestId는 그 층의 시각 기록이 하나 이상 있어야 한다(8-5 ③) — 기록이 빠져 도착 수가 조용히 줄지 않게
+    val layerDifferences = Layer.entries.mapNotNull { layer ->
+        val missing = rows.getValue(layer).map { it.requestId }.distinct().filter { it !in arrivalsById.getValue(layer) }
+        if (missing.isEmpty()) null else "layers.${layer.label}: DB 행은 있는데 시각 기록이 없는 requestId ${missing.size}건(${missing.take(3)})"
+    }
 
     // 부른 쪽
     val notReached = answers.count { it.status == 0 && it.requestId !in arrivalsById.getValue(Layer.ORDER) }
@@ -257,6 +272,7 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
 
     // 부르는 쪽의 시도
     val edges = linkedMapOf<String, Any?>()
+    val edgeDifferences = mutableListOf<String>()
     for ((caller, callee) in listOf(Layer.ORDER to Layer.INVENTORY, Layer.INVENTORY to Layer.PAYMENT)) {
         val list = attempts.getValue(caller)
         val byCall = list.groupBy { it.callId }.mapValues { (_, v) -> v.sortedBy { it.attempt } }
@@ -264,14 +280,28 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
         val maxAttempt = list.maxOfOrNull { it.attempt } ?: 0
         // 실제 간격(μs 정수) — 앞 시도의 끝 → 이 시도의 시작
         val gaps = byCall.values.flatMap { call -> call.zipWithNext { p, n -> n to (n.startUs - p.endUs) } }
-        edges["${caller.label}->${callee.label}"] = linkedMapOf(
+        val name = "edges.${caller.label}->${callee.label}"
+        val edge = linkedMapOf<String, Any?>(
             "calls" to byCall.size,
             "attempts" to list.size,
             "retries" to retries.size,
             "budgetDenied" to list.count { it.decision == "budget-denied" },
             "decisions" to DECISIONS.associateWith { d -> list.count { it.decision == d } },
             "callsByAttempts" to (1..maxAttempt).associate { k -> "$k" to byCall.values.count { it.size == k } },
-            "attemptsNotArrived" to list.size - timings.getValue(callee).size,
+        )
+        // 부르는 쪽의 재시도가 켜져 있을 때만 시도 기록이 있다 — 꺼져 있으면 이 지표를 내지 않는다(8-4, 8-5 ④)
+        if (retryOn.getValue(caller)) {
+            val notArrived = list.size - timings.getValue(callee).size
+            edge["attemptsNotArrived"] = notArrived
+            if (list.isEmpty()) {
+                edgeDifferences += "$name: 재시도가 켜져 있는데(settings-${caller.label}.json) 시도 기록이 없다"
+            } else if (notArrived != 0) {
+                edgeDifferences += "$name.attemptsNotArrived: 늘 0, 실제 $notArrived"
+            }
+        } else if (list.isNotEmpty()) {
+            edgeDifferences += "$name: 재시도가 꺼져 있는데(settings-${caller.label}.json) 시도 기록이 ${list.size}건"
+        }
+        edges["${caller.label}->${callee.label}"] = edge + linkedMapOf(
             "delayMs" to (2..maxAttempt).associate { k -> "attempt$k" to quantiles(list.filter { it.attempt == k }.map { it.delayBeforeMs.toDouble() }) },
             "gapMs" to (2..maxAttempt).associate { k -> "attempt$k" to quantiles(gaps.filter { it.first.attempt == k }.map { it.second / 1000.0 }) },
             // μs 정수로 빼서 ms로 — 실수 뺄셈의 꼬리를 남기지 않게
@@ -371,5 +401,5 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
         "inventoryRetries" to series(attempts.getValue(Layer.INVENTORY).filter { it.attempt >= 2 }.map { it.startUs / 1000 }, t0, last),
         "orderRetries" to series(attempts.getValue(Layer.ORDER).filter { it.attempt >= 2 }.map { it.startUs / 1000 }, t0, last),
     )
-    return report to always
+    return report to (always + layerDifferences + edgeDifferences)
 }
