@@ -55,6 +55,16 @@ services:
       NEXT_LAYER_CONNECT_TIMEOUT: 500ms
       # task 02의 조건: 주지 않으면 task 01의 값. 실제 값은 /settings의 nextLayer.requestTimeoutMs
       NEXT_LAYER_REQUEST_TIMEOUT: ${ORDER_TO_INVENTORY_TIMEOUT:-2000ms}
+      # task 03의 조건: 재시도(docs/retry.md). 주지 않으면 꺼짐(task 01·02와 같다). 실제 값은 /settings의 retry
+      RETRY_ENABLED: ${ORDER_RETRY_ENABLED:-false}
+      RETRY_MAX_ATTEMPTS: ${ORDER_RETRY_MAX_ATTEMPTS:-1}
+      RETRY_ON: ${ORDER_RETRY_ON:-failed,unknown}
+      RETRY_BACKOFF: ${ORDER_RETRY_BACKOFF:-none}
+      RETRY_BASE_DELAY: ${ORDER_RETRY_BASE_DELAY:-0ms}
+      RETRY_MAX_DELAY: ${ORDER_RETRY_MAX_DELAY:-0ms}
+      RETRY_BUDGET_ENABLED: ${ORDER_RETRY_BUDGET_ENABLED:-false}
+      RETRY_BUDGET_CAPACITY: ${ORDER_RETRY_BUDGET_CAPACITY:-0}
+      RETRY_BUDGET_DEPOSIT: ${ORDER_RETRY_BUDGET_DEPOSIT:-0}
     ports:
       - "8081:8080"
 
@@ -66,6 +76,16 @@ services:
       NEXT_LAYER_URL: http://payment:8080/payments
       NEXT_LAYER_CONNECT_TIMEOUT: 500ms
       NEXT_LAYER_REQUEST_TIMEOUT: ${INVENTORY_TO_PAYMENT_TIMEOUT:-1000ms}
+      # task 03의 조건: 재시도(docs/retry.md). 주지 않으면 꺼짐(task 01·02와 같다). 실제 값은 /settings의 retry
+      RETRY_ENABLED: ${INVENTORY_RETRY_ENABLED:-false}
+      RETRY_MAX_ATTEMPTS: ${INVENTORY_RETRY_MAX_ATTEMPTS:-1}
+      RETRY_ON: ${INVENTORY_RETRY_ON:-failed,unknown}
+      RETRY_BACKOFF: ${INVENTORY_RETRY_BACKOFF:-none}
+      RETRY_BASE_DELAY: ${INVENTORY_RETRY_BASE_DELAY:-0ms}
+      RETRY_MAX_DELAY: ${INVENTORY_RETRY_MAX_DELAY:-0ms}
+      RETRY_BUDGET_ENABLED: ${INVENTORY_RETRY_BUDGET_ENABLED:-false}
+      RETRY_BUDGET_CAPACITY: ${INVENTORY_RETRY_BUDGET_CAPACITY:-0}
+      RETRY_BUDGET_DEPOSIT: ${INVENTORY_RETRY_BUDGET_DEPOSIT:-0}
     ports:
       - "8082:8080"
 

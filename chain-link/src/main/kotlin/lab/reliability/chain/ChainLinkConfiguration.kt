@@ -28,6 +28,12 @@ class ChainLinkConfiguration {
     }
 
     @Bean
+    fun attemptFaultInjection(faultInjection: FaultInjection) = AttemptFaultInjection(faultInjection.service)
+
+    @Bean
+    fun attemptLog() = AttemptLog()
+
+    @Bean
     fun inFlightRequests() = InFlightRequests()
 
     @Bean
@@ -42,19 +48,27 @@ class ChainLinkConfiguration {
         faultInjection: FaultInjection,
         inFlightRequests: InFlightRequests,
         requestTimings: RequestTimings,
+        attemptFaultInjection: AttemptFaultInjection,
         @Value("\${chain.entry-path}") entryPath: String,
-    ) = FilterRegistrationBean(ChainEntryFilter(faultInjection, inFlightRequests, requestTimings)).apply {
+    ) = FilterRegistrationBean(ChainEntryFilter(faultInjection, inFlightRequests, requestTimings, attemptFaultInjection)).apply {
         addUrlPatterns(entryPath)
         order = Ordered.HIGHEST_PRECEDENCE
     }
 
-    /** 아래 층이 있는 서비스(order, inventory)만 `chain.next-layer.url`을 준다. */
+    /**
+     * 아래 층이 있는 서비스(order, inventory)만 `chain.next-layer.url`을 준다.
+     * 재시도(`chain.retry.enabled`, 기본 false)가 꺼져 있으면 HTTP 호출 그대로 — task 01·02와 같은 객체다.
+     */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnProperty(prefix = "chain.next-layer", name = ["url"])
-    @EnableConfigurationProperties(NextLayerSettings::class)
+    @EnableConfigurationProperties(NextLayerSettings::class, RetrySettings::class)
     class NextLayerConfiguration {
         @Bean
-        fun nextLayerCall(settings: NextLayerSettings): NextLayerCall = HttpNextLayerCall(settings)
+        fun nextLayerCall(settings: NextLayerSettings, retry: RetrySettings, attemptLog: AttemptLog): NextLayerCall {
+            val http = HttpNextLayerCall(settings)
+            if (!retry.enabled) return http
+            return RetryingNextLayerCall(http, retry.policy(), retry.budgetOrNull(), attemptLog::add)
+        }
     }
 }
 
@@ -85,7 +99,17 @@ class SettingsController(
             when (val call = nextLayerCall.ifAvailable) {
                 null -> "없음(맨 아래 층)"
                 is HttpNextLayerCall -> call.actualSettings()
+                is RetryingNextLayerCall -> (call.delegate as? HttpNextLayerCall)?.actualSettings()
+                    ?: "읽지 못함: 모르는 구현 ${call.delegate.javaClass.name}"
                 else -> "읽지 못함: 모르는 구현 ${call.javaClass.name}"
+            }
+        },
+        // task 03: 떠 있는 재시도 감싸개의 규칙과 예산(꺼져 있으면 {"enabled":false})
+        "retry" to read {
+            when (val call = nextLayerCall.ifAvailable) {
+                null -> "없음(맨 아래 층)"
+                is RetryingNextLayerCall -> call.policy.settings(call.budget)
+                else -> mapOf("enabled" to false)
             }
         },
         "jdkSystemProperties" to SYSTEM_PROPERTIES.associateWith { System.getProperty(it) ?: "설정 안 됨(JDK 기본값)" },

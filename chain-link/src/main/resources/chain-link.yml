@@ -33,6 +33,21 @@ spring:
       mode: always             # 기본 embedded → PostgreSQL에서는 schema.sql이 조용히 안 돈다
       continue-on-error: false
 
+# task 03: 아래 층 호출의 재시도(docs/retry.md). 기본은 꺼짐 — 꺼져 있으면 감싸개를 만들지 않는다(task 01·02 그대로).
+# 실제로 쓰인 값은 GET /settings 의 retry(떠 있는 감싸개에서 읽는다). compose.yaml이 서비스마다 ORDER_RETRY_*·INVENTORY_RETRY_*로 준다.
+chain:
+  retry:
+    enabled: ${RETRY_ENABLED:false}
+    max-attempts: ${RETRY_MAX_ATTEMPTS:1}      # 처음 시도를 센다
+    retry-on: ${RETRY_ON:failed,unknown}
+    backoff: ${RETRY_BACKOFF:none}             # none | fixed | exponential | exponential-jitter
+    base-delay: ${RETRY_BASE_DELAY:0ms}
+    max-delay: ${RETRY_MAX_DELAY:0ms}
+    budget:
+      enabled: ${RETRY_BUDGET_ENABLED:false}
+      capacity: ${RETRY_BUDGET_CAPACITY:0}
+      deposit-per-call: ${RETRY_BUDGET_DEPOSIT:0}
+
 management:
   endpoints:
     web:

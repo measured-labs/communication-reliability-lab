@@ -14,6 +14,9 @@ object ChainHeaders {
 
     /** 장애 주입 지시. 문법은 [FaultDirectives.parse]. 사슬을 따라 그대로 넘어간다. */
     const val FAULT = "X-Fault"
+
+    /** task 03: 시도마다 넣는 실패. 문법은 [AttemptFaultDirectives.parse]. 사슬을 따라 그대로 넘어간다. */
+    const val ATTEMPT_FAULT = "X-Attempt-Fault"
 }
 
 /** 세 서비스가 받는 요청 본문(주문 → 재고 → 결제 모두 금액 하나). */
@@ -29,6 +32,8 @@ class ChainContext(
     val rawFault: String?,
     /** 이 서비스를 가리키는 지시만. */
     val faults: List<FaultDirective>,
+    /** 받은 X-Attempt-Fault 헤더 그대로(없으면 null) — 아래 층에 그대로 넘긴다. */
+    val rawAttemptFault: String? = null,
 ) {
     /** 아래 층을 부른 기록(부르지 않았으면 null). [HttpNextLayerCall]이 채우고 입구 필터가 시각 기록에 옮긴다. */
     var call: CallRecord? = null
@@ -86,6 +91,7 @@ class ChainEntryFilter(
     private val faultInjection: FaultInjection,
     private val inFlight: InFlightRequests,
     private val timings: RequestTimings,
+    private val attemptFaults: AttemptFaultInjection,
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) =
         inFlight.track { handle(request, response, chain) }
@@ -103,11 +109,27 @@ class ChainEntryFilter(
             reject(response, 400, """{"error":"bad ${ChainHeaders.FAULT}: ${e.message?.replace("\"", "'")}"}""")
             return
         }
-        val ctx = ChainContext(requestId, rawFault, directives.filter { it.service == faultInjection.service })
+        val rawAttemptFault = request.getHeader(ChainHeaders.ATTEMPT_FAULT)
+        val attemptFault = try {
+            AttemptFaultDirectives.parse(rawAttemptFault).firstOrNull { it.service == faultInjection.service }
+        } catch (e: IllegalArgumentException) {
+            reject(response, 400, """{"error":"bad ${ChainHeaders.ATTEMPT_FAULT}: ${e.message?.replace("\"", "'")}"}""")
+            return
+        }
+        val ctx = ChainContext(requestId, rawFault, directives.filter { it.service == faultInjection.service }, rawAttemptFault)
         // 시각 기록: 입구에 든 때(지연 장애로 자기 전)부터 나갈 때까지. 예외로 끝나도 남긴다(finally).
         val start = epochMicros()
         try {
             ChainContext.with(ctx) {
+                // task 03: 시도마다 넣는 실패(헤더가 없으면 None — task 01·02의 경로 그대로)
+                when (val action = attemptFaults.decide(requestId, attemptFault, start)) {
+                    AttemptAction.Fail -> {
+                        reject(response, 500, """{"fault":"${attemptFault!!.kind}","service":"${faultInjection.service}"}""")
+                        return@with
+                    }
+                    is AttemptAction.Sleep -> Thread.sleep(action.ms)
+                    AttemptAction.None -> Unit
+                }
                 faultInjection.delayIfAsked(ctx)
                 if (faultInjection.errorIfAsked(ctx)) {
                     reject(response, 500, """{"fault":"error","service":"${faultInjection.service}"}""")
