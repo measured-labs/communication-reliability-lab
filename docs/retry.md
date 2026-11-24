@@ -36,8 +36,10 @@
 | `Completed`(2xx) | 없음 — 성공 |
 | `Failed:HTTP_<s>`, s가 500~599 | `failed` (504는 여기에 오지 않는다 — 504는 `Unknown:HTTP_504`) |
 | `Failed:CONNECT_REFUSED`, `Failed:CONNECT_TIMEOUT` | `failed` |
-| 그 밖의 `Failed:…`(예 `HTTP_400`, `HTTP_404`) | 없음 — 다시 시도하지 않는다 |
-| `Unknown:…`(요청 타임아웃 `REQUEST_TIMEOUT`, `HTTP_504`, `IO_<예외>`) | `unknown` |
+| 그 밖의 `Failed:…`(예 `HTTP_400`, `HTTP_404`, `HTTP_409`) | 없음 — 다시 시도하지 않는다 |
+| `Unknown:…`(요청 타임아웃 `REQUEST_TIMEOUT`, `HTTP_504`, `IO_<예외>`, `HTTP_409`) | `unknown` |
+
+- **409**(task 04 — 아래 층이 같은 멱등 키를 처리 중)는 아래 층 호출이 결과 이름을 정한다: 기본은 `Failed:HTTP_409`(다시 시도하지 않는다), 설정 `chain.idempotency.in-progress-as-unknown=true`면 `Unknown:HTTP_409`(`unknown` — 같은 논리 요청의 결과가 아직 정해지지 않았으므로 "처리했는지 모름"). 이 표와 `classOf`는 바뀌지 않았다 — 까닭과 키에 남는 상태는 `docs/idempotency.md` 3-1절.
 
 시도 하나 뒤의 **결정**은 이 차례로 처음 맞는 것이다(`decision`):
 
