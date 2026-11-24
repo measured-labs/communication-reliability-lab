@@ -9,6 +9,7 @@
 - 타임아웃 값에 따라 "실제로는 처리됐는데 실패로 본" 요청이 얼마나 생기나, 느린 아래 층이 위 층을 얼마나 묶나(task 02)
 - 재시도 횟수·백오프·예산이 맨 아래 층의 요청 수와 회복에 주는 차이(task 03)
 - 멱등 키가 없을 때와 있을 때의 이중 처리, 키 저장의 비용(task 04)
+- 불린 쪽이 부하에 따라 실패할 때 재시도의 간격과 예산이 회복 시간에 주는 차이(task 04-b)
 - gRPC의 기한·취소 전파가 HTTP의 미리 나눈 타임아웃보다 헛일을 얼마나 줄이나(task 05)
 
 "잃음"과 "두 번 처리됨"은 응답이 아니라 **DB의 행**으로 판정한다. 그래서 먼저 측정 도구가 답을 아는 실행에서 맞는 수를 내는지 확인했다(보정 — `docs/calibration.md`).
@@ -47,6 +48,8 @@ k6 (load/chain.js) ──HTTP──▶ order :8081 ──HTTP──▶ inventory
 | `docs/idempotency.md` | task 04 멱등 키와 커밋 뒤 끊김 장애(`X-Drop-Fault`)의 규칙과 테스트 입구 |
 | `docs/experiments/task-04-design.md` | task 04(멱등 키) 실험의 설계와 보기 전의 예상 |
 | `docs/results/task-04-idempotency.md` | task 04의 결과 표, 예상과의 대조, 한계 |
+| `docs/experiments/task-04b-design.md` | task 04-b(부하에 따라 실패하는 장애와 회복 시간) 실험의 설계, 값을 고른 계산, 보기 전의 예상 |
+| `docs/results/task-04b-overload.md` | task 04-b의 결과 표, 예상과의 대조, 한계 |
 
 ## 실행
 
@@ -109,3 +112,17 @@ WRITE=yes scripts/task04-recompute.sh runs/…                               # �
 - 결과 모름을 맞추는 시나리오(`cal-idem`, `idem-reconcile`)는 부하가 가라앉은 뒤 결과 모름을 같은 키로 다시 보낸다(`resends.jsonl`). 분석은 대조 분석 + `analyzer idem`(9절) + 재시도가 켜진 시나리오는 `analyzer retry`. 부하 직전의 재시도 예산 토큰을 `retry-budget-start.json`에 남긴다(R03-7).
 - 커밋하는 기록: task 03과 같은 꼴(요약·보고와 `raw.tar.gz` — `scripts/task04-pack.sh`), `runs/task-04-index.tsv`, 재기동 확인의 `runs/restart-check-*/`.
 - 첫 62개 실행 뒤에 바꾼 것(2026-11-24 20:30~): 분석기의 새 대조(`docs/measurement.md` 9절 머리)로 **62개의 보고를 커밋한 `raw.tar.gz`에서 다시 만들었다**. 그 실행들은 업무 행 id와 키 행의 `row_id`를 내보내기 전이라 `--no-row-ids`로 다시 계산했고 보고에 `keyLinks`가 없다 — 그 대조는 뒤에 돌린 실행(`config.env`의 `row_ids_exported=yes`)에만 있다. 실험 다의 첫 여섯 실행은 색인에 "대체됨: 차례가 섞인 앞 측정"으로 남겼다(표에서 빠진다 — `SUPERSEDED=only scripts/task04-table.sh da …`로 다시 본다).
+
+## task 04-b — 부하에 따라 실패하는 장애와 회복 시간
+
+```bash
+scripts/task04b-all.sh                    # 꺼진 상태 확인(task 01~04 보정) → 보정 cal-overload → 실험 가(간격 다섯, 반복을 조건 사이에 번갈아)
+NA_BACKOFF=none scripts/task04b-all.sh na # 실험 나(예산 끔/켬) — 간격은 실험 가의 결과로 고른다(설계 6절)
+INDEX=runs/task-04b-index.tsv METRICS=metrics-overload.tsv scripts/task04-table.sh ga payment.rejectionsStopMs clients.recoveryMs
+scripts/task04-recompute.sh runs/overload-spike-…-r1                    # 커밋한 raw.tar.gz에서 분석을 다시 돌려 커밋한 보고와 견준다
+```
+
+- 결제의 한도는 환경 변수 `PAYMENT_OVERLOAD_ENABLED`·`PAYMENT_OVERLOAD_LIMIT`·`PAYMENT_OVERLOAD_WINDOW`로 켠다(`compose.yaml`이 결제에만 넘긴다). **주지 않으면 꺼짐** — 입구 필터는 task 01~04의 경로 그대로다. 켜면 창(기본 1s) 안에 받은 호출(거절한 것 포함)이 한도를 넘는 호출을 처리하지 않고 503으로 거절한다(미끄러지는 창 — 규칙과 지표: `docs/measurement.md` 10절). `run.sh`가 떠 있는 서비스의 `/settings`의 `overload`와 견주고 다르면 실패한다. 센 수는 `GET /overload`.
+- 시나리오 `cal-overload`·`overload-spike`: 장애 헤더 없이 평소 25/s 위에 10s부터 5s 동안 75/s를 더한다(부하가 원인). 분석은 대조 분석 + `analyzer retry`(8절) + `analyzer overload`(10절) — 서비스가 센 거절 수, 결제의 시각 기록의 503 수, 분석기가 결제의 든 시각에 규칙을 다시 적용한 거절 수가 다르면 불일치(종료 코드 2).
+- 실행마다 `config.env`에 실행 앞뒤의 `/proc/loadavg`(`host_loadavg_start`·`host_loadavg_end`)를 남기고, `task04b-all.sh`가 조건마다 `uptime`을 `runs/task-04b-uptime.txt`에 남긴다(이 컴퓨터의 다른 부하).
+- 커밋하는 기록: task 04와 같은 꼴(요약·보고와 `raw.tar.gz` — `scripts/task04-pack.sh`), `runs/task-04b-index.tsv`.
