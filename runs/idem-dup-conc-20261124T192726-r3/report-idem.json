@@ -38,6 +38,8 @@
       "doubled" : 0,
       "extraProcessedRows" : 0,
       "processedNotCompleted" : 0,
+      "processedClientFailed" : 0,
+      "processedClientUnknown" : 0,
       "keyRows" : 400,
       "keyStates" : {
         "IN_PROGRESS" : 0,
@@ -54,6 +56,12 @@
         "mismatch" : 0,
         "resumed" : 0,
         "missing-key" : 0
+      },
+      "responses" : {
+        "409" : 399,
+        "422" : 0,
+        "0" : 0,
+        "0Repeat" : 0
       },
       "selfMs" : {
         "count" : 800,
@@ -77,6 +85,8 @@
       "doubled" : 0,
       "extraProcessedRows" : 0,
       "processedNotCompleted" : 0,
+      "processedClientFailed" : 0,
+      "processedClientUnknown" : 0,
       "keyRows" : 400,
       "keyStates" : {
         "IN_PROGRESS" : 0,
@@ -93,6 +103,12 @@
         "mismatch" : 0,
         "resumed" : 0,
         "missing-key" : 0
+      },
+      "responses" : {
+        "409" : 0,
+        "422" : 0,
+        "0" : 0,
+        "0Repeat" : 0
       },
       "selfMs" : {
         "count" : 400,
@@ -116,6 +132,8 @@
       "doubled" : 0,
       "extraProcessedRows" : 0,
       "processedNotCompleted" : 0,
+      "processedClientFailed" : 0,
+      "processedClientUnknown" : 0,
       "keyRows" : 400,
       "keyStates" : {
         "IN_PROGRESS" : 0,
@@ -132,6 +150,12 @@
         "mismatch" : 0,
         "resumed" : 0,
         "missing-key" : 0
+      },
+      "responses" : {
+        "409" : 0,
+        "422" : 0,
+        "0" : 0,
+        "0Repeat" : 0
       },
       "selfMs" : {
         "count" : 400,
@@ -152,15 +176,18 @@
   "dropFaults" : {
     "order" : {
       "counted" : 0,
-      "expected" : 0
+      "expected" : 0,
+      "observedAbove" : 0
     },
     "inventory" : {
       "counted" : 0,
-      "expected" : 0
+      "expected" : 0,
+      "observedAbove" : 0
     },
     "payment" : {
       "counted" : 0,
-      "expected" : 0
+      "expected" : 0,
+      "observedAbove" : 0
     }
   },
   "attemptFaults" : {
@@ -220,7 +247,20 @@
     "secondCopyReplayed" : 1,
     "laterArrivalStatus" : {
       "201" : 141,
-      "409" : 259
+      "409" : 236
+    },
+    "arrivalTies" : 23,
+    "arrivalGapMs" : {
+      "count" : 400,
+      "p50" : 0.056,
+      "p90" : 0.228,
+      "p99" : 2.88,
+      "max" : 29.843
+    },
+    "conflict409" : {
+      "earlierGot409" : 140,
+      "laterGot409" : 236,
+      "sameMicros" : 23
     },
     "doubled" : 0
   }

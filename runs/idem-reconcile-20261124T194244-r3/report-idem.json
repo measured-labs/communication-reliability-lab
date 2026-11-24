@@ -39,6 +39,8 @@
       "doubled" : 80,
       "extraProcessedRows" : 80,
       "processedNotCompleted" : 480,
+      "processedClientFailed" : 0,
+      "processedClientUnknown" : 480,
       "keyRows" : 0,
       "keyStates" : {
         "IN_PROGRESS" : 0,
@@ -55,6 +57,12 @@
         "mismatch" : 0,
         "resumed" : 0,
         "missing-key" : 0
+      },
+      "responses" : {
+        "409" : 0,
+        "422" : 0,
+        "0" : 80,
+        "0Repeat" : 0
       },
       "selfMs" : {
         "count" : 1200,
@@ -78,6 +86,8 @@
       "doubled" : 240,
       "extraProcessedRows" : 240,
       "processedNotCompleted" : 640,
+      "processedClientFailed" : 0,
+      "processedClientUnknown" : 640,
       "keyRows" : 0,
       "keyStates" : {
         "IN_PROGRESS" : 0,
@@ -94,6 +104,12 @@
         "mismatch" : 0,
         "resumed" : 0,
         "missing-key" : 0
+      },
+      "responses" : {
+        "409" : 0,
+        "422" : 0,
+        "0" : 80,
+        "0Repeat" : 0
       },
       "selfMs" : {
         "count" : 1200,
@@ -117,6 +133,8 @@
       "doubled" : 400,
       "extraProcessedRows" : 400,
       "processedNotCompleted" : 800,
+      "processedClientFailed" : 0,
+      "processedClientUnknown" : 800,
       "keyRows" : 0,
       "keyStates" : {
         "IN_PROGRESS" : 0,
@@ -133,6 +151,12 @@
         "mismatch" : 0,
         "resumed" : 0,
         "missing-key" : 0
+      },
+      "responses" : {
+        "409" : 0,
+        "422" : 0,
+        "0" : 80,
+        "0Repeat" : 0
       },
       "selfMs" : {
         "count" : 1200,
@@ -153,15 +177,18 @@
   "dropFaults" : {
     "order" : {
       "counted" : 80,
-      "expected" : 80
+      "expected" : 80,
+      "observedAbove" : 80
     },
     "inventory" : {
       "counted" : 80,
-      "expected" : 80
+      "expected" : 80,
+      "observedAbove" : 80
     },
     "payment" : {
       "counted" : 80,
-      "expected" : 80
+      "expected" : 80,
+      "observedAbove" : 80
     }
   },
   "attemptFaults" : {
@@ -209,6 +236,9 @@
     }
   },
   "reconcile" : {
+    "candidates" : 400,
+    "notResent" : 0,
+    "resentNotCandidate" : 0,
     "resent" : 400,
     "resentRequestIds" : 400,
     "completed" : 400,

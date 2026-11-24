@@ -25,6 +25,8 @@ layers.order.processedRows	880
 layers.order.doubled	80
 layers.order.extraProcessedRows	80
 layers.order.processedNotCompleted	480
+layers.order.processedClientFailed	0
+layers.order.processedClientUnknown	480
 layers.order.keyRows	0
 layers.order.keyStates.IN_PROGRESS	0
 layers.order.keyStates.COMPLETED	0
@@ -38,6 +40,10 @@ layers.order.counts.in-progress	0
 layers.order.counts.mismatch	0
 layers.order.counts.resumed	0
 layers.order.counts.missing-key	0
+layers.order.responses.409	0
+layers.order.responses.422	0
+layers.order.responses.0	80
+layers.order.responses.0Repeat	0
 layers.order.selfMs.count	1200
 layers.order.selfMs.p50	9.059
 layers.order.selfMs.p90	11.024
@@ -54,6 +60,8 @@ layers.inventory.processedRows	1040
 layers.inventory.doubled	240
 layers.inventory.extraProcessedRows	240
 layers.inventory.processedNotCompleted	640
+layers.inventory.processedClientFailed	0
+layers.inventory.processedClientUnknown	640
 layers.inventory.keyRows	0
 layers.inventory.keyStates.IN_PROGRESS	0
 layers.inventory.keyStates.COMPLETED	0
@@ -67,6 +75,10 @@ layers.inventory.counts.in-progress	0
 layers.inventory.counts.mismatch	0
 layers.inventory.counts.resumed	0
 layers.inventory.counts.missing-key	0
+layers.inventory.responses.409	0
+layers.inventory.responses.422	0
+layers.inventory.responses.0	80
+layers.inventory.responses.0Repeat	0
 layers.inventory.selfMs.count	1200
 layers.inventory.selfMs.p50	9.049
 layers.inventory.selfMs.p90	13.386
@@ -83,6 +95,8 @@ layers.payment.processedRows	1200
 layers.payment.doubled	400
 layers.payment.extraProcessedRows	400
 layers.payment.processedNotCompleted	800
+layers.payment.processedClientFailed	0
+layers.payment.processedClientUnknown	800
 layers.payment.keyRows	0
 layers.payment.keyStates.IN_PROGRESS	0
 layers.payment.keyStates.COMPLETED	0
@@ -96,6 +110,10 @@ layers.payment.counts.in-progress	0
 layers.payment.counts.mismatch	0
 layers.payment.counts.resumed	0
 layers.payment.counts.missing-key	0
+layers.payment.responses.409	0
+layers.payment.responses.422	0
+layers.payment.responses.0	80
+layers.payment.responses.0Repeat	0
 layers.payment.selfMs.count	1200
 layers.payment.selfMs.p50	5.159
 layers.payment.selfMs.p90	7.201
@@ -108,10 +126,13 @@ layers.payment.serviceMs.p99	1507.608
 layers.payment.serviceMs.max	1539.745
 dropFaults.order.counted	80
 dropFaults.order.expected	80
+dropFaults.order.observedAbove	80
 dropFaults.inventory.counted	80
 dropFaults.inventory.expected	80
+dropFaults.inventory.observedAbove	80
 dropFaults.payment.counted	80
 dropFaults.payment.expected	80
+dropFaults.payment.observedAbove	80
 attemptFaults.order.fail-first.counted	0
 attemptFaults.order.fail-first.expected	0
 attemptFaults.order.slow-first.counted	0
@@ -130,6 +151,9 @@ attemptFaults.payment.slow-first.counted	80
 attemptFaults.payment.slow-first.expected	80
 attemptFaults.payment.outage.counted	0
 attemptFaults.payment.outage.expected	0
+reconcile.candidates	400
+reconcile.notResent	0
+reconcile.resentNotCandidate	0
 reconcile.resent	400
 reconcile.resentRequestIds	400
 reconcile.completed	400
