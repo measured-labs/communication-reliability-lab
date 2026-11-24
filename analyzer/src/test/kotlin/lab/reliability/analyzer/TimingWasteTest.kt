@@ -216,4 +216,33 @@ class TimingWasteTest {
                 quant(r, "waste", "payment", "wastedMs"),
         )
     }
+
+    // ---- 포기한 뒤에 시작한 일의 헛일 시간의 합(startedAfterGiveUpMsSum) ----
+
+    /**
+     * 셋 모두 재고가 1004ms(요청마다의 오프셋)에 포기. a 결제 5~1500ms — 포기 전에 시작(496ms).
+     * b 결제 1100ms~1300.456ms — 포기 뒤에 시작(200.456ms). c 결제 1004ms~1054.123ms — 포기한 시각에 시작(50.123ms).
+     */
+    private fun startedMix() = rec()
+        .inventoryTimesOut("a", T)
+        .inventoryTimesOut("b", T + 100, paymentStartUs = us(T + 100 + 1100), paymentEndUs = us(T + 100 + 1300) + 456)
+        .inventoryTimesOut("c", T + 200, paymentStartUs = us(T + 200 + 1004), paymentEndUs = us(T + 200 + 1004) + 50_123)
+
+    @Test
+    fun 포기한_뒤에_시작한_일의_헛일_시간의_합은_그_몫만_더해_소수_첫째_자리로_적는다() {
+        // b + c = 200.456 + 50.123 = 250.579 → 250.6 (a 를 넣으면 746.6, 포기한 시각의 c 를 빼면 200.5)
+        assertEquals(250.6, startedMix().analyze().double("waste", "payment", "startedAfterGiveUpMsSum")!!, 1e-9)
+    }
+
+    @Test
+    fun 헛일_시간의_합은_포기_전에_시작한_일도_더한다() {
+        // 496 + 200.456 + 50.123 = 746.579 → 746.6
+        assertEquals(746.6, startedMix().analyze().double("waste", "payment", "wastedMsSum")!!, 1e-9)
+    }
+
+    @Test
+    fun 포기_전에_시작한_헛일만_있으면_포기한_뒤에_시작한_일의_합은_0() {
+        val r = rec().inventoryTimesOut("a", T).analyze()
+        assertEquals(0.0, r.double("waste", "payment", "startedAfterGiveUpMsSum")!!, 0.0)
+    }
 }

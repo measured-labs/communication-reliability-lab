@@ -149,4 +149,76 @@ class TimingSamplesTest {
         r.runTiming()
         assertEquals(listOf("samples.order.maxGapMs: 늘 1000 이하, 실제 1001"), r.report().differences())
     }
+
+    // ---- 표본이 하나(maxGapMs null) — 7-3·7-4 ----
+
+    /**
+     * 요청 하나(T, 경과 0 — 부하 구간 [T, T]). 주문 표본은 T 하나 — 덮고, 보내는 창 [T, T] 안에도 든다(평균 부하는 있다).
+     * 재고·결제는 T, T+100 둘.
+     */
+    private fun oneSample() = TimingRecord(root).apply {
+        okChain("a", T, elapsedMs = 0)
+        samples["order"] = listOf(TestSample(T))
+        samples["inventory"] = listOf(TestSample(T), TestSample(T + 100))
+        samples["payment"] = listOf(TestSample(T), TestSample(T + 100))
+    }
+
+    @Test
+    fun 표본이_하나면_최대_간격은_null이다() {
+        assertNull(oneSample().analyzeAny().at("samples", "order", "maxGapMs"))
+    }
+
+    @Test
+    fun 표본이_하나면_종료_코드_2() {
+        assertEquals(2, oneSample().runTiming())
+    }
+
+    @Test
+    fun 표본이_하나면_문서의_꼴로_차이_한_줄을_적는다() {
+        assertEquals(listOf("samples.order.maxGapMs: 표본이 하나라 간격을 잴 수 없다"), oneSample().analyzeAny().differences())
+    }
+
+    // ---- 보내는 동안 표본이 없음(meanLoadDuringSend null) — 7-3·7-4 ----
+
+    /** 사슬 요청 둘(T, T+50 — 보내는 창 [T, T+50], 부하 구간의 끝 T+70). 주문 표본은 T−10, T+80 — 덮지만 창 안에는 없다. */
+    private fun noneDuringSend() = TimingRecord(root).apply {
+        okChain("a", T)
+        okChain("b", T + 50)
+        samples["order"] = listOf(TestSample(T - 10), TestSample(T + 80))
+    }
+
+    @Test
+    fun 보내는_동안의_표본이_없으면_평균_부하는_null이다() {
+        assertNull(noneDuringSend().analyzeAny().at("samples", "order", "meanLoadDuringSend"))
+    }
+
+    @Test
+    fun 보내는_동안의_표본이_없으면_종료_코드_2() {
+        assertEquals(2, noneDuringSend().runTiming())
+    }
+
+    @Test
+    fun 보내는_동안의_표본이_없으면_문서의_꼴로_차이_한_줄을_적는다() {
+        assertEquals(listOf("samples.order.meanLoadDuringSend: 보내는 동안의 표본이 없다"), noneDuringSend().analyzeAny().differences())
+    }
+
+    @Test
+    fun 늘_견주는_차이는_서비스마다_간격_다음_평균_부하이고_서비스는_주문_재고_결제_차례다() {
+        // 보내는 창 [T, T+1500], 부하 구간의 끝 T+1520. 주문·재고 표본 T−10, T+1530 — 간격 1540, 창 안에 표본 없음
+        val r = TimingRecord(root).apply {
+            okChain("a", T)
+            okChain("b", T + 1500)
+            samples["inventory"] = listOf(TestSample(T - 10), TestSample(T + 1530))
+            samples["order"] = listOf(TestSample(T - 10), TestSample(T + 1530))
+        }
+        assertEquals(
+            listOf(
+                "samples.order.maxGapMs: 늘 1000 이하, 실제 1540",
+                "samples.order.meanLoadDuringSend: 보내는 동안의 표본이 없다",
+                "samples.inventory.maxGapMs: 늘 1000 이하, 실제 1540",
+                "samples.inventory.meanLoadDuringSend: 보내는 동안의 표본이 없다",
+            ),
+            r.analyzeAny().differences(),
+        )
+    }
 }

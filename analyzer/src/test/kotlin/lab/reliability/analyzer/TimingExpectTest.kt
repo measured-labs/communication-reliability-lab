@@ -116,6 +116,51 @@ class TimingExpectTest {
         assertEquals(2, rec().runTiming("--expect", expect("""{"no.such.metric":{"min":0,"max":1}}""")))
     }
 
+    // ---- 차이 줄의 수의 꼴(7-4) ----
+
+    private fun diffs(json: String): List<String> {
+        val r = rec()
+        r.runTiming("--expect", expect(json))
+        return r.report().differences()
+    }
+
+    @Test
+    fun 기대에_0_0으로_적은_정수는_소수점_없이_적는다() {
+        assertEquals(listOf("$FT: 기대 0~0, 실제 1"), diffs("""{"$FT":{"min":0.0,"max":0.0}}"""))
+    }
+
+    @Test
+    fun 정수인_소수_값은_소수점_없이_적는다() {
+        // 결제의 응답 시간: a 10ms, b 1495ms → max 1495(보고의 수는 1495.0 이어도)
+        assertEquals(
+            listOf("layers.payment.serviceMs.max: 기대 0~100, 실제 1495"),
+            diffs("""{"layers.payment.serviceMs.max":{"min":0,"max":100}}"""),
+        )
+    }
+
+    @Test
+    fun 정수가_아닌_값과_범위는_소수_표기_그대로_적는다() {
+        // 재고→결제: 호출 2, 거짓 타임아웃 1 → 비율 0.5
+        assertEquals(
+            listOf("edges.inventory->payment.falseTimeoutRatio: 기대 0.25~0.4, 실제 0.5"),
+            diffs("""{"edges.inventory->payment.falseTimeoutRatio":{"min":0.25,"max":0.4}}"""),
+        )
+    }
+
+    @Test
+    fun 값이_없는_이름은_실제_없음으로_적는다() {
+        assertEquals(listOf("no.such.metric: 기대 0~1, 실제 없음"), diffs("""{"no.such.metric":{"min":0,"max":1}}"""))
+    }
+
+    @Test
+    fun 차이_줄의_차례는_기대_파일에_적은_차례다() {
+        // 사전순과 반대로 적는다
+        assertEquals(
+            listOf("no.such.metric: 기대 0~1, 실제 없음", "$FT: 기대 5~6, 실제 1"),
+            diffs("""{"no.such.metric":{"min":0,"max":1},"$FT":{"min":5,"max":6}}"""),
+        )
+    }
+
     // ---- 기대 파일의 입력 오류 ----
 
     @Test

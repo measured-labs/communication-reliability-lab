@@ -1,5 +1,7 @@
 package lab.reliability.analyzer
 
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
@@ -42,17 +44,23 @@ fun grid(from: Long, to: Long, step: Long = 100): List<Long> {
 }
 
 /**
- * 문서의 명령줄(`analyzer timing ...`, 7-2)을 그대로 별도 JVM 에서 돌린다 — 종료 코드와 표준 출력·오류.
- * 5절의 테스트 입구 runAnalyzer 는 `analyzer --run …`(대조 분석)의 입구로 적혀 있고 7절에는 시각 분석의 테스트 입구가 없다.
- * main 은 exitProcess 하므로 이 JVM 에서 부르지 않는다. 메인 클래스는 analyzer/build.gradle.kts 의 application.mainClass.
+ * 문서의 명령줄(`analyzer timing ...`, 7-2)을 5절의 테스트 입구로 돌린다 — 종료 코드와 표준 출력·오류(합친 것).
+ * 5절: `runAnalyzer(arrayOf("timing", "--run", …))` = `analyzer timing --run …`, 프로세스를 끝내지 않고 종료 코드를 돌려준다.
+ * 출력은 실패 메시지용으로만 모은다(테스트는 한 번에 하나씩 돈다 — System.out 을 잠시 바꿔도 섞이지 않는다).
  */
 fun analyzerCli(vararg args: String): Pair<Int, String> {
-    val java = Path.of(System.getProperty("java.home"), "bin", "java").toString()
-    val p = ProcessBuilder(java, "-cp", System.getProperty("java.class.path"), "lab.reliability.analyzer.MainKt", *args)
-        .redirectErrorStream(true)
-        .start()
-    val out = p.inputStream.bufferedReader().readText()
-    return p.waitFor() to out
+    val buf = ByteArrayOutputStream()
+    val sink = PrintStream(buf, true, Charsets.UTF_8)
+    val (out, err) = System.out to System.err
+    System.setOut(sink)
+    System.setErr(sink)
+    val code = try {
+        runAnalyzer(arrayOf(*args))
+    } finally {
+        System.setOut(out)
+        System.setErr(err)
+    }
+    return code to buf.toString(Charsets.UTF_8)
 }
 
 class TimingRecord(root: Path, name: String = "timing-20261124T000000-r1") {
@@ -149,7 +157,7 @@ class TimingRecord(root: Path, name: String = "timing-20261124T000000-r1") {
     /**
      * 재고→결제가 요청 타임아웃(재고의 callEnd = s+1004ms)으로 끊긴 요청. 재고는 504, 주문은 아래가 504라 `Unknown:HTTP_504`,
      * k6는 504(경과 1010ms). 결제는 [paymentStartUs](기본 s+5ms)에 시작해 [paymentEndUs]에 끝난다. [paymentProcessed]면 결제 행 APPROVED,
-     * 아니면 결제 행이 없다(결제의 시각 기록은 status 500).
+     * 아니면 결제 행이 없다(결제의 시각 기록은 status 500). [fault]는 정답의 fault(기본 장애 없음).
      */
     fun inventoryTimesOut(
         id: String,
@@ -157,9 +165,10 @@ class TimingRecord(root: Path, name: String = "timing-20261124T000000-r1") {
         paymentProcessed: Boolean = true,
         paymentEndUs: Long = us(sentAtMs + 1500),
         paymentStartUs: Long = us(sentAtMs + 5),
+        fault: String = "",
     ): TimingRecord {
         val s = sentAtMs
-        answer(id, s, 504, elapsedMs = 1010)
+        answer(id, s, 504, fault, elapsedMs = 1010)
         timing("order", id, us(s + 1), us(s + 1007), 504, us(s + 2), us(s + 1006), "Unknown:HTTP_504")
         timing("inventory", id, us(s + 3), us(s + 1005), 504, us(s + 4), us(s + 1004), "Unknown:REQUEST_TIMEOUT")
         timing("payment", id, paymentStartUs, paymentEndUs, if (paymentProcessed) 201 else 500)

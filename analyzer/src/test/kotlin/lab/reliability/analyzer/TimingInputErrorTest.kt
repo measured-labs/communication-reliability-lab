@@ -3,6 +3,7 @@ package lab.reliability.analyzer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import kotlin.io.path.writeText
 import kotlin.test.assertEquals
 
 // docs/measurement.md 7-2 — 시각 분석의 입력 오류(종료 코드 1, report-timing.json·metrics.tsv 를 쓰지 않음).
@@ -373,5 +374,161 @@ class TimingInputErrorTest {
     fun 느린_구간_앞의_주문_표본이_없으면_입력_오류() {
         // 첫 표본 T+150 = 시작 — "앞"이 아니다(덮음 조건 첫 표본 ≤ T+200 은 지킨다)
         goodSlow().apply { samples["order"] = grid(T + 150, T + 1110).map { TestSample(it) } }.assertInputError("--slow-label", SLOW)
+    }
+
+    // ---- 음수 시각(7-2) ----
+
+    /** 기준 + 정답 d(sentAtMs = [sentAtMs], 500, 행·시각 기록 없음). 표본은 세 서비스 모두 0 부터(덮음 조건: 첫 표본 ≤ d + 200). */
+    private fun withEarlyAnswer(sentAtMs: Long) = good().answer("d", sentAtMs, 500).apply {
+        val from0 = grid(0, T + 1110).map { TestSample(it) }
+        LAYERS.forEach { samples[it] = from0 }
+    }
+
+    @Test
+    fun 정답의_sentAtMs가_0이면_받는다() {
+        assertEquals(0, withEarlyAnswer(0).runTiming())
+    }
+
+    @Test
+    fun 정답의_sentAtMs가_음수면_입력_오류() {
+        withEarlyAnswer(-1).assertInputError()
+    }
+
+    @Test
+    fun 시각_기록의_startUs가_0이면_받는다() {
+        assertEquals(0, good(cOrderWith("startUs" to "0")).runTiming())
+    }
+
+    @Test
+    fun 시각_기록의_startUs가_음수면_입력_오류() {
+        // callStart(T+202ms) ≥ start 라 차례 검사는 지킨다 — 음수만 어긴다
+        good(cOrderWith("startUs" to "-1")).assertInputError()
+    }
+
+    @Test
+    fun 표본의_atMs가_0이면_입력_오류가_아니다() {
+        // 0 과 T 사이 간격이 1000ms 를 넘어 불일치(2)지만 입력 오류(1)는 아니다
+        assertEquals(2, good().apply { samples["order"] = listOf(TestSample(0)) + fullGrid }.runTiming())
+    }
+
+    @Test
+    fun 표본의_atMs가_음수면_입력_오류() {
+        good().apply { samples["order"] = listOf(TestSample(-1)) + fullGrid }.assertInputError()
+    }
+
+    @Test
+    fun 조회의_sentAtMs가_0이면_받는다() {
+        assertEquals(0, goodSlow().lookup(0).runTiming("--slow-label", SLOW))
+    }
+
+    @Test
+    fun 조회의_sentAtMs가_음수면_입력_오류() {
+        goodSlow().lookup(-1).assertInputError("--slow-label", SLOW)
+    }
+
+    // ---- 모르는 층 이름(7-2) ----
+
+    @Test
+    fun 정답의_fault가_세_서비스_밖을_가리키면_입력_오류() {
+        good().answer("d", T + 300, 500, "shipping:error").assertInputError()
+    }
+
+    @Test
+    fun 세_서비스_밖_이름의_시각_기록과_표본_파일은_읽지_않는다() {
+        val r = good()
+        r.write()
+        r.dir.resolve("timing/timings-shipping.json").writeText("not json")
+        r.dir.resolve("timing/samples-shipping.json").writeText("not json")
+        assertEquals(0, r.runTiming())
+    }
+
+    // ---- callOutcome 의 꼴: Completed|(Failed|Unknown):\S+ 전체(7-2) ----
+
+    @Test
+    fun callOutcome의_쌍점_뒤가_비면_입력_오류() {
+        good(cOrderWith("callOutcome" to "\"Failed:\"")).assertInputError()
+    }
+
+    @Test
+    fun callOutcome의_쌍점_뒤에_공백이_있으면_입력_오류() {
+        good(cOrderWith("callOutcome" to "\"Failed:HTTP 500\"")).assertInputError()
+    }
+
+    @Test
+    fun callOutcome이_쌍점_없는_Unknown이면_입력_오류() {
+        good(cOrderWith("callOutcome" to "\"Unknown\"")).assertInputError()
+    }
+
+    @Test
+    fun callOutcome이_Completed_뒤에_까닭을_붙이면_입력_오류() {
+        good(cOrderWith("callOutcome" to "\"Completed:OK\"")).assertInputError()
+    }
+
+    @Test
+    fun callOutcome의_앞에_공백이_있으면_입력_오류() {
+        good(cOrderWith("callOutcome" to "\" Failed:HTTP_500\"")).assertInputError()
+    }
+
+    @Test
+    fun callOutcome이_문자열이_아니면_입력_오류() {
+        good(cOrderWith("callOutcome" to "500")).assertInputError()
+    }
+
+    @Test
+    fun callOutcome의_까닭에_쌍점이_더_있어도_공백이_없으면_받는다() {
+        assertEquals(0, good(cOrderWith("callOutcome" to "\"Failed:HTTP_500:x\"")).runTiming())
+    }
+
+    @Test
+    fun callOutcome이_Unknown과_한_낱말이면_받는다() {
+        assertEquals(0, good(cOrderWith("callOutcome" to "\"Unknown:CONNECTION_CLOSED\"")).runTiming())
+    }
+
+    // ---- 설정 파일의 최소 꼴(7-2) ----
+
+    @Test
+    fun 설정이_nextLayer_requestTimeoutMs_하나뿐이어도_받는다() {
+        val r = good().apply {
+            settingsText["order"] = """{"nextLayer":{"requestTimeoutMs":2000}}"""
+            settingsText["inventory"] = """{"nextLayer":{"requestTimeoutMs":1000}}"""
+        }
+        assertEquals(0, r.runTiming())
+    }
+
+    @Test
+    fun 설정의_requestTimeoutMs가_1이면_받는다() {
+        assertEquals(0, good().apply { settingsText["inventory"] = """{"nextLayer":{"requestTimeoutMs":1}}""" }.runTiming())
+    }
+
+    @Test
+    fun 설정의_requestTimeoutMs가_0이면_입력_오류() {
+        good().apply { settingsText["inventory"] = """{"nextLayer":{"requestTimeoutMs":0}}""" }.assertInputError()
+    }
+
+    @Test
+    fun 설정의_requestTimeoutMs가_음수면_입력_오류() {
+        good().apply { settingsText["order"] = """{"nextLayer":{"requestTimeoutMs":-5}}""" }.assertInputError()
+    }
+
+    @Test
+    fun 설정의_requestTimeoutMs가_문자열이면_입력_오류() {
+        good().apply { settingsText["order"] = """{"nextLayer":{"requestTimeoutMs":"2000"}}""" }.assertInputError()
+    }
+
+    @Test
+    fun 설정_파일이_JSON_객체가_아니면_입력_오류() {
+        good().apply { settingsText["order"] = """[{"nextLayer":{"requestTimeoutMs":2000}}]""" }.assertInputError()
+    }
+
+    @Test
+    fun 설정의_nextLayer가_객체가_아니면_입력_오류() {
+        good().apply { settingsText["order"] = """{"nextLayer":2000}""" }.assertInputError()
+    }
+
+    @Test
+    fun 결제의_설정_파일은_읽지_않는다() {
+        val r = good()
+        r.dir.resolve("settings-payment.json").writeText("not json")
+        assertEquals(0, r.runTiming())
     }
 }
