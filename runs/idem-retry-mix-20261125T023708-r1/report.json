@@ -1,0 +1,168 @@
+{
+  "run" : "idem-retry-mix-20261125T023708-r1",
+  "expect" : null,
+  "planned" : 800,
+  "differences" : [ ],
+  "reconciliation" : {
+    "amountMismatch" : 0,
+    "answers" : 800,
+    "doubledTotal" : 122,
+    "elapsedMs" : {
+      "all" : {
+        "count" : 800,
+        "max" : 1216.0,
+        "p50" : 76.0,
+        "p95" : 1050.0,
+        "p99" : 1126.0
+      },
+      "completed" : {
+        "count" : 673,
+        "max" : 1216.0,
+        "p50" : 56.0,
+        "p95" : 1070.0,
+        "p99" : 1132.0
+      },
+      "failed" : {
+        "count" : 127,
+        "max" : 314.0,
+        "p50" : 208.0,
+        "p95" : 295.0,
+        "p99" : 303.0
+      },
+      "unknown" : {
+        "count" : 0,
+        "max" : null,
+        "p50" : null,
+        "p95" : null,
+        "p99" : null
+      }
+    },
+    "faultCounts" : [ {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "payment"
+    } ],
+    "faultCountsMatch" : true,
+    "labels" : {
+      "" : {
+        "answers" : 800,
+        "elapsedMs" : {
+          "count" : 800,
+          "max" : 1216.0,
+          "p50" : 76.0,
+          "p95" : 1050.0,
+          "p99" : 1126.0
+        },
+        "requestIds" : 800,
+        "signatures" : {
+          "completed | COMPLETED | RESERVED | APPROVED" : 551,
+          "completed | COMPLETED | RESERVED | APPROVED+APPROVED" : 122,
+          "failed | FAILED | FAILED | -" : 127
+        },
+        "verdicts" : {
+          "completed" : 673,
+          "failed" : 127,
+          "unknown" : 0
+        }
+      }
+    },
+    "layerMismatch" : 122,
+    "layers" : {
+      "order" : {
+        "amountMismatch" : 0,
+        "doubled" : 0,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 673,
+        "rows" : 800,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 0
+      },
+      "inventory" : {
+        "amountMismatch" : null,
+        "doubled" : 0,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 673,
+        "rows" : 800,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 0
+      },
+      "payment" : {
+        "amountMismatch" : 0,
+        "doubled" : 122,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 795,
+        "rows" : 795,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 0
+      }
+    },
+    "lostTotal" : 0,
+    "orphanRows" : 0,
+    "pendingRows" : 0,
+    "requestIds" : 800,
+    "verdicts" : {
+      "completed" : 673,
+      "failed" : 127,
+      "unknown" : 0
+    }
+  }
+}
