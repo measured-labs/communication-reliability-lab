@@ -76,7 +76,6 @@
         "budget-denied" : 0
       },
       "callsByAttempts" : { },
-      "attemptsNotArrived" : -1200,
       "delayMs" : { },
       "gapMs" : { },
       "gapMinusDelayMs" : {
@@ -248,6 +247,14 @@
     "calleePeakPer50msDuring" : 80,
     "calleePeakPer50msAfter" : 20,
     "retriesPeakPer50msDuring" : 60,
+    "retryBinsDuring" : {
+      "count" : 29,
+      "p50" : 54.0,
+      "p90" : 60.0,
+      "p99" : 60.0,
+      "max" : 60.0
+    },
+    "retriesInCrowdedBinsDuring" : 0.9658333333333333,
     "retryTailMs" : -438,
     "clientRecoveryMs" : -495
   },

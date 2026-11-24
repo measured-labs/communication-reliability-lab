@@ -217,5 +217,3 @@ bins.inventory.peakPer50ms	5
 bins.inventory.peakPer1s	55
 bins.payment.peakPer50ms	8
 bins.payment.peakPer1s	111
-series.binMs	100
-series.originSentAtMs	1795500502257

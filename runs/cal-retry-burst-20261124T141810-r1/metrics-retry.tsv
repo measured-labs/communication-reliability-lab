@@ -53,7 +53,6 @@ edges.order->inventory.decisions.not-retryable	0
 edges.order->inventory.decisions.retry	0
 edges.order->inventory.decisions.max-attempts	0
 edges.order->inventory.decisions.budget-denied	0
-edges.order->inventory.attemptsNotArrived	-600
 edges.order->inventory.gapMinusDelayMs.count	0
 edges.order->inventory.gapMinusDelayMs.p50	
 edges.order->inventory.gapMinusDelayMs.p90	
@@ -112,5 +111,3 @@ bins.inventory.peakPer50ms	20
 bins.inventory.peakPer1s	40
 bins.payment.peakPer50ms	20
 bins.payment.peakPer1s	40
-series.binMs	100
-series.originSentAtMs	1795497512952

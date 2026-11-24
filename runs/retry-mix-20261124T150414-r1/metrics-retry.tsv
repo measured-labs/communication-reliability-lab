@@ -92,7 +92,6 @@ edges.inventory->payment.decisions.not-retryable	0
 edges.inventory->payment.decisions.retry	0
 edges.inventory->payment.decisions.max-attempts	0
 edges.inventory->payment.decisions.budget-denied	0
-edges.inventory->payment.attemptsNotArrived	-1406
 edges.inventory->payment.gapMinusDelayMs.count	0
 edges.inventory->payment.gapMinusDelayMs.p50	
 edges.inventory->payment.gapMinusDelayMs.p90	
@@ -194,5 +193,3 @@ bins.inventory.peakPer50ms	8
 bins.inventory.peakPer1s	79
 bins.payment.peakPer50ms	7
 bins.payment.peakPer1s	78
-series.binMs	100
-series.originSentAtMs	1795500276305

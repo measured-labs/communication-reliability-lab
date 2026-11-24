@@ -76,7 +76,6 @@
         "budget-denied" : 0
       },
       "callsByAttempts" : { },
-      "attemptsNotArrived" : -600,
       "delayMs" : { },
       "gapMs" : { },
       "gapMinusDelayMs" : {

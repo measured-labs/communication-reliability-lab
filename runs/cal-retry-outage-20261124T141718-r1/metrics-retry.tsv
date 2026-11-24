@@ -53,7 +53,6 @@ edges.order->inventory.decisions.not-retryable	0
 edges.order->inventory.decisions.retry	0
 edges.order->inventory.decisions.max-attempts	0
 edges.order->inventory.decisions.budget-denied	0
-edges.order->inventory.attemptsNotArrived	-400
 edges.order->inventory.gapMinusDelayMs.count	0
 edges.order->inventory.gapMinusDelayMs.p50	
 edges.order->inventory.gapMinusDelayMs.p90	
@@ -132,7 +131,11 @@ outage.calleePeakPer50msBefore	2
 outage.calleePeakPer50msDuring	3
 outage.calleePeakPer50msAfter	2
 outage.retriesPeakPer50msDuring	1
+outage.retryBinsDuring.count	96
+outage.retryBinsDuring.p50	1.0
+outage.retryBinsDuring.p90	1.0
+outage.retryBinsDuring.p99	1.0
+outage.retryBinsDuring.max	1.0
+outage.retriesInCrowdedBinsDuring	0.0
 outage.retryTailMs	169
 outage.clientRecoveryMs	-250
-series.binMs	100
-series.originSentAtMs	1795497459936
