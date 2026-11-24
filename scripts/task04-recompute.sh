@@ -11,6 +11,8 @@
 # 환경 변수 WRITE=yes: 다시 만든 보고를 실행 폴더의 커밋한 보고 위에 쓴다(분석기 규칙을 바꾼 뒤 모든 실행의 보고를 다시 만들 때 —
 #   값이 다른 지표가 있어도 쓰고 그 줄을 적는다. 바뀐 값이 규칙을 바꾼 지표뿐인지는 이 출력을 읽어 확인한다).
 # 종료 코드: 모든 실행에서 바이트가 같으면 0, 아니면 1(WRITE=yes면: 값이 다른 지표가 없으면 0). 분석기의 종료 코드도 실행마다 적는다.
+# 분석기의 종료 코드가 하나라도 0이 아닌 실행은 WRITE와 상관없이 실패로 센다(1) — 그 실행의 보고는 쓰지 않는다.
+#   (task 04의 실행은 모두 처음에 종료 0이었다 — runs/task-04-index.tsv의 exit 열. 실행의 종료 코드는 분석들 가운데 큰 것이다.)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib.sh
@@ -21,6 +23,13 @@ WRITE=${WRITE:-no}
 "${COMPOSE[@]}" --profile tools build analyzer > /dev/null
 bad=0
 analyze() { set +e; "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "$@" > /dev/null 2>&1; local rc=$?; set -e; echo "$rc"; }
+# 분석 하나를 돌려 codes에 "<이름> <종료 코드>"를 붙이고, 0이 아니면 analyzeFailed=yes
+analyze_into() { # <이름> <인자>...
+  local label=$1 rc; shift
+  rc=$(analyze "$@")
+  codes+="${codes:+, }$label $rc"
+  ((rc == 0)) || analyzeFailed=yes
+}
 # 지표 이름으로 맞춘 차이: 값이 다른 것, 더한 것(새 보고에만), 뺀 것(옛 보고에만)
 tsv_diff() { # <옛> <새>
   awk -F'\t' 'NR == FNR { old[$1] = $2; next } { new[$1] = $2 }
@@ -43,26 +52,27 @@ for run in "$@"; do
   planned=$(conf planned_answers); [[ -n $planned ]] || planned=$(conf planned_requests)
   args=(--run "/runs/.recompute/${name}" --planned "$planned")
   [[ -f $tmp/expect.json ]] && args+=(--expect "/runs/.recompute/${name}/expect.json")
-  codes="대조 $(analyze "${args[@]}")"
+  codes=""; analyzeFailed=no
+  analyze_into 대조 "${args[@]}"
   files=(report.json)
   if [[ -f $run/report-retry.json ]]; then
     rargs=(retry --run "/runs/.recompute/${name}")
     [[ -f $tmp/expect.retry.json ]] && rargs+=(--expect "/runs/.recompute/${name}/expect.retry.json")
-    codes+=", 재시도 $(analyze "${rargs[@]}")"
+    analyze_into 재시도 "${rargs[@]}"
     files+=(report-retry.json metrics-retry.tsv)
   fi
   if [[ -f $run/report-timing.json ]]; then
     targs=(timing --run "/runs/.recompute/${name}")
     slow=$(conf slow_label); [[ -n $slow ]] && targs+=(--slow-label "$slow")
     [[ -f $tmp/expect.timing.json ]] && targs+=(--expect "/runs/.recompute/${name}/expect.timing.json")
-    codes+=", 시각 $(analyze "${targs[@]}")"
+    analyze_into 시각 "${targs[@]}"
     files+=(report-timing.json metrics.tsv)
   fi
   if [[ -f $run/report-idem.json ]]; then
     iargs=(idem --run "/runs/.recompute/${name}")
     [[ -f $tmp/expect.idem.json ]] && iargs+=(--expect "/runs/.recompute/${name}/expect.idem.json")
     [[ $(conf row_ids_exported) == yes ]] || iargs+=(--no-row-ids)
-    codes+=", 멱등 키 $(analyze "${iargs[@]}")"
+    analyze_into "멱등 키" "${iargs[@]}"
     files+=(report-idem.json metrics-idem.tsv)
   fi
   same=yes; valuesChanged=no
@@ -74,10 +84,13 @@ for run in "$@"; do
       if [[ $f == *.tsv ]]; then tsv_diff "$run/$f" "$tmp/$f" || valuesChanged=yes; fi
     fi
   done
-  if [[ $WRITE == yes ]]; then
+  wrote=""
+  if [[ $WRITE == yes && $analyzeFailed == no ]]; then
     for f in "${files[@]}"; do [[ -f $tmp/$f ]] && cp "$tmp/$f" "$run/$f"; done
+    wrote=", 다시 만든 보고를 씀"
   fi
-  echo "$name: 분석 종료 코드($codes), 커밋한 보고와 바이트가 같음 $same, 값이 다른 지표 $valuesChanged$([[ $WRITE == yes ]] && echo ", 다시 만든 보고를 씀")"
+  echo "$name: 분석 종료 코드($codes), 커밋한 보고와 바이트가 같음 $same, 값이 다른 지표 $valuesChanged$wrote$([[ $analyzeFailed == yes ]] && echo ", 실패 — 0이 아닌 분석 종료 코드")"
+  [[ $analyzeFailed == no ]] || bad=1
   if [[ $WRITE == yes ]]; then [[ $valuesChanged == no ]] || bad=1; else [[ $same == yes ]] || bad=1; fi
 done
 exit "$bad"
