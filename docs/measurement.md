@@ -356,3 +356,98 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 - `end`는 입구 필터를 나간 때다. 처리 코드가 예외로 끝나면 `status`는 필터를 나갈 때의 값이라 실제 응답(오류 페이지)과 다를 수 있다.
 - 헛일은 "위가 포기한 뒤 아래가 쓴 시간"이다. 아래가 위의 포기를 알 길이 없으므로(취소가 전해지지 않는다) 이 실험의 아래 층은 늘 끝까지 일한다.
 - 표본 간격 100ms보다 짧게 차고 빠지는 것은 보이지 않는다.
+
+## 8. 재시도 지표 (task 03) — `analyzer retry`
+
+> task 03의 실험(`docs/experiments/task-03-design.md`)이 쓰는 지표. 재시도 감싸개의 규칙은 `docs/retry.md`. 1~6절의 대조 분석은 그대로 돌고(두 번 처리됨·잃음은 거기서), 이 절의 분석이 그 뒤에 따로 돈다(`scripts/run.sh`의 10단계 — 시나리오가 task 03의 것일 때). task 03의 시나리오에서는 7절의 시각 분석을 돌리지 않는다(7-2가 한 층에 한 requestId의 시각 기록이 둘 이상이면 입력 오류로 내는데, 재시도하면 그것이 정상이다).
+> 1~7절의 형식과 동작은 바꾸지 않았다. 정답 줄에 `attemptFault`가 더해지는 것은 task 03의 시나리오뿐이다(1절의 분석기는 모르는 필드를 무시한다).
+
+### 8-1. 시도마다 넣는 실패 — `X-Attempt-Fault`
+
+`<service>:<kind>=<value>[,<service>:<kind>=<value>...]` — 사슬을 따라 그대로 넘어간다. 해석하는 코드는 한 곳: `fault-header/…/AttemptFaultDirectives.kt`(서비스와 분석기가 같이 쓴다).
+
+| kind | value | 그 서비스에서 | 카운터 |
+|---|---|---|---|
+| `fail-first` | n(1 이상의 정수) | 그 requestId로 그 서비스에 든 횟수 k(1부터, 이번 것 포함)가 k ≤ n이면 처리하지 않고 500(본문 `{"fault":"fail-first",...}`) | `fail-first` +1 |
+| `slow-first` | `<n>@<ms>`(둘 다 1 이상의 정수) | k ≤ n이면 ms만큼 잔 뒤 처리한다 | `slow-first` +1 |
+| `outage` | `<fromMs>-<toMs>`(0 이상의 정수, from < to — 벽시계 ms) | 입구에 든 시각(시각 기록의 `startUs`)이 [from·1000, to·1000)이면 처리하지 않고 500 | `outage` +1 |
+
+- 빈 값·없음 = 없음. 한 서비스를 가리키는 지시는 하나만(둘이면 틀린 헤더). 그 밖의 꼴(모르는 서비스·kind, 0, 부호, 소수)은 틀린 헤더 → 서비스는 400, 분석기는 입력 오류.
+- 든 횟수 k는 서비스가 requestId마다 세고, 위 층이 몇 번 다시 불렀든(위의 위 층이 다시 불렀든) 같은 카운터다. 헤더가 그 서비스에 `fail-first`·`slow-first`를 줄 때만 센다.
+- 서비스 쪽 끝점: `GET /attempt-faults` → `{"fail-first":n,"slow-first":n,"outage":n}`, `DELETE /attempt-faults`(카운터와 든 횟수를 비운다).
+
+### 8-2. 입력
+
+| 파일 | 만드는 곳 | 형식 |
+|---|---|---|
+| `answers.jsonl` | k6 | 7-1절 그대로(`sentAtMs` 필수) + **`attemptFault`**(문자열, 필수 — 보낸 `X-Attempt-Fault` 그대로, `""` = 없음. 8-1의 문법) |
+| `db/*.csv` | 실행 스크립트 | 2절 그대로 |
+| `timing/timings-<서비스>.json` | 서비스 `GET /timings` | 7-1절 그대로. **한 층에 한 requestId의 기록이 여럿이어도 된다**(재시도로 여러 번 든 것) — 기록 하나 = 그 층의 업무 입구에 든 시도 하나 |
+| `timing/attempts-order.json`, `timing/attempts-inventory.json` | 서비스 `GET /attempts` | JSON 배열. 원소 = 재시도 감싸개의 시도 하나: `requestId`(비지 않은 문자열), `callId`(정수), `attempt`(정수 ≥ 1), `startUs`·`endUs`(정수, 0 ≤ start ≤ end), `outcome`(`Completed` 또는 `(Failed|Unknown):\S+`), `delayBeforeMs`(정수 ≥ 0, 첫 시도는 0), `decision`(`success`·`not-retryable`·`retry`·`max-attempts`·`budget-denied`). 재시도가 꺼진 서비스는 `[]` |
+| `attempt-faults.json` | 실행 스크립트(세 서비스의 `GET /attempt-faults`를 모음) | `{"order":{"fail-first":n,"slow-first":n,"outage":n},"inventory":{...},"payment":{...}}` — 서비스 셋·종류 셋이 모두 있고 값은 0 이상의 JSON 정수, 여분의 키는 입력 오류 |
+
+### 8-3. 입력 오류 (종료 코드 1, `report-retry.json`·`metrics-retry.tsv`를 쓰지 않고 있던 것은 지운다)
+
+- 1·2절과 7-2절의 정답·CSV·시각 기록 검사(같은 읽기 코드) — 다만 "한 층에 한 requestId의 기록이 둘 이상"과 "DB 행은 있는데 시각 기록이 없음"은 검사하지 않는다. 정답에 없는 requestId의 시각 기록은 입력 오류.
+- 정답에 `attemptFault`가 없거나 문자열이 아니거나 8-1의 문법이 틀림. 같은 `requestId`가 정답에 두 줄 이상.
+- 시도 기록: 위 표의 꼴이 아님, 정답에 없는 requestId, `Completed`인데 `decision`이 `success`가 아님(또는 거꾸로), 한 `callId`에 requestId가 둘 이상, `attempt`가 1부터 빈틈없이 이어지지 않음, 마지막이 아닌 시도의 `decision`이 `retry`가 아님, 마지막 시도의 `decision`이 `retry`, 다음 시도의 `startUs`가 앞 시도의 `endUs`보다 이름.
+- 구간 장애(`outage`)의 지시가 정답들 사이에 둘 이상(실행마다 하나만 본다).
+- 인자: `retry` 뒤에 `--run`(필수), `--expect` 짝. 기대 파일은 7-4절과 같은 꼴(`{"<이름>": {"min": 수, "max": 수}}`).
+
+### 8-4. 지표의 식
+
+분위수는 7-3절의 규칙(nearest-rank, p50·p90·p99·max, 0건이면 `count` 0과 `null`). t0 = 정답의 첫 `sentAtMs`. 시각 기록의 "든 시각" = `startUs ÷ 1000`(정수 나눗셈, ms).
+
+| 지표(`report-retry.json`의 자리) | 식 |
+|---|---|
+| `clients.completed`·`failed`·`unknown` | 4-1절의 판정마다의 정답 수 |
+| `clients.successRatio` | `completed ÷ answers` |
+| `clients.elapsedMs`, `clients.completedElapsedMs` | 모든 정답 / 완료인 정답의 `elapsedMs` 분위수 |
+| `clients.noResponse` | `status` 0인 정답 |
+| `clients.notReachedServer` | `status` 0이고 주문의 시각 기록이 없는 정답 — **늘 0이어야 한다**(8-5) |
+| `layers.<L>.arrivals` | L의 시각 기록 수(L의 업무 입구에 든 시도 수) |
+| `layers.<L>.arrivalsPerRequest` | `arrivals ÷ answers`(요청 하나에 L이 받은 호출의 배수) |
+| `layers.<L>.requestsReached` | L의 시각 기록에 나오는 requestId 수 |
+| `layers.<L>.repeatArrivals` | `arrivals − requestsReached`(같은 요청으로 다시 든 횟수 — 다시 한 일) |
+| `layers.<L>.rows`, `processedRows` | L의 DB 행 수, 처리 행 수(4-2절) |
+| `layers.<L>.doubled` | 처리 행이 둘 이상인 requestId 수(4-2절 `doubled`와 같다) |
+| `layers.<L>.extraProcessedRows` | requestId마다 `max(0, 처리 행 − 1)`의 합 |
+| `layers.<L>.processedNotCompleted` | 정답의 판정이 `completed`가 아닌 requestId의 처리 행 수(끝내 성공으로 끝나지 않은 요청에 쓴 일) |
+| `doubledTotal` | 어느 층이든 처리 행이 둘 이상인 requestId 수(4-2절과 같다) |
+| `edges.<U>-><L>.calls` | U의 시도 기록의 `callId` 수(감싼 호출 수) |
+| `….attempts`, `….retries` | 시도 기록 수, 그 가운데 `attempt ≥ 2` |
+| `….decisions.<결정>`, `….budgetDenied` | 결정마다의 수(다섯 모두, 0 포함), `budget-denied`의 수 |
+| `….callsByAttempts.<k>` | 시도를 정확히 k번 쓴 호출 수(k = 1 … 가장 큰 `attempt`) |
+| `….attemptsNotArrived` | `attempts − layers.<L>.arrivals`(보낸 시도 가운데 L의 입구에 들지 않은 수 — 이 실험에서는 0이어야 한다. 늘 견주지는 않는다) |
+| `….delayMs.attempt<k>` | `attempt = k`인 시도의 `delayBeforeMs` 분위수(k ≥ 2) |
+| `….gapMs.attempt<k>` | 같은 호출에서 시도 k의 `startUs` − 시도 k−1의 `endUs`(ms) 분위수 |
+| `….gapMinusDelayMs` | 모든 k ≥ 2의 (실제 간격 − `delayBeforeMs`) 분위수 — 잔 시간이 계획보다 얼마나 길었나 |
+| `….retriesPeakPer50ms` | `attempt ≥ 2`인 시도의 `startUs ÷ 1000`을 t0부터 50ms 칸(`⌊(t − t0) / 50⌋`)으로 나눈 칸마다의 수의 최대(없으면 0) |
+| `attemptFaults.<서비스>.<종류>.counted` | `attempt-faults.json`의 값(서비스가 센 수) |
+| `attemptFaults.<서비스>.<종류>.expected` | 기록에서 다시 센 수: `fail-first`·`slow-first` = 그 서비스를 그 종류로 가리킨 정답마다 `min(n, 그 서비스의 그 requestId 시각 기록 수)`의 합 · `outage` = 그 서비스를 `outage`로 가리킨 requestId의 그 서비스 시각 기록 가운데 `startUs`가 [from·1000, to·1000)인 수 |
+| `mix.<라벨>` | 정답을 `attemptFault`(빈 값은 `none`)로 묶어: `count`, `completed`, `unknown`, `paymentArrivals`·`inventoryArrivals`(그 묶음의 requestId들의 시각 기록 수의 합), `elapsedMs` 분위수 |
+| `bins.binMs` | 50 |
+| `bins.<L>.peakPer50ms`, `peakPer1s` | L의 든 시각을 t0부터 50ms / 1000ms 칸으로 나눈 칸마다의 수의 최대 |
+| `outage.startMs`·`endMs` | 구간 장애의 from·to − t0 |
+| `outage.requestsSentDuring`, `completedSentDuring` | `sentAtMs`가 [from, to)인 정답 수, 그 가운데 완료 |
+| `outage.calleeArrivalsDuring` | 장애를 넣은 서비스 S의 시각 기록 가운데 `startUs`가 [from·1000, to·1000)인 수 |
+| `outage.calleePeakPer50msBefore`·`During`·`After` | S의 50ms 칸 가운데 칸 끝 ≤ from / from ≤ 칸 시작이고 칸 끝 ≤ to / 칸 시작 ≥ to인 칸의 최대(칸 시작 = t0 + 50·i) |
+| `outage.retriesPeakPer50msDuring` | S의 바로 위 층의 `attempt ≥ 2` 시도 시작을 같은 칸으로 — 구간 안의 칸의 최대 |
+| `outage.retryTailMs` | S의 바로 위 층의 `attempt ≥ 2` 시도 시작(ms)의 최대 − to. 재시도가 없으면 `null`. 음수면 구간이 끝나기 전에 재시도가 멎었다 |
+| `outage.clientRecoveryMs` | 완료가 아닌 정답의 `sentAtMs` 최대 − to. 없으면 `null`. 음수면 그만큼 구간 끝 앞에 보낸 요청부터는 모두 완료됐다 |
+
+`report-retry.json`에만 있고 `metrics-retry.tsv`에는 없는 것: `series`(100ms 칸마다 결제에 든 수 `paymentArrivals`, 재고·주문의 재시도 시작 수 `inventoryRetries`·`orderRetries` — 배열, 첫 칸의 시작 = `originSentAtMs` = t0), `run`·`expect`·`differences`. 시간 흐름의 표는 `series`에서 만든다.
+
+### 8-5. 판정과 출력
+
+- 출력: `<실행 폴더>/report-retry.json`, `<실행 폴더>/metrics-retry.tsv`(수와 `null`만 편 것 — 7-4절과 같은 꼴), 표준 출력에 한 줄 요약, 표준 오류에 불일치.
+- **늘 견주는 것**(기대 파일이 없어도, 이 차례로): ① `clients.notReachedServer`가 0이 아니면 `clients.notReachedServer: 늘 0, 실제 <n>` — 부하 도구가 보낸 요청이 서버에 닿지 않았으면 그 실행은 조건의 부하가 아니다(task 02 R02-1에서 드러난 빈 곳) ② 서비스·종류마다(order → inventory → payment, `fail-first` → `slow-first` → `outage`) `counted ≠ expected`이면 `attemptFaults.<서비스>.<종류>: 서비스가 센 수 <c>, 기록에서 다시 센 수 <e>` — 넣은 실패가 기록과 맞지 않으면 측정이 틀렸다. 그 뒤에 기대 파일의 차이(7-4절과 같은 꼴과 수의 표기).
+- 종료 코드: 0 불일치 없음 · 1 입력 오류(8-3) · 2 불일치. `scripts/run.sh`의 종료 코드는 대조 분석·(시각 분석)·재시도 분석 가운데 큰 것(대조 분석이 1이면 재시도 분석을 돌리지 않는다).
+- 실행 폴더에 더해지는 것(task 03의 시나리오): `timing/attempts-<서비스>.json`(결제는 늘 `[]`), `attempt-faults.json`, `expect.retry.json`(기대 파일을 줬으면), `report-retry.json`, `metrics-retry.tsv`. `config.env`에 `retry_expect`와 두 층의 재시도 조건(`order_retry_*`·`inventory_retry_*`). 조건 하나는 `scripts/task03.sh`, 모두는 `scripts/task03-all.sh`, 표는 `scripts/task03-table.sh`(`runs/task-03-index.tsv`와 `metrics-retry.tsv`), 묶기·다시 계산은 `scripts/task03-pack.sh`·`task03-recompute.sh`.
+
+### 8-6. 알려진 한계
+
+- 시계: 7-5절과 같다(한 컴퓨터의 같은 시계).
+- 50ms 칸은 t0에 맞춘 고정 칸이다 — 한 무리가 칸 경계에 걸치면 두 칸으로 나뉘어 최대가 작게 나온다.
+- 시도 기록과 시각 기록은 메모리에만 있다. 서비스가 다시 뜨면 사라진다.
+- `outage`의 판정은 서비스의 시계로 한다. 부하 도구는 그 구간을 시나리오의 시작 시각(`exec.scenario.startTime`)에서 계산해 헤더에 싣는다 — 둘이 같은 시계라는 것에 기댄다.

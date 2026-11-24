@@ -112,3 +112,32 @@ keep-alive 두 설정의 출처(2026-11-24 확인):
 ### 조건을 바꾸는 방법 — `compose.yaml`의 환경 변수 + `/settings` 대조
 
 - 타임아웃 둘과 스레드 방식을 `${ORDER_TO_INVENTORY_TIMEOUT:-2000ms}`·`${INVENTORY_TO_PAYMENT_TIMEOUT:-1000ms}`·`${VIRTUAL_THREADS:-false}`로 읽는다(기본값 = task 01의 값). 바꾼 값이 정말 걸렸는지는 실행 스크립트가 `settings-<서비스>.json`(떠 있는 `HttpClient` 요청과 Tomcat 실행기에서 읽은 값)과 견준다. Spring의 설정 키(`spring.threads.virtual.enabled`)와 Tomcat 설정은 task 01에서 확인한 것 그대로다.
+
+## task 03에서 정한 것 — 새 의존성 없음
+
+### 재시도 감싸개 — 직접 짠 코드(`chain-link/…/Retry.kt`), 라이브러리가 아니라
+
+- 정말 필요한가: 예. 명세 task 03의 계약(층마다의 최대 시도, 다시 시도하는 갈래, 간격 넷, 토큰 버킷 예산, 시도마다의 기록).
+- 선택지: (가) Resilience4j Retry·Spring Retry·Spring Framework 7의 `@Retryable` — 명세 2절이 쓰지 않기로 했다(라이브러리의 기본 동작이 아니라 규칙을 재려는 것이다). (나) 직접 짠다 — 규칙(`docs/retry.md`)이 코드 한 파일에 그대로 있고, 시계·난수·잠을 바꿔 끼울 수 있다(테스트 입구). 단점: 틀리면 우리 탓이다 — 규칙을 문서에 정확히 적고 다른 워커가 문서에서 테스트를 쓴다.
+- 고른 것: (나). 시도를 보내는 것은 그대로 `HttpNextLayerCall`(JDK HttpClient, 자체 재시도 없음 — task 01에서 끈 숨은 기본값 그대로).
+
+### 재시도 설정 — Spring `@ConfigurationProperties`(`chain.retry.*`), 직접 짠 설정 문자열 해석이 아니라
+
+- 선택지: (가) 서비스마다 환경 변수 하나에 규칙을 한 줄로 적고(`max=3;backoff=…`) 직접 해석한다 — 환경 변수가 둘로 준다. 단점: 해석 코드를 새로 짜고 시험해야 한다. (나) Boot의 설정 바인딩(이미 있는 기능 — ④): 기간(`100ms` → `Duration`), 쉼표 목록 → `Set<enum>`, 낱말 → enum(Boot의 느슨한 enum 변환이 `exponential-jitter`를 `EXPONENTIAL_JITTER`로 받는다 — `/settings`에서 실제 값으로 확인). 단점: `compose.yaml`의 환경 변수가 서비스마다 아홉 줄.
+- 고른 것: (나). 적용됐는지는 `/settings`의 `retry`(떠 있는 감싸개의 규칙 객체에서 읽은 값)를 `run.sh`가 조건과 견준다.
+
+### 예산의 소수 — `BigDecimal`
+
+- `Double`로 0.1을 열 번 더하면 0.9999…가 되어 "토큰 1개"의 경계가 한 칸 밀린다. 넣는 양이 소수인 예산(0.1)을 시험이 정확히 견줄 수 있게 `BigDecimal`(JDK — ③)로 더한다.
+
+### 시도마다 넣는 실패 — 새 헤더 `X-Attempt-Fault`(직접 짠 필터의 한 갈래), `X-Fault`를 넓히지 않고
+
+- 정말 필요한가: 예. "처음 몇 번의 시도는 실패한다"와 구간 장애는 요청 단위가 아니라 **시도** 단위의 장애다.
+- 선택지: (가) `X-Fault`에 kind를 더한다 — 단점: `FaultKind`가 늘면 `/faults`의 키가 늘고, task 01의 분석기가 모르는 키를 입력 오류로 내는 계약(3절)과 그 테스트가 깨진다(task 01·02의 동작이 바뀐다). (나) 새 헤더와 새 카운터 끝점(`/attempt-faults`) — 헤더가 없으면 아무 일도 하지 않으므로 task 01·02의 경로가 그대로다. (다) Toxiproxy·`tc netem` — 요청·시도 단위가 아니다.
+- 고른 것: (나). 해석은 `fault-header` 모듈(Spring 없음)에 두어 서비스와 분석기가 같은 코드를 쓴다(task 01 R01-4의 교훈).
+
+### 무리 지은 도착 — k6 스크립트 안에서 기다렸다 보냄(`exec.scenario.startTime` + `sleep`), 새 실행기·`http.batch`가 아니라
+
+- 정말 필요한가: 실험 나(지터)에만. 고르게 오는 부하에서는 실패도 고르게 나서 지터가 흩을 몰림이 없다.
+- 선택지: (가) `http.batch`로 N건을 한 번에 — 단점: 요청마다의 경과를 따로 재기 어렵고 `batch`·`batchPerHost` 옵션을 더 맞춰야 한다. (나) `constant-arrival-rate`의 반복이 자기 무리의 시각(시나리오 시작 + (무리 + 1) × 500ms)까지 `sleep`한 뒤 보낸다 — 이미 쓰는 실행기, 요청마다 경과를 그대로 잰다. 2026-11-24에 k6 v2.4.0에서 20건이 같은 ms에 보내지는 것을 확인했다(`exec.scenario.startTime`은 시나리오 시작의 벽시계 ms).
+- 고른 것: (나).
