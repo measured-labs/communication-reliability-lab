@@ -18,6 +18,7 @@ private const val IDEM_USAGE = "usage: analyzer idem --run <실행 폴더> [--ex
  * `--no-row-ids`: 업무 행 id와 키 행의 row_id를 내보내기 전의 실행(task 04의 첫 62개 — 2026-11-24 20:30 전)을 다시 계산할 때만 준다.
  * 주면 `db/row-ids-*.csv`·`db/idempotency-row-ids-*.csv`를 읽지 않고 `layers.<L>.keyLinks`를 내지 않는다(그 대조도 하지 않는다).
  * 주지 않으면 두 파일은 필수다 — 없으면 입력 오류(조용히 건너뛰지 않는다).
+ * 실행 폴더의 `db/`에 둘 가운데 어느 파일이든 하나라도 있는데 주면 입력 오류다(row_id를 내보낸 실행의 대조를 건너뛰지 않게).
  */
 const val NO_ROW_IDS = "--no-row-ids"
 
@@ -292,6 +293,9 @@ private fun idempotencyEnabled(run: Path, service: String): Boolean {
 /** 끊김을 위 층이 본 결과 모름(연결이 끊김)으로 셀 때의 결과 이름 앞부분(docs/measurement.md 9-4 `dropFaults.<서비스>.observedAbove`). */
 const val IO_OUTCOME_PREFIX = "Unknown:IO_"
 
+/** `db/row-ids-<서비스>.csv`·`db/idempotency-row-ids-<서비스>.csv`의 이름(`--no-row-ids`와 함께 있으면 입력 오류). */
+private val ROW_ID_FILE = Regex("(idempotency-)?row-ids-.+\\.csv")
+
 /**
  * 보고와, 늘 견주는 것의 차이 줄(9-5). [rowIds]가 false면(`--no-row-ids`) 업무 행 id와 키 행의 row_id를 읽지 않고 `keyLinks`를 내지 않는다.
  */
@@ -313,6 +317,12 @@ fun idempotencyReport(run: Path, rowIds: Boolean = true): Pair<Map<String, Any?>
     val dropCounts = readServiceCounts(run.resolve("drop-faults.json"), listOf(DropFault.KIND))
     val attemptCounts = readAttemptFaultCounts(run.resolve("attempt-faults.json"))
     val enabled = Layer.entries.associateWith { idempotencyEnabled(run, it.label) }
+    if (!rowIds) {
+        val exported = Files.list(run.resolve("db")).use { s ->
+            s.map { it.fileName.toString() }.filter { ROW_ID_FILE.matches(it) }.sorted().toList()
+        }
+        if (exported.isNotEmpty()) throw InputException("$NO_ROW_IDS 를 줬는데 실행이 row_id를 내보냈다(db/${exported.first()} 외 ${exported.size - 1}개) — 이 인자는 내보내기 전의 실행에만 준다")
+    }
     // 업무 행 id와 키 행의 row_id(R04-2) — 내보낸 두 표가 같은 순간의 것인지(업무 행의 requestId 차례, 키의 집합)를 먼저 본다
     val rowIdsByLayer = if (!rowIds) null else Layer.entries.associateWith { layer ->
         val path = run.resolve("db").resolve("row-ids-${layer.label}.csv")
@@ -426,7 +436,8 @@ fun idempotencyReport(run: Path, rowIds: Boolean = true): Pair<Map<String, Any?>
         val keysWithoutRow = keys.count { it.requestId !in rowRequestIds }
         val counts = keyCounts.getValue(svc)
         // R04-5: 서비스가 센 409·422를 그 층의 시각 기록의 status와 견준다. 끊긴 응답(status 0)은 무엇이었는지 모른다 —
-        // 그 가운데 409·422였을 수 있는 것(같은 requestId의 다른 기록이 그 기록이 끝나기 전에 들었다 — 이 실험은 키 = requestId)만큼만 차를 받는다.
+        // 그 가운데 409·422였을 수 있는 것(같은 requestId의 다른 기록이 그 기록보다 먼저 — 같은 μs 포함 — 들었다. 409·422는 다시 온 키에만 나온다,
+        // 이 실험은 키 = requestId)만큼만 차를 받는다.
         val layerTimings = timings.getValue(layer)
         val timingsById = layerTimings.groupBy { it.requestId }
         val responses = linkedMapOf(
@@ -434,7 +445,7 @@ fun idempotencyReport(run: Path, rowIds: Boolean = true): Pair<Map<String, Any?>
             "422" to layerTimings.count { it.status == 422 }.toLong(),
             "0" to layerTimings.count { it.status == 0 }.toLong(),
             "0Repeat" to layerTimings.count { t ->
-                t.status == 0 && timingsById.getValue(t.requestId).any { o -> o !== t && o.startUs <= t.endUs }
+                t.status == 0 && timingsById.getValue(t.requestId).any { o -> o !== t && o.startUs <= t.startUs }
             }.toLong(),
         )
         // R04-2: 키 행 하나가 업무 행 하나를 가리키나(row_id)
@@ -497,6 +508,7 @@ fun idempotencyReport(run: Path, rowIds: Boolean = true): Pair<Map<String, Any?>
     val report = linkedMapOf<String, Any?>(
         "answers" to answers.size,
         "enabled" to Layer.entries.associate { it.label to (if (enabled.getValue(it)) 1 else 0) },
+        "rowIdsChecked" to (if (rowIds) 1 else 0),
         "clients" to clients,
         "doubledTotal" to doubledTotal,
         "layers" to layers,
