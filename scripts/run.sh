@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # 실행 한 번: 확인 → 이미지 확인 → 워밍업 → 상태 초기화 → 부하 → 가라앉기 → DB 상태 내보내기 → 분석.
-#   scripts/run.sh <calibration|duplicate> <반복 번호>
+#   scripts/run.sh <시나리오> <반복 번호>
+#   시나리오: calibration | duplicate (task 01) · false-timeout | slow-layer | split-timeout | cal-false-timeout | cal-sampler (task 02)
+#   반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행(config.env에 discard_run=yes — 결과 표에 넣지 않는다).
+# task 02의 조건은 환경 변수로 준다(서비스도 같은 값으로 띄워 둔다 — scripts/up.sh): ORDER_TO_INVENTORY_TIMEOUT,
+#   INVENTORY_TO_PAYMENT_TIMEOUT(예: 2000ms), VIRTUAL_THREADS(true|false). 주지 않으면 task 01의 값(2000ms, 1000ms, false).
+#   떠 있는 서비스의 /settings(실제 값)가 이 값과 다르면 실행 실패.
 # 기록: runs/<시나리오>-<시각>-r<번호>/ (형식은 docs/measurement.md)
 # 서비스는 먼저 scripts/up.sh 로 띄워 둔다. 종료 코드: 0 통과, 1 실행 실패, 2 분석 결과가 기대와 다름.
 set -euo pipefail
@@ -13,13 +18,40 @@ REP=${2:?"반복 번호"}
 # 시나리오마다의 부하 모양. SETTLE_TIMEOUT = k6가 끝난 뒤 세 서비스의 처리 중인 요청이 0이 되기를 기다리는 최대 시간.
 # 시나리오의 가장 긴 지연(calibration: order:delay=6000)보다 길게 둔다. 그 안에 0이 안 되면 실행 실패.
 # 환경 변수 SETTLE_TIMEOUT_SECONDS로 바꿀 수 있다(기록에 남는다 — 가라앉기 검사가 실패를 내는지 일부러 짧게 해 볼 때).
+# REQUEST_TIMEOUT = k6의 요청 타임아웃(k6 기본 60s를 쓰지 않는다 — 층의 타임아웃보다 길게). MAX_VUS = 사슬 시나리오의 VU 수
+# (모두 미리 만든다 — 도착률 × k6 요청 타임아웃보다 크게: slow-layer 60/s × 20s = 1200 < 1500).
+# TIMING = 시각 기록·표본을 분석하나(task 02). SLOW_LABEL = 느린 구간을 가리키는 장애 값(slow-layer).
+# task 02의 부하 모양과 까닭: docs/experiments/task-02-design.md
+# K6_NO_CONNECTION_REUSE = 부하의 k6가 keep-alive를 끄나(요청마다 새 연결, `Connection: close`). slow-layer만 켠다 —
+# VU 1500개를 돌려 쓰면 한 연결이 25s 쉬었다 다시 쓰여 주문 서비스의 keep-alive(20s)를 넘는다. 스레드가 모두 찬 Tomcat은
+# 그 연결을 닫는 일을 실행기의 큐에 넣어 늦게 닫으므로, k6가 그 사이 그 연결에 보낸 요청이 EOF로 끊겼다
+# (2026-11-24 — docs/results/task-02-timeouts.md "실험 나" R02-1). 서비스 사이의 HttpClient는 15s < 20s로 이미 피한다.
+LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no; K6_NO_CONNECTION_REUSE=false
 case "$SCENARIO" in
-  calibration) RATE=20; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20 ;;
-  duplicate)   RATE=20; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=10 ;;
+  calibration)       RATE=20; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
+  duplicate)         RATE=20; DURATION_SECONDS=15; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=5s;  MAX_VUS=300 ;;
+  false-timeout)     RATE=40; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
+  slow-layer)        RATE=60; DURATION_SECONDS=50; DEFAULT_SETTLE_TIMEOUT=180; REQUEST_TIMEOUT=20s; MAX_VUS=1500; TIMING=yes
+                     LOOKUP_RATE=10; SLOW_LABEL="payment:delay=5000"; K6_NO_CONNECTION_REUSE=true ;;
+  split-timeout)     RATE=20; DURATION_SECONDS=40; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
+  cal-false-timeout) RATE=20; DURATION_SECONDS=20; DEFAULT_SETTLE_TIMEOUT=10;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
+  cal-sampler)       RATE=50; DURATION_SECONDS=30; DEFAULT_SETTLE_TIMEOUT=20;  REQUEST_TIMEOUT=10s; MAX_VUS=300;  TIMING=yes ;;
   *) die "모르는 시나리오 '$SCENARIO'" ;;
 esac
 SETTLE_TIMEOUT_SECONDS=${SETTLE_TIMEOUT_SECONDS:-$DEFAULT_SETTLE_TIMEOUT}
-REQUEST_TIMEOUT=5s # k6 기본 60s를 쓰지 않는다. 층의 타임아웃(2000ms·1000ms)보다 길다
+# task 02의 조건(기본값 = task 01의 값, compose.yaml과 같다).
+ORDER_TO_INVENTORY_TIMEOUT=${ORDER_TO_INVENTORY_TIMEOUT:-2000ms}
+INVENTORY_TO_PAYMENT_TIMEOUT=${INVENTORY_TO_PAYMENT_TIMEOUT:-1000ms}
+VIRTUAL_THREADS=${VIRTUAL_THREADS:-false}
+# 분석기가 견줄 시각 지표의 기대 파일(보정). 주면 꼭 있어야 한다. 주지 않으면 load/expectations/<시나리오>.timing.json이 있을 때만.
+if [[ -n ${TIMING_EXPECT:-} ]]; then
+  [[ -f $TIMING_EXPECT ]] || die "TIMING_EXPECT '$TIMING_EXPECT' 가 없다"
+elif [[ -f load/expectations/${SCENARIO}.timing.json ]]; then
+  TIMING_EXPECT=load/expectations/${SCENARIO}.timing.json
+fi
+ms_of() { [[ $1 =~ ^([0-9]+)ms$ ]] || die "타임아웃 '$1' 은 <정수>ms 꼴이어야 한다"; echo "${BASH_REMATCH[1]}"; }
+[[ $VIRTUAL_THREADS == true || $VIRTUAL_THREADS == false ]] || die "VIRTUAL_THREADS '$VIRTUAL_THREADS' 는 true|false"
+WARMUP_REQUEST_TIMEOUT=5s
 WARMUP_RATE=20
 WARMUP_SECONDS=15
 PLANNED=$((RATE * DURATION_SECONDS))
@@ -62,6 +94,15 @@ fi
   echo "duration_seconds=$DURATION_SECONDS"
   echo "planned_requests=$PLANNED"
   echo "k6_request_timeout=$REQUEST_TIMEOUT"
+  echo "k6_max_vus=$MAX_VUS"
+  echo "k6_no_connection_reuse=$K6_NO_CONNECTION_REUSE"
+  echo "lookup_rate_per_second=$LOOKUP_RATE"
+  echo "slow_label=$SLOW_LABEL"
+  echo "order_to_inventory_timeout=$ORDER_TO_INVENTORY_TIMEOUT"
+  echo "inventory_to_payment_timeout=$INVENTORY_TO_PAYMENT_TIMEOUT"
+  echo "virtual_threads=$VIRTUAL_THREADS"
+  echo "timing_expect=${TIMING_EXPECT:-}"
+  [[ $REP == 0 ]] && echo "discard_run=yes" || echo "discard_run=no"
   echo "settle_timeout_seconds=$SETTLE_TIMEOUT_SECONDS"
   echo "warmup=${WARMUP_RATE}/s x ${WARMUP_SECONDS}s"
   echo "k6_version=$(k6 version | head -1)"
@@ -76,13 +117,23 @@ for entry in "${SERVICE_PORTS[@]}"; do
   curl -sf "localhost:${port}/settings" > "$OUT/settings-${svc}.json"
 done
 
+# 2-1. 조건이 실제로 걸렸나 — 떠 있는 객체에서 읽은 값(/settings)과 이 실행의 조건을 견준다.
+want_settings() { # <파일> <찾을 조각> <뜻>
+  grep -qF "$2" "$1" || die "$3: $1 에 $2 가 없다 — 서비스를 이 조건으로 다시 띄운다(scripts/up.sh에 같은 환경 변수)"
+}
+want_settings "$OUT/settings-order.json" "\"requestTimeoutMs\":$(ms_of "$ORDER_TO_INVENTORY_TIMEOUT")," "주문→재고 요청 타임아웃"
+want_settings "$OUT/settings-inventory.json" "\"requestTimeoutMs\":$(ms_of "$INVENTORY_TO_PAYMENT_TIMEOUT")," "재고→결제 요청 타임아웃"
+for svc in order inventory payment; do
+  want_settings "$OUT/settings-${svc}.json" "\"executorVirtualThreads\":$VIRTUAL_THREADS" "$svc 의 스레드 방식"
+done
+
 # 3. 워밍업(장애 없음). 한 회차가 모두 201이 될 때까지 최대 3회차 — 셋 다 아니면 서비스가 정상이 아닌 채로 재는 것이라 멈춘다.
 #    막 뜬 JVM에서는 첫 회차의 일부가 층의 타임아웃(1000ms)을 넘는다(504 32/300 — 실측 2026-11-24).
 warmed=no
 for round in 1 2 3; do
   log "워밍업 ${round}회차 ${WARMUP_RATE}/s × ${WARMUP_SECONDS}s"
   k6 run -q -e SCENARIO=warmup -e BASE_URL="$BASE_URL" -e RATE="$WARMUP_RATE" -e DURATION_SECONDS="$WARMUP_SECONDS" \
-    -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e RUN_ID="warmup${round}-${NAME}" \
+    -e REQUEST_TIMEOUT="$WARMUP_REQUEST_TIMEOUT" -e MAX_VUS=300 -e RUN_ID="warmup${round}-${NAME}" \
     --log-output=file="$OUT/warmup${round}-k6-log.txt" --log-format=raw load/chain.js > "$OUT/warmup${round}-k6-stdout.txt" 2>&1 \
     || die "워밍업 k6가 실패했다 — $OUT/warmup${round}-k6-stdout.txt"
   warm_sent=$(grep -c '^{"type":"answer"' "$OUT/warmup${round}-k6-log.txt" || true)
@@ -100,6 +151,8 @@ psql_lab inventory_db "truncate reservations restart identity"
 psql_lab payment_db "truncate payments restart identity"
 for entry in "${SERVICE_PORTS[@]}"; do
   curl -sf -X DELETE "localhost:${entry#*:}/faults" > /dev/null
+  curl -sf -X DELETE "localhost:${entry#*:}/timings" > /dev/null
+  curl -sf -X DELETE "localhost:${entry#*:}/samples" > /dev/null
 done
 left_o=$(psql_lab order_db "select count(*) from orders")
 left_i=$(psql_lab inventory_db "select count(*) from reservations")
@@ -108,12 +161,17 @@ left_p=$(psql_lab payment_db "select count(*) from payments")
 
 # 5. 부하. k6가 실패로 끝나면(스크립트 오류 등) 실행도 실패다.
 log "부하 ${RATE}/s × ${DURATION_SECONDS}s = ${PLANNED}건"
-k6 run -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" \
-  -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e RUN_ID="$NAME" \
+k6_flags=()
+[[ $K6_NO_CONNECTION_REUSE == true ]] && k6_flags+=(--no-connection-reuse)
+k6 run "${k6_flags[@]}" -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" \
+  -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e MAX_VUS="$MAX_VUS" -e LOOKUP_RATE="$LOOKUP_RATE" -e RUN_ID="$NAME" \
   --log-output=file="$OUT/k6-log.txt" --log-format=raw \
   --summary-export="$OUT/k6-summary.json" load/chain.js > "$OUT/k6-stdout.txt" 2>&1 \
   || die "k6가 실패했다 — $OUT/k6-stdout.txt"
 grep '^{"type":"answer"' "$OUT/k6-log.txt" > "$OUT/answers.jsonl" || die "정답 줄이 하나도 없다 — $OUT/k6-log.txt"
+if ((LOOKUP_RATE > 0)); then
+  grep '^{"type":"lookup"' "$OUT/k6-log.txt" > "$OUT/lookups.jsonl" || die "조회 줄이 하나도 없다 — $OUT/k6-log.txt"
+fi
 # k6가 VU가 모자라 시작하지 못한 반복(dropped_iterations, Counter). 0이면 요약에 지표가 아예 없다.
 if grep -q '"dropped_iterations"' "$OUT/k6-summary.json"; then
   dropped=$(grep -A3 '"dropped_iterations"' "$OUT/k6-summary.json" | sed -n 's/^ *"count": *\([0-9][0-9]*\).*/\1/p' | head -1)
@@ -136,6 +194,13 @@ f_order=$(curl -sf localhost:8081/faults)
 f_inventory=$(curl -sf localhost:8082/faults)
 f_payment=$(curl -sf localhost:8083/faults)
 printf '{"order":%s,"inventory":%s,"payment":%s}\n' "$f_order" "$f_inventory" "$f_payment" > "$OUT/fault-counts.json"
+# 시각 기록과 표본(task 02 — docs/measurement.md 7절). 받지 못하면 실패.
+mkdir -p "$OUT/timing"
+for entry in "${SERVICE_PORTS[@]}"; do
+  svc=${entry%%:*}; port=${entry#*:}
+  curl -sf "localhost:${port}/timings" > "$OUT/timing/timings-${svc}.json" || die "$svc 의 /timings를 받지 못했다"
+  curl -sf "localhost:${port}/samples" > "$OUT/timing/samples-${svc}.json" || die "$svc 의 /samples를 받지 못했다"
+done
 
 # 8. 분석(컨테이너 안). 기대 파일이 있으면 실행 기록에 함께 넣고 견준다.
 args=(--run "/runs/${NAME}" --planned "$PLANNED")
@@ -147,5 +212,21 @@ set +e
 "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${args[@]}"
 rc=$?
 set -e
-log "기록: $OUT (분석 종료 코드 $rc)"
+log "대조 분석 종료 코드 $rc"
+# 9. 시각 지표(task 02). 대조 분석이 입력 오류(1)면 하지 않는다. 종료 코드는 둘 가운데 큰 것.
+if [[ $TIMING == yes && $rc != 1 ]]; then
+  targs=(timing --run "/runs/${NAME}")
+  [[ -n $SLOW_LABEL ]] && targs+=(--slow-label "$SLOW_LABEL")
+  if [[ -n ${TIMING_EXPECT:-} ]]; then
+    cp "$TIMING_EXPECT" "$OUT/expect.timing.json"
+    targs+=(--expect "/runs/${NAME}/expect.timing.json")
+  fi
+  set +e
+  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}"
+  trc=$?
+  set -e
+  log "시각 분석 종료 코드 $trc"
+  ((trc > rc)) && rc=$trc
+fi
+log "기록: $OUT (종료 코드 $rc)"
 exit "$rc"

@@ -30,6 +30,9 @@ class ChainContext(
     /** 이 서비스를 가리키는 지시만. */
     val faults: List<FaultDirective>,
 ) {
+    /** 아래 층을 부른 기록(부르지 않았으면 null). [HttpNextLayerCall]이 채우고 입구 필터가 시각 기록에 옮긴다. */
+    var call: CallRecord? = null
+
     companion object {
         private val holder = ThreadLocal<ChainContext>()
 
@@ -82,6 +85,7 @@ class InFlightController(private val inFlight: InFlightRequests) {
 class ChainEntryFilter(
     private val faultInjection: FaultInjection,
     private val inFlight: InFlightRequests,
+    private val timings: RequestTimings,
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) =
         inFlight.track { handle(request, response, chain) }
@@ -100,13 +104,19 @@ class ChainEntryFilter(
             return
         }
         val ctx = ChainContext(requestId, rawFault, directives.filter { it.service == faultInjection.service })
-        ChainContext.with(ctx) {
-            faultInjection.delayIfAsked(ctx)
-            if (faultInjection.errorIfAsked(ctx)) {
-                reject(response, 500, """{"fault":"error","service":"${faultInjection.service}"}""")
-            } else {
-                chain.doFilter(request, response)
+        // 시각 기록: 입구에 든 때(지연 장애로 자기 전)부터 나갈 때까지. 예외로 끝나도 남긴다(finally).
+        val start = epochMicros()
+        try {
+            ChainContext.with(ctx) {
+                faultInjection.delayIfAsked(ctx)
+                if (faultInjection.errorIfAsked(ctx)) {
+                    reject(response, 500, """{"fault":"error","service":"${faultInjection.service}"}""")
+                } else {
+                    chain.doFilter(request, response)
+                }
             }
+        } finally {
+            timings.add(TimingRecord(requestId, start, epochMicros(), response.status, ctx.call))
         }
     }
 
