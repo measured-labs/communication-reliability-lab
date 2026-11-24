@@ -44,11 +44,13 @@ for part in "${parts[@]}"; do
         cond ga "ga-max$m" retry-mix ORDER_TO_INVENTORY_TIMEOUT=5000ms $(inv MAX_ATTEMPTS=$m "${EXP[@]}")
       done
       ;;
-    na) # 실험 나: 간격 넷, 무리 지은 도착 + 결제 구간 장애 [10s, 20s), 재고 최대 시도 4
+    na) # 실험 나: 간격 넷(+ 리뷰 뒤에 더한 고정 500ms), 무리 지은 도착 + 결제 구간 장애 [10s, 20s), 재고 최대 시도 4
       cond na na-none retry-outage-burst ORDER_TO_INVENTORY_TIMEOUT=5000ms $(inv MAX_ATTEMPTS=4 BACKOFF=none)
       cond na na-fixed retry-outage-burst ORDER_TO_INVENTORY_TIMEOUT=5000ms $(inv MAX_ATTEMPTS=4 BACKOFF=fixed BASE_DELAY=200ms)
       cond na na-exponential retry-outage-burst ORDER_TO_INVENTORY_TIMEOUT=5000ms $(inv MAX_ATTEMPTS=4 BACKOFF=exponential BASE_DELAY=100ms MAX_DELAY=1000ms)
       cond na na-jitter retry-outage-burst ORDER_TO_INVENTORY_TIMEOUT=5000ms $(inv MAX_ATTEMPTS=4 BACKOFF=exponential-jitter BASE_DELAY=100ms MAX_DELAY=1000ms)
+      # 리뷰 뒤에 더한 조건(설계 10절): 무리의 주기(500ms)와 겹치는 고정 간격
+      cond na na-fixed500 retry-outage-burst ORDER_TO_INVENTORY_TIMEOUT=5000ms $(inv MAX_ATTEMPTS=4 BACKOFF=fixed BASE_DELAY=500ms)
       ;;
     da) # 실험 다: 재시도하는 층 × 주문→재고 타임아웃
       cond da da-1L retry-mix ORDER_TO_INVENTORY_TIMEOUT=3000ms $(inv MAX_ATTEMPTS=3 "${EXP[@]}")
