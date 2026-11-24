@@ -1,0 +1,6 @@
+CONTAINER                                   REPOSITORY                                TAG                 PLATFORM            IMAGE ID            SIZE                CREATED
+communication-reliability-lab-inventory-1   communication-reliability-lab-inventory   latest              linux/amd64         1a2025bb6abf        358MB               2 seconds ago
+communication-reliability-lab-order-1       communication-reliability-lab-order       latest              linux/amd64         f5d63876a891        358MB               2 seconds ago
+communication-reliability-lab-payment-1     communication-reliability-lab-payment     latest              linux/amd64         cfc90e660cb7        358MB               2 seconds ago
+communication-reliability-lab-postgres-1    postgres                                  18.7                linux/amd64         22fac36945da        474MB               292 years ago
+postgres@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a

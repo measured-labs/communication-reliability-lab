@@ -45,14 +45,14 @@ na	na-conc-on	idem-dup-conc	0	runs/idem-dup-conc-20261124T192410-r0	0	IDEMPOTENC
 na	na-conc-on	idem-dup-conc	1	runs/idem-dup-conc-20261124T192533-r1	0	IDEMPOTENCY_ENABLED=true	
 na	na-conc-on	idem-dup-conc	2	runs/idem-dup-conc-20261124T192633-r2	0	IDEMPOTENCY_ENABLED=true	
 na	na-conc-on	idem-dup-conc	3	runs/idem-dup-conc-20261124T192726-r3	0	IDEMPOTENCY_ENABLED=true	
-da	da-off	idem-plain	0	runs/idem-plain-20261124T192847-r0	0		
-da	da-off	idem-plain	1	runs/idem-plain-20261124T193010-r1	0		
-da	da-off	idem-plain	2	runs/idem-plain-20261124T193114-r2	0		
-da	da-off	idem-plain	3	runs/idem-plain-20261124T193217-r3	0		
-da	da-on	idem-plain	0	runs/idem-plain-20261124T193346-r0	0	IDEMPOTENCY_ENABLED=true	
-da	da-on	idem-plain	1	runs/idem-plain-20261124T193505-r1	0	IDEMPOTENCY_ENABLED=true	
-da	da-on	idem-plain	2	runs/idem-plain-20261124T193607-r2	0	IDEMPOTENCY_ENABLED=true	
-da	da-on	idem-plain	3	runs/idem-plain-20261124T193710-r3	0	IDEMPOTENCY_ENABLED=true	
+da	da-off	idem-plain	0	runs/idem-plain-20261124T192847-r0	0		대체됨: 차례가 섞인 앞 측정(끔 r0~r3 → 켬 r0~r3 차례로만 돌림) — 번갈아 다시 잰 da-off·da-on r1~r6이 대신한다
+da	da-off	idem-plain	1	runs/idem-plain-20261124T193010-r1	0		대체됨: 차례가 섞인 앞 측정(끔 r0~r3 → 켬 r0~r3 차례로만 돌림) — 번갈아 다시 잰 da-off·da-on r1~r6이 대신한다
+da	da-off	idem-plain	2	runs/idem-plain-20261124T193114-r2	0		대체됨: 차례가 섞인 앞 측정(끔 r0~r3 → 켬 r0~r3 차례로만 돌림) — 번갈아 다시 잰 da-off·da-on r1~r6이 대신한다
+da	da-off	idem-plain	3	runs/idem-plain-20261124T193217-r3	0		대체됨: 차례가 섞인 앞 측정(끔 r0~r3 → 켬 r0~r3 차례로만 돌림) — 번갈아 다시 잰 da-off·da-on r1~r6이 대신한다
+da	da-on	idem-plain	0	runs/idem-plain-20261124T193346-r0	0	IDEMPOTENCY_ENABLED=true	대체됨: 차례가 섞인 앞 측정(끔 r0~r3 → 켬 r0~r3 차례로만 돌림) — 번갈아 다시 잰 da-off·da-on r1~r6이 대신한다
+da	da-on	idem-plain	1	runs/idem-plain-20261124T193505-r1	0	IDEMPOTENCY_ENABLED=true	대체됨: 차례가 섞인 앞 측정(끔 r0~r3 → 켬 r0~r3 차례로만 돌림) — 번갈아 다시 잰 da-off·da-on r1~r6이 대신한다
+da	da-on	idem-plain	2	runs/idem-plain-20261124T193607-r2	0	IDEMPOTENCY_ENABLED=true	대체됨: 차례가 섞인 앞 측정(끔 r0~r3 → 켬 r0~r3 차례로만 돌림) — 번갈아 다시 잰 da-off·da-on r1~r6이 대신한다
+da	da-on	idem-plain	3	runs/idem-plain-20261124T193710-r3	0	IDEMPOTENCY_ENABLED=true	대체됨: 차례가 섞인 앞 측정(끔 r0~r3 → 켬 r0~r3 차례로만 돌림) — 번갈아 다시 잰 da-off·da-on r1~r6이 대신한다
 ra	ra-off	idem-reconcile	0	runs/idem-reconcile-20261124T193838-r0	0		
 ra	ra-off	idem-reconcile	1	runs/idem-reconcile-20261124T194010-r1	0		
 ra	ra-off	idem-reconcile	2	runs/idem-reconcile-20261124T194127-r2	0		
@@ -61,3 +61,37 @@ ra	ra-on	idem-reconcile	0	runs/idem-reconcile-20261124T194426-r0	0	IDEMPOTENCY_E
 ra	ra-on	idem-reconcile	1	runs/idem-reconcile-20261124T194603-r1	0	IDEMPOTENCY_ENABLED=true	
 ra	ra-on	idem-reconcile	2	runs/idem-reconcile-20261124T194719-r2	0	IDEMPOTENCY_ENABLED=true	
 ra	ra-on	idem-reconcile	3	runs/idem-reconcile-20261124T194836-r3	0	IDEMPOTENCY_ENABLED=true	
+da	da-off	idem-plain	0	runs/idem-plain-20261124T204749-r0	0		
+da	da-off	idem-plain	1	runs/idem-plain-20261124T204911-r1	0		
+da	da-on	idem-plain	0	runs/idem-plain-20261124T205038-r0	0	IDEMPOTENCY_ENABLED=true	
+da	da-on	idem-plain	1	runs/idem-plain-20261124T205208-r1	0	IDEMPOTENCY_ENABLED=true	
+da	da-on	idem-plain	2	runs/idem-plain-20261124T205325-r2	0	IDEMPOTENCY_ENABLED=true	
+da	da-off	idem-plain	0	runs/idem-plain-20261124T205513-r0	0		
+da	da-off	idem-plain	2	runs/idem-plain-20261124T205646-r2	0		
+da	da-off	idem-plain	3	runs/idem-plain-20261124T205756-r3	0		
+da	da-on	idem-plain	0	runs/idem-plain-20261124T205928-r0	0	IDEMPOTENCY_ENABLED=true	
+da	da-on	idem-plain	3	runs/idem-plain-20261124T210056-r3	0	IDEMPOTENCY_ENABLED=true	
+da	da-on	idem-plain	4	runs/idem-plain-20261124T210212-r4	0	IDEMPOTENCY_ENABLED=true	
+da	da-off	idem-plain	0	runs/idem-plain-20261124T210400-r0	0		
+da	da-off	idem-plain	4	runs/idem-plain-20261124T210533-r4	0		
+da	da-off	idem-plain	5	runs/idem-plain-20261124T210647-r5	0		
+da	da-on	idem-plain	0	runs/idem-plain-20261124T210825-r0	0	IDEMPOTENCY_ENABLED=true	
+da	da-on	idem-plain	5	runs/idem-plain-20261124T210954-r5	0	IDEMPOTENCY_ENABLED=true	
+da	da-on	idem-plain	6	runs/idem-plain-20261124T211113-r6	0	IDEMPOTENCY_ENABLED=true	
+da	da-off	idem-plain	0	runs/idem-plain-20261124T211301-r0	0		
+da	da-off	idem-plain	6	runs/idem-plain-20261124T211431-r6	0		
+ga	ga-2-on-409u	idem-retry-mix	0	runs/idem-retry-mix-20261124T211612-r0	0	ORDER_TO_INVENTORY_TIMEOUT=250ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=3 INVENTORY_RETRY_BACKOFF=exponential INVENTORY_RETRY_BASE_DELAY=100ms INVENTORY_RETRY_MAX_DELAY=1000ms INVENTORY_RETRY_ON=failed,unknown ORDER_RETRY_ENABLED=true ORDER_RETRY_MAX_ATTEMPTS=3 ORDER_RETRY_BACKOFF=exponential ORDER_RETRY_BASE_DELAY=100ms ORDER_RETRY_MAX_DELAY=1000ms ORDER_RETRY_ON=failed,unknown IDEMPOTENCY_ENABLED=true IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN=true	
+ga	ga-2-on-409u	idem-retry-mix	1	runs/idem-retry-mix-20261124T211734-r1	0	ORDER_TO_INVENTORY_TIMEOUT=250ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=3 INVENTORY_RETRY_BACKOFF=exponential INVENTORY_RETRY_BASE_DELAY=100ms INVENTORY_RETRY_MAX_DELAY=1000ms INVENTORY_RETRY_ON=failed,unknown ORDER_RETRY_ENABLED=true ORDER_RETRY_MAX_ATTEMPTS=3 ORDER_RETRY_BACKOFF=exponential ORDER_RETRY_BASE_DELAY=100ms ORDER_RETRY_MAX_DELAY=1000ms ORDER_RETRY_ON=failed,unknown IDEMPOTENCY_ENABLED=true IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN=true	
+ga	ga-2-on-409u	idem-retry-mix	2	runs/idem-retry-mix-20261124T211842-r2	0	ORDER_TO_INVENTORY_TIMEOUT=250ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=3 INVENTORY_RETRY_BACKOFF=exponential INVENTORY_RETRY_BASE_DELAY=100ms INVENTORY_RETRY_MAX_DELAY=1000ms INVENTORY_RETRY_ON=failed,unknown ORDER_RETRY_ENABLED=true ORDER_RETRY_MAX_ATTEMPTS=3 ORDER_RETRY_BACKOFF=exponential ORDER_RETRY_BASE_DELAY=100ms ORDER_RETRY_MAX_DELAY=1000ms ORDER_RETRY_ON=failed,unknown IDEMPOTENCY_ENABLED=true IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN=true	
+ga	ga-2-on-409u	idem-retry-mix	3	runs/idem-retry-mix-20261124T211950-r3	0	ORDER_TO_INVENTORY_TIMEOUT=250ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=3 INVENTORY_RETRY_BACKOFF=exponential INVENTORY_RETRY_BASE_DELAY=100ms INVENTORY_RETRY_MAX_DELAY=1000ms INVENTORY_RETRY_ON=failed,unknown ORDER_RETRY_ENABLED=true ORDER_RETRY_MAX_ATTEMPTS=3 ORDER_RETRY_BACKOFF=exponential ORDER_RETRY_BASE_DELAY=100ms ORDER_RETRY_MAX_DELAY=1000ms ORDER_RETRY_ON=failed,unknown IDEMPOTENCY_ENABLED=true IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN=true	
+keylinks	keylinks-cal-idem-on	cal-idem	1	runs/cal-idem-20261124T212122-r1	0	IDEMPOTENCY_ENABLED=true RECON_EXPECT=load/expectations/cal-idem-on.json IDEM_EXPECT=load/expectations/cal-idem-on.idem.json	
+keylinks	keylinks-ga-1-on	idem-retry-mix	0	runs/idem-retry-mix-20261124T212326-r0	0	ORDER_TO_INVENTORY_TIMEOUT=3000ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=3 INVENTORY_RETRY_BACKOFF=exponential INVENTORY_RETRY_BASE_DELAY=100ms INVENTORY_RETRY_MAX_DELAY=1000ms INVENTORY_RETRY_ON=failed,unknown IDEMPOTENCY_ENABLED=true	
+keylinks	keylinks-ga-1-on	idem-retry-mix	1	runs/idem-retry-mix-20261124T212435-r1	0	ORDER_TO_INVENTORY_TIMEOUT=3000ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=3 INVENTORY_RETRY_BACKOFF=exponential INVENTORY_RETRY_BASE_DELAY=100ms INVENTORY_RETRY_MAX_DELAY=1000ms INVENTORY_RETRY_ON=failed,unknown IDEMPOTENCY_ENABLED=true	
+keylinks	keylinks-ga-2-on	idem-retry-mix	0	runs/idem-retry-mix-20261124T212604-r0	0	ORDER_TO_INVENTORY_TIMEOUT=250ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=3 INVENTORY_RETRY_BACKOFF=exponential INVENTORY_RETRY_BASE_DELAY=100ms INVENTORY_RETRY_MAX_DELAY=1000ms INVENTORY_RETRY_ON=failed,unknown ORDER_RETRY_ENABLED=true ORDER_RETRY_MAX_ATTEMPTS=3 ORDER_RETRY_BACKOFF=exponential ORDER_RETRY_BASE_DELAY=100ms ORDER_RETRY_MAX_DELAY=1000ms ORDER_RETRY_ON=failed,unknown IDEMPOTENCY_ENABLED=true	
+keylinks	keylinks-ga-2-on	idem-retry-mix	1	runs/idem-retry-mix-20261124T212705-r1	0	ORDER_TO_INVENTORY_TIMEOUT=250ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=3 INVENTORY_RETRY_BACKOFF=exponential INVENTORY_RETRY_BASE_DELAY=100ms INVENTORY_RETRY_MAX_DELAY=1000ms INVENTORY_RETRY_ON=failed,unknown ORDER_RETRY_ENABLED=true ORDER_RETRY_MAX_ATTEMPTS=3 ORDER_RETRY_BACKOFF=exponential ORDER_RETRY_BASE_DELAY=100ms ORDER_RETRY_MAX_DELAY=1000ms ORDER_RETRY_ON=failed,unknown IDEMPOTENCY_ENABLED=true	
+keylinks	keylinks-na-seq-on	idem-dup-seq	0	runs/idem-dup-seq-20261124T212831-r0	0	IDEMPOTENCY_ENABLED=true	
+keylinks	keylinks-na-seq-on	idem-dup-seq	1	runs/idem-dup-seq-20261124T212932-r1	0	IDEMPOTENCY_ENABLED=true	
+keylinks	keylinks-na-conc-on	idem-dup-conc	0	runs/idem-dup-conc-20261124T213035-r0	0	IDEMPOTENCY_ENABLED=true	
+keylinks	keylinks-na-conc-on	idem-dup-conc	1	runs/idem-dup-conc-20261124T213135-r1	0	IDEMPOTENCY_ENABLED=true	
+keylinks	keylinks-ra-on	idem-reconcile	0	runs/idem-reconcile-20261124T213242-r0	0	IDEMPOTENCY_ENABLED=true	
+keylinks	keylinks-ra-on	idem-reconcile	1	runs/idem-reconcile-20261124T213411-r1	0	IDEMPOTENCY_ENABLED=true	
