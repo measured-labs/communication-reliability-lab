@@ -1,0 +1,170 @@
+{
+  "run" : "retry-mix-20261124T150414-r1",
+  "expect" : null,
+  "planned" : 800,
+  "differences" : [ ],
+  "reconciliation" : {
+    "amountMismatch" : 0,
+    "answers" : 800,
+    "doubledTotal" : 43,
+    "elapsedMs" : {
+      "all" : {
+        "count" : 800,
+        "max" : 1175.0,
+        "p50" : 141.0,
+        "p95" : 1141.0,
+        "p99" : 1154.0
+      },
+      "completed" : {
+        "count" : 677,
+        "max" : 1175.0,
+        "p50" : 39.0,
+        "p95" : 1145.0,
+        "p99" : 1156.0
+      },
+      "failed" : {
+        "count" : 123,
+        "max" : 386.0,
+        "p50" : 361.0,
+        "p95" : 373.0,
+        "p99" : 384.0
+      },
+      "unknown" : {
+        "count" : 0,
+        "max" : null,
+        "p50" : null,
+        "p95" : null,
+        "p99" : null
+      }
+    },
+    "faultCounts" : [ {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "payment"
+    } ],
+    "faultCountsMatch" : true,
+    "labels" : {
+      "" : {
+        "answers" : 800,
+        "elapsedMs" : {
+          "count" : 800,
+          "max" : 1175.0,
+          "p50" : 141.0,
+          "p95" : 1141.0,
+          "p99" : 1154.0
+        },
+        "requestIds" : 800,
+        "signatures" : {
+          "completed | COMPLETED | FAILED+FAILED+RESERVED | APPROVED" : 76,
+          "completed | COMPLETED | FAILED+RESERVED | APPROVED" : 165,
+          "completed | COMPLETED | RESERVED | APPROVED" : 393,
+          "completed | COMPLETED | RESERVED+UNKNOWN | APPROVED+APPROVED" : 43,
+          "failed | FAILED | FAILED+FAILED+FAILED | -" : 123
+        },
+        "verdicts" : {
+          "completed" : 677,
+          "failed" : 123,
+          "unknown" : 0
+        }
+      }
+    },
+    "layerMismatch" : 43,
+    "layers" : {
+      "order" : {
+        "amountMismatch" : 0,
+        "doubled" : 0,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 677,
+        "rows" : 800,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 0
+      },
+      "inventory" : {
+        "amountMismatch" : null,
+        "doubled" : 0,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 677,
+        "rows" : 1406,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 0
+      },
+      "payment" : {
+        "amountMismatch" : 0,
+        "doubled" : 43,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 720,
+        "rows" : 720,
+        "unknownNotProcessed" : 0,
+        "unknownProcessed" : 0
+      }
+    },
+    "lostTotal" : 0,
+    "orphanRows" : 0,
+    "pendingRows" : 0,
+    "requestIds" : 800,
+    "verdicts" : {
+      "completed" : 677,
+      "failed" : 123,
+      "unknown" : 0
+    }
+  }
+}

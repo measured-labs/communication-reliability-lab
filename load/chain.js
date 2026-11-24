@@ -3,6 +3,7 @@
 //
 // 받는 값(모두 꼭 준다 — 기본값에 기대지 않는다):
 //   SCENARIO         warmup | calibration | duplicate | (task 02) false-timeout | slow-layer | split-timeout | cal-false-timeout | cal-sampler
+//                    | (task 03) retry-mix | retry-outage-burst | retry-budget | cal-retry-first | cal-retry-second | cal-retry-outage | cal-retry-burst
 //   BASE_URL         예: http://localhost:8081
 //   RATE             초당 요청 수
 //   DURATION_SECONDS 보내는 시간(초)
@@ -12,6 +13,7 @@
 //   LOOKUP_RATE      slow-layer에서만: 가벼운 조회(GET /orders/{id})의 초당 수
 import http from 'k6/http';
 import exec from 'k6/execution';
+import { sleep } from 'k6';
 
 function required(name) {
   const v = __ENV[name];
@@ -82,7 +84,46 @@ const SLOW_TO = 30 * RATE;
 // 실험 다: 결제 지연 네 값의 섞음(i % 4).
 export const SPLIT_MIX = ['', 'payment:delay=500', 'payment:delay=1500', 'payment:delay=2500'];
 
-const SCENARIOS = ['warmup', 'calibration', 'duplicate', 'false-timeout', 'slow-layer', 'split-timeout', 'cal-false-timeout', 'cal-sampler'];
+// ── task 03 (docs/experiments/task-03-design.md) ── 시도마다 넣는 실패는 X-Attempt-Fault(docs/measurement.md 8-1)로 넣는다.
+// 실험 가·다의 섞음: 요청 i의 u = mulberry32(씨앗 + i·0x9e3779b9)의 첫 값(VU 차례와 무관). [u의 위 끝, 지시] — 지어낸 분포다.
+export const RETRY_SEED = 20261125;
+export const RETRY_MIX = [
+  [0.50, ''],
+  [0.70, 'payment:fail-first=1'],
+  [0.80, 'payment:fail-first=2'],
+  [0.85, 'payment:fail-first=3'],
+  [0.90, 'payment:fail-first=4'],
+  [0.94, 'payment:fail-first=9'],
+  [1.00, 'payment:slow-first=1@1500'],
+];
+export function mixAttemptFault(i) {
+  const u = mulberry32((RETRY_SEED + Math.imul(i, 0x9e3779b9)) >>> 0)();
+  for (const [p, f] of RETRY_MIX) if (u < p) return f;
+  return RETRY_MIX[RETRY_MIX.length - 1][1];
+}
+// 구간 장애: 시나리오 시작(exec.scenario.startTime, 벽시계 ms)에서 [from, to) ms. 결제 서비스가 입구에 든 시각으로 판정한다.
+const OUTAGES = { 'cal-retry-outage': [5000, 10000], 'retry-outage-burst': [10000, 20000], 'retry-budget': [10000, 30000] };
+// 무리 지은 도착: BURST_PERIOD_MS마다 BURST_SIZE건을 같은 순간에 보낸다(RATE = BURST_SIZE × 1000 / BURST_PERIOD_MS여야 한다).
+// 요청 i는 무리 floor(i / BURST_SIZE)에 들고, 시나리오 시작 + (무리 + 1) × 주기까지 기다렸다 보낸다(k6가 반복을 고르게 시작하므로 기다림은 한 주기 이하).
+const BURSTS = ['cal-retry-burst', 'retry-outage-burst'];
+export const BURST_SIZE = 20;
+export const BURST_PERIOD_MS = 500;
+const TASK03 = ['retry-mix', 'retry-outage-burst', 'retry-budget', 'cal-retry-first', 'cal-retry-second', 'cal-retry-outage', 'cal-retry-burst'];
+if (BURSTS.includes(SCENARIO) && RATE * BURST_PERIOD_MS !== BURST_SIZE * 1000) throw new Error(`무리 지은 도착은 RATE = ${BURST_SIZE * 1000 / BURST_PERIOD_MS} 이어야 한다`);
+
+function attemptFault(i) {
+  if (SCENARIO === 'retry-mix') return mixAttemptFault(i);
+  if (SCENARIO === 'cal-retry-first') return 'payment:fail-first=1';
+  if (SCENARIO === 'cal-retry-second') return 'payment:fail-first=2';
+  const o = OUTAGES[SCENARIO];
+  if (o) {
+    const st = exec.scenario.startTime;
+    return `payment:outage=${st + o[0]}-${st + o[1]}`;
+  }
+  return '';
+}
+
+const SCENARIOS = ['warmup', 'calibration', 'duplicate', 'false-timeout', 'slow-layer', 'split-timeout', 'cal-false-timeout', 'cal-sampler', ...TASK03];
 if (!SCENARIOS.includes(SCENARIO)) throw new Error(`SCENARIO '${SCENARIO}' 는 ${SCENARIOS} 가 아니다`);
 
 // 끝난 뒤 아직 응답을 기다리는 반복을 끊지 않게: k6 요청 타임아웃보다 길게(k6 기본 30s에 기대지 않는다).
@@ -150,6 +191,14 @@ export default function () {
   const amount = 1000 + i;
   const headers = { 'Content-Type': 'application/json', 'X-Request-Id': requestId };
   if (fault) headers['X-Fault'] = fault;
+  const task03 = TASK03.includes(SCENARIO);
+  const af = task03 ? attemptFault(i) : '';
+  if (af) headers['X-Attempt-Fault'] = af;
+  if (BURSTS.includes(SCENARIO)) {
+    const target = exec.scenario.startTime + (Math.floor(i / BURST_SIZE) + 1) * BURST_PERIOD_MS;
+    const wait = target - Date.now();
+    if (wait > 0) sleep(wait / 1000);
+  }
   const sentAt = new Date();
   const res = http.post(`${BASE_URL}/orders`, JSON.stringify({ amount }), {
     headers,
@@ -158,7 +207,7 @@ export default function () {
   });
   const elapsedMs = Date.now() - sentAt.getTime();
   // 응답이 없어도(타임아웃·연결 오류: status 0) 정답 줄은 반드시 남긴다.
-  console.log(JSON.stringify({
+  const line = {
     type: 'answer',
     requestId,
     fault,
@@ -170,7 +219,9 @@ export default function () {
     errorCode: res.error_code,
     error: res.error, // k6의 오류 문장(없으면 ""). errorCode 1000(일반 오류)의 까닭을 가르려고 — 판정에 쓰지 않는다
     elapsedMs,
-  }));
+  };
+  if (task03) line.attemptFault = af; // task 03만 — 보낸 X-Attempt-Fault 그대로(""=없음). task 01·02의 정답 줄은 그대로
+  console.log(JSON.stringify(line));
 }
 
 // slow-layer의 가벼운 조회. 정답 줄과 섞이지 않게 type을 "lookup"으로 남긴다(실행 스크립트가 lookups.jsonl로 가른다).

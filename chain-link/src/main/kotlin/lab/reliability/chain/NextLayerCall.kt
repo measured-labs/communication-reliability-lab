@@ -25,7 +25,7 @@ sealed interface LayerOutcome {
 
 /**
  * 아래 층 호출을 모은 한곳. 지금은 HTTP 구현 하나([HttpNextLayerCall]).
- * task 05에서 gRPC 구현을 이 자리에 끼운다. 재시도는 이 아래에 두지 않는다(task 03이 위에서 감싼다).
+ * task 05에서 gRPC 구현을 이 자리에 끼운다. 재시도는 이 아래에 두지 않는다 — task 03의 [RetryingNextLayerCall]이 위에서 감싼다.
  */
 fun interface NextLayerCall {
     fun call(amount: Long): LayerOutcome
@@ -62,12 +62,13 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
         .connectTimeout(settings.connectTimeout)
         .build()
 
-    private fun request(requestId: String, rawFault: String?, amount: Long): HttpRequest =
+    private fun request(requestId: String, rawFault: String?, amount: Long, rawAttemptFault: String? = null): HttpRequest =
         HttpRequest.newBuilder(settings.url)
             .timeout(settings.requestTimeout)
             .header("Content-Type", "application/json")
             .header(ChainHeaders.REQUEST_ID, requestId)
             .apply { rawFault?.let { header(ChainHeaders.FAULT, it) } }
+            .apply { rawAttemptFault?.let { header(ChainHeaders.ATTEMPT_FAULT, it) } }
             .POST(HttpRequest.BodyPublishers.ofString("""{"amount":$amount}"""))
             .build()
 
@@ -85,7 +86,7 @@ class HttpNextLayerCall(private val settings: NextLayerSettings) : NextLayerCall
 
     override fun call(amount: Long): LayerOutcome {
         val ctx = ChainContext.current()
-        val request = request(ctx.requestId, ctx.rawFault, amount)
+        val request = request(ctx.requestId, ctx.rawFault, amount, ctx.rawAttemptFault)
         val start = epochMicros()
         return send(request).also { outcome ->
             ctx.call = CallRecord(start, epochMicros(), outcome.label())

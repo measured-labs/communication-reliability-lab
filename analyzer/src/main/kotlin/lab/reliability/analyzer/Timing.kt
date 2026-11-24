@@ -116,7 +116,7 @@ private fun parseTimingArgs(args: Array<String>): Map<String, String> {
 }
 
 /** 기대 파일: {"<지표 이름>": {"min": n, "max": n}, ...} — 이름은 metrics.tsv의 이름. */
-private fun readTimingExpect(path: Path): List<Pair<String, Pair<Double, Double>>> {
+internal fun readTimingExpect(path: Path): List<Pair<String, Pair<Double, Double>>> {
     if (!Files.isRegularFile(path)) throw InputException("$path: 기대 파일이 없다")
     val node = try { json.readTree(Files.readString(path)) } catch (e: Exception) { throw InputException("$path: JSON이 아니다") }
     if (node == null || !node.isObject || node.isEmpty) throw InputException("$path: 키가 하나 이상인 JSON 객체가 아니다")
@@ -132,7 +132,7 @@ private fun readTimingExpect(path: Path): List<Pair<String, Pair<Double, Double>
 
 // ───────────── 읽기 ─────────────
 
-private fun readJson(path: Path): JsonNode {
+internal fun readJson(path: Path): JsonNode {
     if (!Files.isRegularFile(path)) throw InputException("$path: 파일이 없다")
     val text = Files.readString(path)
     if (text.isBlank()) throw InputException("$path: 비었다")

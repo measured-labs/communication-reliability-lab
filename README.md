@@ -41,6 +41,9 @@ k6 (load/chain.js) ──HTTP──▶ order :8081 ──HTTP──▶ inventory
 | `docs/dependencies.md` | 들인 것마다 필요한가·왜·선택지·버전, 꺼 둔 숨은 기본값 |
 | `docs/experiments/task-02-design.md` | task 02(타임아웃) 실험의 설계와 보기 전의 예상 |
 | `docs/results/task-02-timeouts.md` | task 02의 결과 표, 예상과의 대조, 한계 |
+| `docs/retry.md` | task 03 재시도 감싸개의 규칙(다시 시도하는 실패, 간격의 식, 지터, 예산, 테스트 입구) |
+| `docs/experiments/task-03-design.md` | task 03(재시도) 실험의 설계와 보기 전의 예상 |
+| `docs/results/task-03-retries.md` | task 03의 결과 표, 예상과의 대조, 한계 |
 
 ## 실행
 
@@ -70,3 +73,18 @@ scripts/task02-recompute.sh runs/false-timeout-…-r1                       # �
 - 조건(타임아웃 둘, 스레드 방식)은 환경 변수 `ORDER_TO_INVENTORY_TIMEOUT`·`INVENTORY_TO_PAYMENT_TIMEOUT`·`VIRTUAL_THREADS`로 준다(`compose.yaml`이 읽는다 — 주지 않으면 task 01의 값). `run.sh`가 떠 있는 서비스의 `/settings`(실제 값)와 견주고 다르면 실패한다.
 - 서비스는 업무 요청마다 시작·끝 시각과 아래 층 호출을 메모리에 남기고(`GET /timings`), 100ms마다 처리 중 요청·바쁜 스레드·큐를 뜬다(`GET /samples`). 형식과 지표의 식: `docs/measurement.md` 7절.
 - 실행 하나의 기록은 수 MB라 다 커밋하지 않는다. 커밋하는 것: 실행 폴더의 `config.env`, `compose.resolved.yaml`, `images.txt`, `k6-summary.json`, 보고(`report.*`, `report-timing.json`, `metrics.tsv`)와, 결과를 다시 계산하는 입력을 묶은 `raw.tar.gz`(`scripts/task02-pack.sh` — 정답·조회·DB 상태·장애 수·설정·시각 기록·표본·기대 파일), 그리고 `runs/task-02-index.tsv`(조건마다의 실행과 종료 코드). 커밋하지 않는 것: k6 원본 로그(정답·조회 줄은 `raw.tar.gz`에 있다), 워밍업 로그, 이미지 짓기 출력.
+
+## task 03 — 재시도
+
+```bash
+scripts/task03-all.sh                 # 기본 설정 확인 → 보정 → 실험 가·나·다·라(조건마다 다시 띄우고 버리는 실행 1회 + 반복 3회)
+scripts/task03-all.sh ga              # 묶음 하나만(base | cal | ga | na | da | ra)
+scripts/task03-table.sh ga clients.successRatio layers.payment.arrivals   # 결과 표의 줄(반복마다, 가운데값, 범위)
+scripts/task03-recompute.sh runs/retry-mix-…-r1                          # 커밋한 raw.tar.gz에서 분석을 다시 돌려 커밋한 보고와 견준다
+```
+
+- 재시도는 층마다 환경 변수 `ORDER_RETRY_*`·`INVENTORY_RETRY_*`로 켠다(규칙과 이름: `docs/retry.md`). **주지 않으면 꺼짐** — 감싸개를 만들지 않아 task 01·02의 호출 그대로다. `run.sh`가 떠 있는 서비스의 `/settings`의 `retry`와 견주고 다르면 실패한다.
+- 시도마다 넣는 실패는 헤더 `X-Attempt-Fault`(`fail-first`·`slow-first`·`outage` — `docs/measurement.md` 8-1). 서비스는 시도 기록(`GET /attempts`)과 넣은 수(`GET /attempt-faults`)를 낸다.
+- task 03의 시나리오는 모두 k6의 연결 재사용을 끈다. 분석은 대조 분석 + `analyzer retry`(8절) — 서버에 닿지 못한 요청이 있거나 넣은 실패의 수가 기록과 다르면 불일치(종료 코드 2).
+- 커밋하는 기록: task 02와 같은 꼴(요약·보고와 `raw.tar.gz` — `scripts/task03-pack.sh`), `runs/task-03-index.tsv`.
+
