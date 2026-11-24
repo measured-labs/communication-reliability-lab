@@ -13,9 +13,18 @@ import java.util.concurrent.atomic.AtomicLong
 
 // task 04: 멱등 키 — 직접 짠 최소 코드(라이브러리 없음). 규칙의 정본: docs/idempotency.md.
 
-/** `chain.idempotency.*` — 기본은 꺼짐(chain-link.yml). 꺼져 있으면 키 헤더를 읽지 않고 표를 쓰지 않는다. */
+/**
+ * `chain.idempotency.*` — 기본은 꺼짐(chain-link.yml). 꺼져 있으면 키 헤더를 읽지 않고 표를 쓰지 않는다.
+ * [inProgressAsUnknown](기본 false): 아래 층의 409(같은 키 처리 중)를 `Failed:HTTP_409`가 아니라 `Unknown:HTTP_409`(결과 모름)로 읽는다
+ * — 재시도 감싸개는 `unknown` 갈래로 다시 시도하고, 그 결과로 끝나면 이 층의 키는 `UNKNOWN`(다음에 이어 한다). docs/idempotency.md 3-1절.
+ * 키가 꺼져 있으면 켤 수 없다(아래 층이 409를 내지 않는다 — 설정이 뜻 없이 기록되지 않게 기동을 멈춘다).
+ */
 @ConfigurationProperties("chain.idempotency")
-data class IdempotencySettings(val enabled: Boolean)
+data class IdempotencySettings(val enabled: Boolean, val inProgressAsUnknown: Boolean = false) {
+    init {
+        require(enabled || !inProgressAsUnknown) { "chain.idempotency.in-progress-as-unknown 은 멱등 키가 켜져 있을 때만 켤 수 있다" }
+    }
+}
 
 /** 키 행의 상태(`idempotency_keys.state`). */
 enum class KeyState {
@@ -25,7 +34,10 @@ enum class KeyState {
     /** 이 층이 처리했다고 답했다(2xx) — 응답을 저장했다. */
     COMPLETED,
 
-    /** 이 층이 처리하지 않았다고 답했다(아래 층이 처리 안 함 — 502) — 응답을 저장했다. */
+    /**
+     * 아래 층 호출이 `Failed`로 끝났다(502) — 응답을 저장했다. 대개 아래 층이 처리하지 않은 것이지만, `Failed:HTTP_409`(아래 층이
+     * 같은 키를 처리 중 — [IdempotencySettings.inProgressAsUnknown]이 꺼져 있을 때)는 아래 층이 끝내 처리할 수 있다(docs/idempotency.md 3절).
+     */
     FAILED,
 
     /** 이 층도 아래 층의 결과를 몰랐다(504) — 같은 키가 다시 오면 같은 업무 행으로 아래 층을 다시 부른다. */
@@ -166,7 +178,13 @@ class IdempotencyCounters {
 }
 
 /** 세 서비스의 처리 코드가 쓰는 입구. [enabled]가 false면 처리 코드는 task 01~03의 경로를 그대로 탄다. */
-class Idempotency(val enabled: Boolean, private val keys: IdempotencyKeys, val counters: IdempotencyCounters) {
+class Idempotency(
+    val enabled: Boolean,
+    private val keys: IdempotencyKeys,
+    val counters: IdempotencyCounters,
+    /** [IdempotencySettings.inProgressAsUnknown] — `/settings`에 내려고 둔다(읽는 곳은 [HttpNextLayerCall]). */
+    val inProgressAsUnknown: Boolean = false,
+) {
     private val mapper = JsonMapper.builder().build()
 
     /** 저장하고 돌려줄 응답 본문(JSON 문자열) — 처음 응답과 되돌려 주는 응답이 같은 바이트가 되게 처리 코드가 이것으로 만든다. */
@@ -217,6 +235,7 @@ class Idempotency(val enabled: Boolean, private val keys: IdempotencyKeys, val c
             "inProgress" to "reject-409",
             "mismatch" to "reject-422",
             "replayHeader" to ChainHeaders.REPLAYED,
+            "inProgressAsUnknown" to inProgressAsUnknown,
         )
     }
 }

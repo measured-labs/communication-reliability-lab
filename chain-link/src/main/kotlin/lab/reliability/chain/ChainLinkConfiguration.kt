@@ -28,7 +28,7 @@ class ChainLinkConfiguration {
     fun idempotencyKeys(jdbc: JdbcClient) = IdempotencyKeys(jdbc)
 
     @Bean
-    fun idempotency(settings: IdempotencySettings, keys: IdempotencyKeys) = Idempotency(settings.enabled, keys, IdempotencyCounters())
+    fun idempotency(settings: IdempotencySettings, keys: IdempotencyKeys) = Idempotency(settings.enabled, keys, IdempotencyCounters(), settings.inProgressAsUnknown)
 
     @Bean
     fun dropFaultInjection() = DropFaultInjection()
@@ -80,8 +80,8 @@ class ChainLinkConfiguration {
     @EnableConfigurationProperties(NextLayerSettings::class, RetrySettings::class)
     class NextLayerConfiguration {
         @Bean
-        fun nextLayerCall(settings: NextLayerSettings, retry: RetrySettings, attemptLog: AttemptLog): NextLayerCall {
-            val http = HttpNextLayerCall(settings)
+        fun nextLayerCall(settings: NextLayerSettings, retry: RetrySettings, attemptLog: AttemptLog, idempotency: IdempotencySettings): NextLayerCall {
+            val http = HttpNextLayerCall(settings, idempotency.inProgressAsUnknown)
             if (!retry.enabled) return http
             return RetryingNextLayerCall(http, retry.policy(), retry.budgetOrNull(), attemptLog::add)
         }

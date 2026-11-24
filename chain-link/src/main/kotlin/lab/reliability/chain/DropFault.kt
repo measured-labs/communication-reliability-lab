@@ -47,7 +47,10 @@ class DropFaultInjection {
  *    본문이 버퍼(8KB)보다 작을 때 — 이 실험의 응답은 100바이트 안팎이다).
  * ② `ActionCode.CLOSE_NOW` — 처리기의 오류 상태를 "닫음"으로 두어 요청이 끝날 때 응답을 마무리하지 않고 연결을 닫는다.
  * `CLOSE_NOW`만으로는 응답이 그대로 나갔다(2026-11-24 확인 — 201과 본문이 왔다).
- * 단순화: Tomcat 11.0.27의 내부에 기댄다 — Tomcat을 올리면 보정(`cal-idem`)으로 다시 확인한다(실패하면 예외 — 조용히 응답을 보내지 않게).
+ * 예외가 나는 것은 꺼낼 수 없을 때뿐이다(Tomcat의 응답이 아님, 반사 실패, 이미 커밋된 응답). 위 ①·②가 듣지 않아 바이트가 나가는 실패는
+ * 이 함수가 알 수 없고 예외 없이 지나간다 — 그것은 분석기가 위 층이 본 결과(`Unknown:IO_*` 시도, 주문 층이면 클라이언트의 status 0)와
+ * 끊은 수를 늘 견주어 잡는다(docs/measurement.md 9-5 ②).
+ * 단순화: Tomcat 11.0.27의 내부에 기댄다 — Tomcat을 올리면 보정(`cal-idem`)으로 다시 확인한다.
  */
 internal fun closeWithoutResponse(response: ServletResponse) {
     var r: ServletResponse = response
