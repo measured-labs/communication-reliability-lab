@@ -66,6 +66,11 @@ VIRTUAL_THREADS=${VIRTUAL_THREADS:-false}
 # task 04의 조건: 멱등 키(기본 꺼짐 — compose.yaml과 같다). 규칙: docs/idempotency.md
 IDEMPOTENCY_ENABLED=${IDEMPOTENCY_ENABLED:-false}
 [[ $IDEMPOTENCY_ENABLED == true || $IDEMPOTENCY_ENABLED == false ]] || die "IDEMPOTENCY_ENABLED '$IDEMPOTENCY_ENABLED' 는 true|false"
+# task 04(더 재는 조건): 위 층이 아래 층의 409(같은 키 처리 중)를 결과 모름으로 읽나(기본 false — 지금까지의 동작). 키가 켜져 있을 때만 켤 수 있다.
+IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN=${IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN:-false}
+[[ $IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN == true || $IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN == false ]] \
+  || die "IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN '$IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN' 는 true|false"
+[[ $IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN == false || $IDEMPOTENCY_ENABLED == true ]] || die "IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN=true 는 멱등 키가 켜져 있을 때만"
 # task 03의 조건: 층마다의 재시도(기본값 = 꺼짐, compose.yaml과 같다). 규칙: docs/retry.md
 for p in ORDER INVENTORY; do
   for kv in ENABLED=false MAX_ATTEMPTS=1 ON=failed,unknown BACKOFF=none BASE_DELAY=0ms MAX_DELAY=0ms BUDGET_ENABLED=false BUDGET_CAPACITY=0 BUDGET_DEPOSIT=0; do
@@ -148,6 +153,7 @@ fi
   echo "timing_expect=${TIMING_EXPECT:-}"
   echo "retry_expect=${RETRY_EXPECT:-}"
   echo "idempotency_enabled=$IDEMPOTENCY_ENABLED"
+  echo "idempotency_in_progress_as_unknown=$IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN"
   echo "recon_expect=${RECON_EXPECT:-}"
   echo "idem_expect=${IDEM_EXPECT:-}"
   echo "resend=$RESEND"
@@ -211,6 +217,7 @@ done
 for svc in order inventory payment; do
   if [[ $IDEMPOTENCY_ENABLED == true ]]; then
     want_settings "$OUT/settings-${svc}.json" '"idempotency":{"enabled":true,' "$svc 의 멱등 키 켬"
+    want_settings "$OUT/settings-${svc}.json" "\"inProgressAsUnknown\":$IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN}" "$svc 가 아래 층의 409를 읽는 법"
   else
     want_settings "$OUT/settings-${svc}.json" '"idempotency":{"enabled":false}' "$svc 의 멱등 키 꺼짐"
   fi
@@ -314,10 +321,16 @@ f_inventory=$(curl -sf localhost:8082/faults)
 f_payment=$(curl -sf localhost:8083/faults)
 printf '{"order":%s,"inventory":%s,"payment":%s}\n' "$f_order" "$f_inventory" "$f_payment" > "$OUT/fault-counts.json"
 # task 04: 키 표, 서비스가 센 키 수와 끊은 수, 시도마다 넣은 실패(재시도 분석을 하지 않는 실행도 대조하려고). 받지 못하면 실패.
+# 업무 행의 id와 키 행이 가리키는 업무 행(row_id)은 새 파일로 낸다(R04-2 — 대조 분석이 읽는 db/<업무>.csv와 키 표의 꼴은 바꾸지 않는다).
 if [[ $IDEM == yes ]]; then
   for db in order inventory payment; do
     psql_csv "${db}_db" "select key, request_id, amount, state, response_status from idempotency_keys order by key" > "$OUT/db/idempotency-${db}.csv"
+    psql_csv "${db}_db" "select key, row_id from idempotency_keys order by key" > "$OUT/db/idempotency-row-ids-${db}.csv"
   done
+  psql_csv order_db "select id, request_id from orders order by id" > "$OUT/db/row-ids-order.csv"
+  psql_csv inventory_db "select id, request_id from reservations order by id" > "$OUT/db/row-ids-inventory.csv"
+  psql_csv payment_db "select id, request_id from payments order by id" > "$OUT/db/row-ids-payment.csv"
+  echo "row_ids_exported=yes" >> "$OUT/config.env"
   c=(); d=(); a=()
   for entry in "${SERVICE_PORTS[@]}"; do
     port=${entry#*:}

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # task 04의 꺼진 상태 확인, 보정, 재기동 확인, 실험 가·나·다·라를 설계(docs/experiments/task-04-design.md)의 조건 그대로 차례로 돌린다.
 #   scripts/task04-all.sh [base|cal|restart|ga|na|da|ra ...]   (인자가 없으면 모두, 이 차례로)
+#   첫 결과를 본 뒤 더 재는 것(설계 10절 — 인자로만 돈다): da-alt(실험 다를 끔·켬 번갈아 6회씩), ga-409u(가-2 켬 + 409를 결과 모름으로),
+#   keylinks(키를 켠 조건마다 대표 한 번 — 키 행과 업무 행의 짝)
 # 꺼진 상태 확인·보정·재기동 확인이 하나라도 실패하면 멈춘다(통과하기 전의 수치는 쓰지 않는다).
 # 실험의 실행이 실패하면 runs/task-04-index.tsv에 종료 코드를 남기고 다음 조건으로 간다. 끝에 실패한 조건이 있으면 종료 코드 1.
 set -euo pipefail
@@ -62,6 +64,27 @@ for part in "${parts[@]}"; do
     ra) # 실험 라: 결과 모름을 같은 키로 나중에 맞추기
       cond ra ra-off idem-reconcile
       cond ra ra-on idem-reconcile $ON
+      ;;
+    da-alt) # 설계 10-1: 끔 r1 · 켬 r1·r2 · 끔 r2·r3 · 켬 r3·r4 · 끔 r4·r5 · 켬 r5·r6 · 끔 r6 — 조건을 바꿀 때마다 다시 띄우고 r0을 버린다
+      # 첫 측정(끔 → 켬 차례의 여섯 실행)은 색인 비고에 "대체됨: 차례가 섞인 앞 측정"으로 남긴다(표에서 빠진다 — SUPERSEDED=only로 다시 본다).
+      REP_LIST="1" cond da da-off idem-plain
+      REP_LIST="1 2" cond da da-on idem-plain $ON
+      REP_LIST="2 3" cond da da-off idem-plain
+      REP_LIST="3 4" cond da da-on idem-plain $ON
+      REP_LIST="4 5" cond da da-off idem-plain
+      REP_LIST="5 6" cond da da-on idem-plain $ON
+      REP_LIST="6" cond da da-off idem-plain
+      ;;
+    ga-409u) # 설계 10-2: 가-2 켬 + 위 층이 아래 층의 409를 결과 모름으로 읽는다
+      cond ga ga-2-on-409u idem-retry-mix ORDER_TO_INVENTORY_TIMEOUT=250ms $(inv) $(ord) $ON IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN=true
+      ;;
+    keylinks) # 설계 10-3: 키를 켠 조건마다 대표 한 번(r0 + r1, 보정은 r1) — 키 행과 업무 행의 짝(row_id). 결과 표(ga·na·ra·cal)에 섞이지 않게 실험 keylinks
+      DISCARD=no REPS=1 cond keylinks keylinks-cal-idem-on cal-idem $ON RECON_EXPECT=$X/cal-idem-on.json IDEM_EXPECT=$X/cal-idem-on.idem.json
+      REPS=1 cond keylinks keylinks-ga-1-on idem-retry-mix ORDER_TO_INVENTORY_TIMEOUT=3000ms $(inv) $ON
+      REPS=1 cond keylinks keylinks-ga-2-on idem-retry-mix ORDER_TO_INVENTORY_TIMEOUT=250ms $(inv) $(ord) $ON
+      REPS=1 cond keylinks keylinks-na-seq-on idem-dup-seq $ON
+      REPS=1 cond keylinks keylinks-na-conc-on idem-dup-conc $ON
+      REPS=1 cond keylinks keylinks-ra-on idem-reconcile $ON
       ;;
     *) die "모르는 묶음 '$part'" ;;
   esac
