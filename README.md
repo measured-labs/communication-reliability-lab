@@ -96,12 +96,16 @@ scripts/task03-recompute.sh runs/retry-mix-…-r1                          # 커
 ```bash
 scripts/task04-all.sh                 # 꺼진 상태 확인(task 01~03 보정) → 보정 cal-idem 끔/켬 → 재기동 확인 → 실험 가·나·다·라
 scripts/task04-all.sh na              # 묶음 하나만(base | cal | restart | ga | na | da | ra)
+scripts/task04-all.sh da-alt ga-409u keylinks   # 첫 결과 뒤에 더 잰 것(설계 10절): 실험 다를 끔·켬 번갈아, 가-2 켬 + 409를 결과 모름으로, 키 행의 짝
 scripts/task04-table.sh na doubledTotal 'duplicates.pairs.201+409'          # 결과 표의 줄(metrics-idem.tsv에서)
 METRICS=metrics-retry.tsv scripts/task04-table.sh ga clients.successRatio   # 재시도 분석의 지표(실험 가)
 scripts/task04-recompute.sh runs/idem-plain-…-r1                           # 커밋한 raw.tar.gz에서 분석을 다시 돌려 커밋한 보고와 견준다
+WRITE=yes scripts/task04-recompute.sh runs/…                               # 분석기 규칙을 바꾼 뒤 보고를 다시 만든다(바뀐 지표를 이름으로 적는다)
 ```
 
 - 멱등 키는 환경 변수 `IDEMPOTENCY_ENABLED`(세 서비스에 같은 값)로 켠다(규칙: `docs/idempotency.md`). **주지 않으면 꺼짐** — 처리 코드는 task 01~03의 경로 그대로다. `run.sh`가 떠 있는 서비스의 `/settings`의 `idempotency`와 견주고 다르면 실패한다.
+- `IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN=true`(키가 켜져 있을 때만): 위 층이 아래 층의 409(같은 키 처리 중)를 결과 모름으로 읽어 다시 시도하고, 그 결과로 끝나면 키를 `UNKNOWN`으로 둔다(`docs/idempotency.md` 3-1절). **주지 않으면 꺼짐**(첫 62개 실행 모두).
 - 새 장애 `X-Drop-Fault: <서비스>:drop-after-commit=<n>` — 처음 n번 든 것은 커밋한 뒤 응답 없이 연결을 닫는다(`docs/measurement.md` 9-1).
 - 결과 모름을 맞추는 시나리오(`cal-idem`, `idem-reconcile`)는 부하가 가라앉은 뒤 결과 모름을 같은 키로 다시 보낸다(`resends.jsonl`). 분석은 대조 분석 + `analyzer idem`(9절) + 재시도가 켜진 시나리오는 `analyzer retry`. 부하 직전의 재시도 예산 토큰을 `retry-budget-start.json`에 남긴다(R03-7).
 - 커밋하는 기록: task 03과 같은 꼴(요약·보고와 `raw.tar.gz` — `scripts/task04-pack.sh`), `runs/task-04-index.tsv`, 재기동 확인의 `runs/restart-check-*/`.
+- 첫 62개 실행 뒤에 바꾼 것(2026-11-24 20:30~): 분석기의 새 대조(`docs/measurement.md` 9절 머리)로 **62개의 보고를 커밋한 `raw.tar.gz`에서 다시 만들었다**. 그 실행들은 업무 행 id와 키 행의 `row_id`를 내보내기 전이라 `--no-row-ids`로 다시 계산했고 보고에 `keyLinks`가 없다 — 그 대조는 뒤에 돌린 실행(`config.env`의 `row_ids_exported=yes`)에만 있다. 실험 다의 첫 여섯 실행은 색인에 "대체됨: 차례가 섞인 앞 측정"으로 남겼다(표에서 빠진다 — `SUPERSEDED=only scripts/task04-table.sh da …`로 다시 본다).

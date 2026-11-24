@@ -522,7 +522,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | `layers.<L>.processedNotCompleted` | 정답에 `completed`가 하나도 없는 requestId의 L의 처리 행 수(부하 단계에서 클라이언트가 성공으로 받지 못한 요청에 L이 한 일) |
 | `layers.<L>.processedClientFailed`·`processedClientUnknown` | 위를 클라이언트의 판정으로 가른 것: 그 requestId의 정답에 결과 모름(4-1)이 하나라도 있으면 `Unknown`, 아니면(모두 실패) `Failed`. 둘의 합 = `processedNotCompleted` |
 | `layers.<L>.responses.409`·`422`·`0`·`0Repeat` | L의 시각 기록 가운데 `status`가 409·422·0인 것의 수(L이 낸 응답 — 0은 끊은 것). `0Repeat` = status 0인 기록 가운데 **같은 requestId의 다른 기록이 L에 그 기록이 끝나기 전에(`startUs` ≤ 그 기록의 `endUs`) 든 것** — 다시 온 키라서 409·422였을 수 있는 끊긴 응답(이 실험은 키 = requestId) |
-| `layers.<L>.keyLinks.*` | (`--no-row-ids`가 아닐 때만) `rowsNotLinked` = L의 업무 행 가운데 그 id를 가리키는 키 행이 없는 것, `rowsMultiLinked` = 둘 이상인 것, `keysToMissingRow` = 키 행 가운데 `row_id`가 L의 업무 행 id에 없는 것, `requestIdDiffers` = 키 행 가운데 가리키는 업무 행의 requestId가 키 행의 `request_id`와 다른 것 |
+| `layers.<L>.keyLinks.*` | (`--no-row-ids`가 아닐 때만) `rowsNotLinked` = L의 업무 행 가운데 그 id를 가리키는 키 행이 없는 것, `rowsMultiLinked` = 둘 이상인 것, `keysToMissingRow` = 키 행 가운데 `row_id`가 L의 업무 행 id에 없는 것, `requestIdDiffers` = 키 행 가운데 가리키는 업무 행의 requestId가 키 행의 `request_id`와 다른 것. 꺼진 층에도 내지만(키 행이 없어 `rowsNotLinked` = 업무 행 수) 견주는 것은 켜진 층뿐이다(9-5 ④) |
 | `layers.<L>.keyRows`, `keyStates.<상태>` | L의 `idempotency-<L>.csv`의 행 수, 상태마다의 수 |
 | `layers.<L>.rowsWithoutKey` | L의 업무 행 가운데 그 requestId의 키 행이 L에 없는 것 |
 | `layers.<L>.keysWithoutRow` | L의 키 행 가운데 그 `request_id`의 업무 행이 L에 없는 것 |
