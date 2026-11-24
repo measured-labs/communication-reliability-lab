@@ -44,6 +44,9 @@ k6 (load/chain.js) ──HTTP──▶ order :8081 ──HTTP──▶ inventory
 | `docs/retry.md` | task 03 재시도 감싸개의 규칙(다시 시도하는 실패, 간격의 식, 지터, 예산, 테스트 입구) |
 | `docs/experiments/task-03-design.md` | task 03(재시도) 실험의 설계와 보기 전의 예상 |
 | `docs/results/task-03-retries.md` | task 03의 결과 표, 예상과의 대조, 한계 |
+| `docs/idempotency.md` | task 04 멱등 키와 커밋 뒤 끊김 장애(`X-Drop-Fault`)의 규칙과 테스트 입구 |
+| `docs/experiments/task-04-design.md` | task 04(멱등 키) 실험의 설계와 보기 전의 예상 |
+| `docs/results/task-04-idempotency.md` | task 04의 결과 표, 예상과의 대조, 한계 |
 
 ## 실행
 
@@ -88,3 +91,17 @@ scripts/task03-recompute.sh runs/retry-mix-…-r1                          # 커
 - task 03의 시나리오는 모두 k6의 연결 재사용을 끈다. 분석은 대조 분석 + `analyzer retry`(8절) — 서버에 닿지 못한 요청이 있거나 넣은 실패의 수가 기록과 다르면 불일치(종료 코드 2).
 - 커밋하는 기록: task 02와 같은 꼴(요약·보고와 `raw.tar.gz` — `scripts/task03-pack.sh`), `runs/task-03-index.tsv`.
 
+## task 04 — 멱등 키
+
+```bash
+scripts/task04-all.sh                 # 꺼진 상태 확인(task 01~03 보정) → 보정 cal-idem 끔/켬 → 재기동 확인 → 실험 가·나·다·라
+scripts/task04-all.sh na              # 묶음 하나만(base | cal | restart | ga | na | da | ra)
+scripts/task04-table.sh na doubledTotal 'duplicates.pairs.201+409'          # 결과 표의 줄(metrics-idem.tsv에서)
+METRICS=metrics-retry.tsv scripts/task04-table.sh ga clients.successRatio   # 재시도 분석의 지표(실험 가)
+scripts/task04-recompute.sh runs/idem-plain-…-r1                           # 커밋한 raw.tar.gz에서 분석을 다시 돌려 커밋한 보고와 견준다
+```
+
+- 멱등 키는 환경 변수 `IDEMPOTENCY_ENABLED`(세 서비스에 같은 값)로 켠다(규칙: `docs/idempotency.md`). **주지 않으면 꺼짐** — 처리 코드는 task 01~03의 경로 그대로다. `run.sh`가 떠 있는 서비스의 `/settings`의 `idempotency`와 견주고 다르면 실패한다.
+- 새 장애 `X-Drop-Fault: <서비스>:drop-after-commit=<n>` — 처음 n번 든 것은 커밋한 뒤 응답 없이 연결을 닫는다(`docs/measurement.md` 9-1).
+- 결과 모름을 맞추는 시나리오(`cal-idem`, `idem-reconcile`)는 부하가 가라앉은 뒤 결과 모름을 같은 키로 다시 보낸다(`resends.jsonl`). 분석은 대조 분석 + `analyzer idem`(9절) + 재시도가 켜진 시나리오는 `analyzer retry`. 부하 직전의 재시도 예산 토큰을 `retry-budget-start.json`에 남긴다(R03-7).
+- 커밋하는 기록: task 03과 같은 꼴(요약·보고와 `raw.tar.gz` — `scripts/task04-pack.sh`), `runs/task-04-index.tsv`, 재기동 확인의 `runs/restart-check-*/`.
