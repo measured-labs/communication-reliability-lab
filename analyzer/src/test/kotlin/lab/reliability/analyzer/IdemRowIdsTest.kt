@@ -124,40 +124,83 @@ class IdemRowIdsTest {
 
     // ---- --no-row-ids ----
 
+    private val rowIdFiles = LAYERS.flatMap { listOf("db/row-ids-$it.csv", "db/idempotency-row-ids-$it.csv") }
+
+    /** row_id 를 내보내기 전의 실행처럼 — 여섯 파일을 쓰지 않는다. */
+    private fun IdemRecord.withoutRowIdFiles(): IdemRecord {
+        omit += rowIdFiles
+        return this
+    }
+
     @Test
     fun no_row_ids면_두_파일이_없어도_통과하고_keyLinks가_없다() {
-        val r = good()
-        for (l in LAYERS) {
-            r.omit += "db/row-ids-$l.csv"
-            r.omit += "db/idempotency-row-ids-$l.csv"
-        }
+        val r = good().withoutRowIdFiles()
         assertEquals(0, r.runIdem("--no-row-ids"), r.lastOutput)
         for (l in LAYERS) assertFalse("keyLinks" in (r.report().at("layers", l) as Map<*, *>), l)
     }
 
     @Test
     fun no_row_ids면_키_행_수와_업무_행_수를_견주지_않는다() {
-        // 결제에 a 의 업무 행이 하나 더(키 행 6, 업무 행 7) — 짝 대조가 없으면 rowsWithoutKey 로는 잡히지 않는다(9-5 ④의 한계)
-        val r = good().row("payment", "a", "APPROVED")
-        assertEquals(0, r.runIdem("--no-row-ids"), r.lastOutput)
-        assertEquals(2, r.runIdem(), r.lastOutput)
+        // 결제에 a 의 업무 행이 하나 더(키 행 6, 업무 행 7) — 짝 대조가 없으면 rowsWithoutKey 로는 잡히지 않는다(9-5 ④의 한계).
+        // 파일이 없는 기록(--no-row-ids)은 0, 파일이 있는 같은 기록(플래그 없음)은 keyRows 불일치 2
+        val noIds = goodIdemRecord(root.resolve("no-ids")).row("payment", "a", "APPROVED").withoutRowIdFiles()
+        assertEquals(0, noIds.runIdem("--no-row-ids"), noIds.lastOutput)
+        val withIds = good().row("payment", "a", "APPROVED")
+        assertEquals(2, withIds.runIdem(), withIds.lastOutput)
     }
 
     @Test
-    fun no_row_ids를_주어도_두_파일이_있으면_통과한다() {
-        val r = good()
-        assertEquals(0, r.runIdem("--no-row-ids"), r.lastOutput)
+    fun no_row_ids를_줬는데_두_파일이_모두_있으면_입력_오류다() {
+        // 9-3: row_id 를 내보낸 실행의 짝 대조를 건너뛰지 않게
+        good().assertInputError("--no-row-ids")
+    }
+
+    @Test
+    fun no_row_ids를_줬는데_여섯_파일_가운데_하나만_있어도_입력_오류다() {
+        for (file in rowIdFiles) {
+            val r = goodIdemRecord(root.resolve(file.replace('/', '_'))).withoutRowIdFiles()
+            r.omit -= file
+            val code = r.runIdem("--no-row-ids")
+            assertEquals(1, code, "$file 만 있을 때: ${r.lastOutput}")
+            assertFalse(r.reportIdem.toFile().exists(), file)
+        }
     }
 
     @Test
     fun no_row_ids가_두_번이면_입력_오류다() {
-        good().assertInputError("--no-row-ids", "--no-row-ids")
+        // 파일을 뺀 기록에서(한 번이면 종료 0 — 위 테스트) 두 번만 다르다
+        good().withoutRowIdFiles().assertInputError("--no-row-ids", "--no-row-ids")
     }
 
     @Test
     fun no_row_ids에_값을_주면_입력_오류다() {
         // 값 없는 인자 — 뒤의 낱말은 모르는 인자다
-        good().assertInputError("--no-row-ids", "yes")
+        good().withoutRowIdFiles().assertInputError("--no-row-ids", "yes")
+    }
+
+    // ---- rowIdsChecked ----
+
+    @Test
+    fun row_id를_견주었으면_rowIdsChecked는_1이다() {
+        val r = good()
+        assertEquals(1L, r.analyze().long("rowIdsChecked"))
+        assertEquals("1", r.metrics()["rowIdsChecked"])
+    }
+
+    @Test
+    fun no_row_ids면_rowIdsChecked는_0이다() {
+        val r = good().withoutRowIdFiles()
+        assertEquals(0L, r.analyze("--no-row-ids").long("rowIdsChecked"))
+        assertEquals("0", r.metrics()["rowIdsChecked"])
+    }
+
+    @Test
+    fun id의_차례는_견주지_않는다() {
+        // 9-2: requestId 의 차례만 업무 CSV 와 같으면 된다 — id 가 거꾸로여도 받는다
+        val r = good()
+            .orderRowIds(*ids.mapIndexed { i, id -> "${6 - i},$id" }.toTypedArray())
+            .orderKeyRowIds(*ids.mapIndexed { i, id -> "$id,${6 - i}" }.toTypedArray())
+        assertEquals(0, r.runIdem(), r.lastOutput)
     }
 
     // ---- 입력 오류: db/row-ids-<층>.csv ----

@@ -120,6 +120,15 @@ class IdemArrivalTest {
         assertEquals(5L, rep.long("duplicates", "arrivalGapMs", "count"))
     }
 
+    @Test
+    fun 두_도착의_차는_정답_줄이_하나뿐인_requestId를_넣지_않는다() {
+        // goodIdemRecord: 주문에 정확히 둘 든 것 b(30)·d(30)·e(1)·c·f — c·f 는 정답 줄이 하나(맞추기로 두 번 듦)라 빠진다
+        val rep = goodIdemRecord(root).analyze()
+        assertEquals(3L, rep.long("duplicates", "arrivalGapMs", "count"))
+        assertEquals(30.0, rep.double("duplicates", "arrivalGapMs", "max"))
+        assertEquals(30.0, rep.double("duplicates", "arrivalGapMs", "p50"))
+    }
+
     // ---- responses 와 ⑤ ----
 
     @Test
@@ -187,10 +196,32 @@ class IdemArrivalTest {
     }
 
     @Test
-    fun 처음_온_키를_끊은_기록은_받아_주지_않는다() {
-        // f 의 끊긴 기록(responses.0 = 1)은 0Repeat 이 아니다 — in-progress +1 은 불일치
-        val d = goodIdemRecord(root).counts("order", "in-progress", 2).mismatch()
-        assertEquals(1, d.size, d.toString())
+    fun 처음_온_키를_끊은_기록은_다른_기록이_끝나기_전에_들었어도_받아_주지_않는다() {
+        // f: 끊긴 기록 T+501~T+519(처음 듦). 같은 키의 다른 요청이 T+505 에 들어 409(끝나기 전, 그러나 나중) — 9-4: 0Repeat 아님.
+        // 409 기록 2(e, f) · in-progress 3 → 넘친 1 > 0Repeat 0
+        val r = goodIdemRecord(root).timing("order", "f", us(T + 505), us(T + 506), 409).counts("order", "in-progress", 3)
+        val d = r.mismatch()
+        assertEquals(
+            listOf("layers.order.counts: in-progress 3·mismatch 1가 시각 기록의 409 2·422 1와 맞지 않는다(409·422였을 수 있는 끊긴 응답 0)"),
+            d,
+        )
+        assertEquals(0L, r.report().long("layers", "order", "responses", "0Repeat"))
+    }
+
+    @Test
+    fun 끊긴_기록과_같은_μs에_든_다른_기록이_있으면_0Repeat이다() {
+        // 위와 같은데 다른 기록이 끊긴 기록과 같은 μs(T+501)에 들었다 — 넘친 1 ≤ 0Repeat 1
+        val r = goodIdemRecord(root).timing("order", "f", us(T + 501), us(T + 506), 409).counts("order", "in-progress", 3)
+        assertEquals(0, r.runIdem(), r.lastOutput)
+        assertEquals(1L, r.report().long("layers", "order", "responses", "0Repeat"))
+    }
+
+    @Test
+    fun 끊긴_기록보다_먼저_든_다른_기록이_있으면_0Repeat이다() {
+        // f 의 다른 기록이 끊긴 기록보다 1μs 먼저 들었다
+        val r = goodIdemRecord(root).timing("order", "f", us(T + 501) - 1, us(T + 506), 409).counts("order", "in-progress", 3)
+        assertEquals(0, r.runIdem(), r.lastOutput)
+        assertEquals(1L, r.report().long("layers", "order", "responses", "0Repeat"))
     }
 
     @Test
