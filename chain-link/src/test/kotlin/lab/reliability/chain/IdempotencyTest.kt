@@ -170,9 +170,43 @@ class IdempotencyTest {
                 "inProgress" to "reject-409",
                 "mismatch" to "reject-422",
                 "replayHeader" to "Idempotent-Replayed",
+                "inProgressAsUnknown" to false,
             ),
             idem(true).settings(),
         )
+    }
+
+    @Test
+    fun 켜진_설정은_409를_읽는_설정을_그대로_낸다() {
+        // docs/idempotency.md 1절·3-1절: 3-1절의 설정을 켜면 "inProgressAsUnknown": true
+        val s = Idempotency(true, keys(), IdempotencyCounters(), inProgressAsUnknown = true).settings()
+        assertEquals(true, s["inProgressAsUnknown"])
+        assertEquals(true, s["enabled"])
+        assertEquals(6, s.size, s.toString())
+    }
+
+    @Test
+    fun 꺼진_설정은_409를_읽는_설정이_없다() {
+        assertEquals(mapOf("enabled" to false), Idempotency(false, keys(), IdempotencyCounters()).settings())
+    }
+
+    // ---- IdempotencySettings (6절: enabled=false 인데 inProgressAsUnknown=true 면 IllegalArgumentException) ----
+
+    @Test
+    fun 키가_꺼졌는데_409를_결과_모름으로_읽게_하면_설정이_거절된다() {
+        assertFailsWith<IllegalArgumentException> { IdempotencySettings(enabled = false, inProgressAsUnknown = true) }
+    }
+
+    @Test
+    fun 키가_켜졌으면_409를_결과_모름으로_읽는_설정을_받는다() {
+        assertEquals(true, IdempotencySettings(enabled = true, inProgressAsUnknown = true).inProgressAsUnknown)
+    }
+
+    @Test
+    fun 기본은_409를_실패로_읽는다() {
+        assertEquals(false, IdempotencySettings(enabled = true).inProgressAsUnknown)
+        assertEquals(false, IdempotencySettings(enabled = false).inProgressAsUnknown)
+        assertEquals(false, Idempotency(true, keys(), IdempotencyCounters()).inProgressAsUnknown)
     }
 
     @Test

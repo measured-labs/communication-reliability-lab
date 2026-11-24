@@ -306,7 +306,14 @@ class IdemMetricsTest {
         val r = good()
         r.resendLines = null
         r.resendsText = ""
-        val rep = r.analyze()
+        // 후보 c·f 를 다시 보내지 않았다 — ⑥ 의 불일치
+        val rep = r.analyzeAny()
+        assertEquals(
+            listOf("reconcile: 다시 보낼 후보 2건 가운데 다시 보내지 못한 것 2건, 후보가 아닌데 다시 보낸 것 0건"),
+            rep.differences(),
+        )
+        assertEquals(2L, rep.long("reconcile", "candidates"))
+        assertEquals(2L, rep.long("reconcile", "notResent"))
         assertEquals(0L, rep.long("reconcile", "resent"))
         assertEquals(0L, rep.long("reconcile", "finalOnce"))
     }
@@ -327,8 +334,14 @@ class IdemMetricsTest {
 
     @Test
     fun 키가_켜져_있어도_결제_행이_둘이면_두_번_처리됨으로_센다() {
+        // 9-5 ④: 키 행 하나에 업무 행 둘(진 쪽의 되돌림이 듣지 않은 꼴) — rowsWithoutKey 는 못 잡고 keyRows·keyLinks 가 잡는다
         val r = good().row("payment", "a", "APPROVED")
-        val rep = r.analyze()
+        val rep = r.analyzeAny()
+        assertEquals(
+            listOf("layers.payment.keyRows: 업무 행 7과 다르다(6)", "layers.payment.keyLinks.rowsNotLinked: 늘 0, 실제 1"),
+            rep.differences(),
+        )
+        assertEquals(0L, rep.long("layers", "payment", "rowsWithoutKey"))
         assertEquals(1L, rep.long("doubledTotal"))
         assertEquals(listOf(0L, 0L, 1L), rep.perLayer("doubled"))
         assertEquals(listOf(0L, 0L, 1L), rep.perLayer("extraProcessedRows"))
@@ -339,7 +352,8 @@ class IdemMetricsTest {
     fun 넘친_처리_행은_requestId마다_처리_행_빼기_1의_합이다() {
         // a 결제 행 셋(넘침 2), b 결제 행 둘(넘침 1) — 두 번 처리됨 2, 넘친 행 3
         val r = good().row("payment", "a", "APPROVED").row("payment", "a", "APPROVED").row("payment", "b", "APPROVED")
-        val rep = r.analyze()
+        val rep = r.analyzeAny()
+        assertEquals(3L, rep.long("layers", "payment", "keyLinks", "rowsNotLinked"))
         assertEquals(2L, rep.long("layers", "payment", "doubled"))
         assertEquals(3L, rep.long("layers", "payment", "extraProcessedRows"))
     }
@@ -366,7 +380,7 @@ class IdemMetricsTest {
     @Test
     fun 맞추기_뒤에_어느_층이든_처리_행이_둘이면_finalDoubled다() {
         // c 의 재고 행이 둘(이어 하기가 아니라 새로 처리한 것처럼)
-        val rep = good().row("inventory", "c", "RESERVED").analyze()
+        val rep = good().row("inventory", "c", "RESERVED").analyzeAny()
         assertEquals(1L, rep.long("reconcile", "finalOnce"))
         assertEquals(1L, rep.long("reconcile", "finalDoubled"))
         assertEquals(0L, rep.long("reconcile", "finalMissing"))

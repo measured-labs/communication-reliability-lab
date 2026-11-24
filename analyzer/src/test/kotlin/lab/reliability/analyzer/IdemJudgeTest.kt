@@ -33,9 +33,24 @@ class IdemJudgeTest {
 
     @Test
     fun 서버에_닿지_못한_요청이_있으면_불일치다() {
-        // g: 응답 없음, 시각 기록·행·키 없음
-        val d = good().answer("g", T + 600, 0, elapsedMs = 60000).mismatch()
+        // g: 응답을 받았는데(502) 주문의 시각 기록이 없다 — 9-4: 보낸 것 − 주문의 시각 기록(응답 상태와 무관)
+        val d = good().answer("g", T + 600, 502, elapsedMs = 30).mismatch()
         assertEquals(listOf("clients.notReachedServer: 늘 0, 실제 1"), d)
+    }
+
+    @Test
+    fun 응답_없이_닿지_못한_요청은_위_층이_본_끊김과_맞추기_후보에도_든다() {
+        // g: 응답 없음(status 0), 시각 기록·행·키 없음 — ① 닿지 못함, ② 주문 밖에서 본 끊김 2(f, g) ≠ 센 수 1,
+        // ⑥ 후보 c·f·g 가운데 g 를 다시 보내지 않았다
+        val d = good().answer("g", T + 600, 0, elapsedMs = 60000).mismatch()
+        assertEquals(
+            listOf(
+                "clients.notReachedServer: 늘 0, 실제 1",
+                "dropFaults.order: 서비스가 센 수 1, 위 층이 본 끊김 2",
+                "reconcile: 다시 보낼 후보 3건 가운데 다시 보내지 못한 것 1건, 후보가 아닌데 다시 보낸 것 0건",
+            ),
+            d,
+        )
     }
 
     @Test
@@ -71,14 +86,21 @@ class IdemJudgeTest {
 
     @Test
     fun 끊은_수가_기록에서_다시_센_수와_다르면_불일치다() {
+        // 9-5 ②: 기록에서 다시 센 수와, 위 층이 본 끊김(주문 = status 0 인 보낸 것 — f 하나)과 각각 견준다
         val d = good().drops("order", 2).mismatch()
-        assertEquals(listOf("dropFaults.order: 서비스가 센 수 2, 기록에서 다시 센 수 1"), d)
+        assertEquals(
+            listOf("dropFaults.order: 서비스가 센 수 2, 기록에서 다시 센 수 1", "dropFaults.order: 서비스가 센 수 2, 위 층이 본 끊김 1"),
+            d,
+        )
     }
 
     @Test
     fun 가리키지_않은_서비스가_끊었다고_세도_불일치다() {
         val d = good().drops("inventory", 1).mismatch()
-        assertEquals(listOf("dropFaults.inventory: 서비스가 센 수 1, 기록에서 다시 센 수 0"), d)
+        assertEquals(
+            listOf("dropFaults.inventory: 서비스가 센 수 1, 기록에서 다시 센 수 0", "dropFaults.inventory: 서비스가 센 수 1, 위 층이 본 끊김 0"),
+            d,
+        )
     }
 
     @Test
@@ -93,7 +115,9 @@ class IdemJudgeTest {
         assertEquals(
             listOf(
                 "dropFaults.order: 서비스가 센 수 0, 기록에서 다시 센 수 1",
+                "dropFaults.order: 서비스가 센 수 0, 위 층이 본 끊김 1",
                 "dropFaults.payment: 서비스가 센 수 3, 기록에서 다시 센 수 1",
+                "dropFaults.payment: 서비스가 센 수 3, 위 층이 본 끊김 1",
                 "attemptFaults.order.slow-first: 서비스가 센 수 1, 기록에서 다시 센 수 0",
             ),
             d,
@@ -124,7 +148,15 @@ class IdemJudgeTest {
         r.answer("g", g).chainTimings("g", g).processedRows("g")
             .key("order", "g", "COMPLETED", 201).key("payment", "g", "COMPLETED", 201)
             .counts("order", "new", 7).counts("payment", "new", 7)
-        assertEquals(listOf("layers.inventory.rowsWithoutKey: 늘 0, 실제 1"), r.mismatch())
+        // 업무 행 7·키 행 6 — 짝의 대조(keyRows, keyLinks)도 같은 것을 잡는다
+        assertEquals(
+            listOf(
+                "layers.inventory.rowsWithoutKey: 늘 0, 실제 1",
+                "layers.inventory.keyRows: 업무 행 7과 다르다(6)",
+                "layers.inventory.keyLinks.rowsNotLinked: 늘 0, 실제 1",
+            ),
+            r.mismatch(),
+        )
     }
 
     @Test
@@ -133,7 +165,14 @@ class IdemJudgeTest {
         val g = T + 600
         r.answer("g", g).chainTimings("g", g).row("order", "g", "COMPLETED").row("inventory", "g", "RESERVED").keys("g")
             .counts("order", "new", 7).counts("inventory", "new", 7).counts("payment", "new", 7)
-        assertEquals(listOf("layers.payment.keysWithoutRow: 늘 0, 실제 1"), r.mismatch())
+        assertEquals(
+            listOf(
+                "layers.payment.keysWithoutRow: 늘 0, 실제 1",
+                "layers.payment.keyRows: 업무 행 6과 다르다(7)",
+                "layers.payment.keyLinks.keysToMissingRow: 늘 0, 실제 1",
+            ),
+            r.mismatch(),
+        )
     }
 
     @Test
@@ -155,6 +194,8 @@ class IdemJudgeTest {
                 "layers.inventory.rowsWithoutKey: 늘 0, 실제 1",
                 "layers.inventory.keysWithoutRow: 늘 0, 실제 1",
                 "layers.inventory.counts.new: 키 행 7와 다르다(9)",
+                "layers.inventory.keyLinks.rowsNotLinked: 늘 0, 실제 1",
+                "layers.inventory.keyLinks.keysToMissingRow: 늘 0, 실제 1",
             ),
             r.mismatch(),
         )
@@ -192,9 +233,9 @@ class IdemJudgeTest {
     // ---- 차례 ----
 
     @Test
-    fun 늘_견주는_것의_차례는_1_2_3_4다() {
+    fun 늘_견주는_것의_차례는_1_2_3_4_5_6이다() {
         val r = good()
-        // ① g: 닿지 못함
+        // ① g: 닿지 못함(응답 없음 — 주문 밖에서 본 끊김은 f·g 2, ⑥ 후보 g 를 다시 보내지 않음)
         r.answer("g", T + 600, 0, elapsedMs = 60000)
         // ③ h: 재고의 시각 기록 없음
         val h = T + 700
@@ -203,14 +244,17 @@ class IdemJudgeTest {
             .timing("payment", "h", us(h + 5), us(h + 15), 201)
             .processedRows("h").keys("h")
             .counts("order", "new", 7).counts("payment", "new", 7)
-        // ② 주문이 끊은 수 2, ④ 재고 new 5(키 행 7)
-        r.drops("order", 2).counts("inventory", "new", 5)
+        // ② 주문이 끊은 수 2(위 층이 본 것도 2 — 그 줄은 없다), ④ 재고 new 5(키 행 7), ⑤ 주문·재고 in-progress +1(409 없음)
+        r.drops("order", 2).counts("inventory", "new", 5).counts("order", "in-progress", 2).counts("inventory", "in-progress", 1)
         assertEquals(
             listOf(
                 "clients.notReachedServer: 늘 0, 실제 1",
                 "dropFaults.order: 서비스가 센 수 2, 기록에서 다시 센 수 1",
                 "layers.inventory: DB 행은 있는데 시각 기록이 없는 requestId 1건([h])",
+                "layers.order.counts: in-progress 2·mismatch 1가 시각 기록의 409 1·422 1와 맞지 않는다(409·422였을 수 있는 끊긴 응답 0)",
                 "layers.inventory.counts.new: 키 행 7와 다르다(5)",
+                "layers.inventory.counts: in-progress 1·mismatch 0가 시각 기록의 409 0·422 0와 맞지 않는다(409·422였을 수 있는 끊긴 응답 0)",
+                "reconcile: 다시 보낼 후보 3건 가운데 다시 보내지 못한 것 1건, 후보가 아닌데 다시 보낸 것 0건",
             ),
             r.mismatch(),
         )
@@ -256,6 +300,7 @@ class IdemJudgeTest {
         assertEquals(
             listOf(
                 "dropFaults.payment: 서비스가 센 수 0, 기록에서 다시 센 수 1",
+                "dropFaults.payment: 서비스가 센 수 0, 위 층이 본 끊김 1",
                 "reconcile.resent: 기대 3~3, 실제 2",
                 "clients.failed: 기대 0~0, 실제 2",
             ),

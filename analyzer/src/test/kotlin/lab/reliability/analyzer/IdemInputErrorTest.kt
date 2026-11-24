@@ -248,9 +248,11 @@ class IdemInputErrorTest {
 
     @Test
     fun 다시_보낸_줄의_status_0은_받는다() {
-        // 9-3 "status가 0이나 100~599가 아님" — 정답 줄(1절)과 같이 0(응답 없음)은 받는다
+        // 9-3 "status가 0도 아니고 100~599도 아님" — 0(응답 없음)은 받는다. 입력 오류가 아니라 보고가 나오고,
+        // 다시 보낸 것의 status 0 은 주문 밖에서 본 끊김(9-4 observedAbove)에 들어 센 수 1 과 달라진다
         val r = good().changeResend("c", "status" to "0")
-        assertEquals(0, r.runIdem(), r.lastOutput)
+        assertEquals(2, r.runIdem(), r.lastOutput)
+        assertEquals(listOf("dropFaults.order: 서비스가 센 수 1, 위 층이 본 끊김 2"), r.report().differences())
         assertEquals(1L, r.report().long("reconcile", "completed"))
     }
 
@@ -328,7 +330,7 @@ class IdemInputErrorTest {
         // 경계의 안쪽: 행 0개 — 키가 꺼진 층(그 층의 센 수도 0)
         val r = good()
         r.enabled["payment"] = false
-        r.keyCsvText["payment"] = "key,request_id,amount,state,response_status\n"
+        r.clearKeys("payment")
         r.counts("payment", "new", 0).counts("payment", "replayed", 0)
         assertEquals(0, r.runIdem(), r.lastOutput)
     }
@@ -510,22 +512,23 @@ class IdemInputErrorTest {
     @Test
     fun enabled가_문자열이면_입력_오류다() {
         val r = good()
-        r.settingsText["inventory"] = """{"idempotency":{"enabled":"true"}}"""
+        r.settingsText["inventory"] = """{"idempotency":{"enabled":"true"},"retry":{"enabled":false}}"""
         r.assertInputError()
     }
 
     @Test
     fun enabled가_없으면_입력_오류다() {
         val r = good()
-        r.settingsText["order"] = """{"idempotency":{}}"""
+        r.settingsText["order"] = """{"idempotency":{},"retry":{"enabled":false}}"""
         r.assertInputError()
     }
 
     @Test
     fun 설정은_enabled만_읽는다() {
-        // 경계의 안쪽: 다른 칸이 없어도(retry·nextLayer 없음) 받는다
+        // 경계의 안쪽: 읽는 칸(idempotency.enabled, 주문·재고의 retry.enabled) 밖의 칸이 없어도 받는다
         val r = good()
-        r.settingsText["order"] = """{"idempotency":{"enabled":true}}"""
+        r.settingsText["order"] = """{"idempotency":{"enabled":true},"retry":{"enabled":false}}"""
+        r.settingsText["payment"] = """{"idempotency":{"enabled":true}}"""
         assertEquals(0, r.runIdem(), r.lastOutput)
     }
 

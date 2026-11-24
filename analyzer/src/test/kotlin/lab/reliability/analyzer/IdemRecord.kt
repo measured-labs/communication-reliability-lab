@@ -13,16 +13,28 @@ import kotlin.test.assertFalse
 // 이 파일은 분석기의 구현을 보지 않고 문서(9절과 9절이 가리키는 1·2·4·7·8절, docs/idempotency.md,
 // docs/experiments/task-04-design.md)만으로 쓴다. 1·2절의 정답 줄·DB 행은 RunRecord 로 쓰고,
 // 그 위에 task 04 칸(key·copy·attemptFault·dropFault·replayed)·다시 보낸 줄·키 표·센 수·끊은 수·시각 기록·설정을 더한다.
-// 9-2의 입력이 아닌 파일(표본, 조회, 시도 기록)은 쓰지 않는다.
+// 9-2의 입력이 아닌 파일(표본, 조회)은 쓰지 않는다. 시도 기록(attempts-<층>.json)은 그 층의 `retry.enabled`가 참일 때만 쓴다.
+// 2026-11-24 20:30 뒤의 입력(9-2): 업무 행 id(`db/row-ids-<층>.csv` — 행을 넣은 차례로 1, 2, …)와 키 행의 `row_id`
+// (`db/idempotency-row-ids-<층>.csv` — 주지 않으면 그 층에서 키 행의 request_id 로 처음 넣은 업무 행, 없으면 [MISSING_ROW_ID]).
+// 설정: 세 층의 `idempotency.enabled`, 주문·재고의 `retry.enabled`(기본 끔).
 
 val IDEM_KINDS = listOf("new", "replayed", "in-progress", "mismatch", "resumed", "missing-key")
+
+/** 업무 행이 없는 키 행이 가리키는 id(어느 층의 업무 행 id 에도 없다). */
+const val MISSING_ROW_ID = 9999L
+
+/** 키 행 하나 — rowId 가 null 이면 쓸 때 정한다(위 머리 설명). */
+data class KeyEntry(val key: String, val requestId: String, val amount: Long, val state: String, val status: Int?, val rowId: Long?)
 
 class IdemRecord(root: Path, name: String = "idem-20261124T000000-r1") {
     val base = RunRecord(root, name)
     val dir: Path get() = base.dir
 
     private val timings = LAYERS.associateWith { mutableListOf<String>() }
-    private val keyRows = LAYERS.associateWith { mutableListOf<String>() }
+    val keyRows = LAYERS.associateWith { mutableListOf<KeyEntry>() }
+
+    /** 층마다 업무 행의 requestId — 넣은 차례(id = 차례 + 1). */
+    val rowIds = LAYERS.associateWith { mutableListOf<String>() }
     private val counts = mutableMapOf<Pair<String, String>, Int>()
     private val drops = mutableMapOf<String, Int>()
     private val attemptCounted = mutableMapOf<Pair<String, String>, Int>()
@@ -33,9 +45,18 @@ class IdemRecord(root: Path, name: String = "idem-20261124T000000-r1") {
     /** 층마다 `idempotency.enabled`(settings-<층>.json). */
     val enabled = mutableMapOf("order" to true, "inventory" to true, "payment" to true)
 
+    /** 주문·재고의 `retry.enabled`(settings-<층>.json). 참이면 attempts-<층>.json 을 쓴다. */
+    val retryEnabled = mutableMapOf("order" to false, "inventory" to false)
+
+    /** 시도 기록(주문·재고) — retryEnabled 인 층만 파일로 쓴다. */
+    val attempts = mapOf("order" to mutableListOf<Attempt>(), "inventory" to mutableListOf<Attempt>())
+    val attemptsText = mutableMapOf<String, String>()
+
     /** 값이 있으면 그 파일을 이 내용 그대로 쓴다. */
     val timingsText = mutableMapOf<String, String>()
     val keyCsvText = mutableMapOf<String, String>()
+    val rowIdsText = mutableMapOf<String, String>()
+    val keyRowIdsText = mutableMapOf<String, String>()
     val settingsText = mutableMapOf<String, String>()
     var countsText: String? = null
     var dropsText: String? = null
@@ -98,12 +119,37 @@ class IdemRecord(root: Path, name: String = "idem-20261124T000000-r1") {
 
     fun row(layer: String, id: String, status: String, amount: Long = amountFor(id)): IdemRecord {
         base.row(layer, id, status, amount)
+        rowIds.getValue(layer) += id
         return this
     }
 
-    /** 키 행 하나(`key,request_id,amount,state,response_status`). [status]가 null 이면 빈 칸. */
-    fun key(layer: String, key: String, state: String, status: Int?, requestId: String = key, amount: Long = amountFor(requestId)): IdemRecord {
-        keyRows.getValue(layer) += "$key,$requestId,$amount,$state,${status ?: ""}"
+    /** 그 층에서 그 requestId 로 [nth]번째(0부터) 넣은 업무 행의 id. 없으면 null. */
+    fun rowIdOf(layer: String, requestId: String, nth: Int = 0): Long? {
+        val ids = rowIds.getValue(layer).withIndex().filter { it.value == requestId }.map { it.index + 1L }
+        return ids.getOrNull(nth)
+    }
+
+    /** 키 행 하나(`key,request_id,amount,state,response_status`). [status]가 null 이면 빈 칸. [rowId]가 null 이면 쓸 때 정한다. */
+    fun key(
+        layer: String,
+        key: String,
+        state: String,
+        status: Int?,
+        requestId: String = key,
+        amount: Long = amountFor(requestId),
+        rowId: Long? = null,
+    ): IdemRecord {
+        keyRows.getValue(layer) += KeyEntry(key, requestId, amount, state, status, rowId)
+        return this
+    }
+
+    fun clearKeys(layer: String): IdemRecord {
+        keyRows.getValue(layer).clear()
+        return this
+    }
+
+    fun attempt(layer: String, a: Attempt): IdemRecord {
+        attempts.getValue(layer) += a
         return this
     }
 
@@ -171,8 +217,28 @@ class IdemRecord(root: Path, name: String = "idem-20261124T000000-r1") {
         for (l in LAYERS) {
             if ("db/idempotency-$l.csv" in omit) continue
             db.resolve("idempotency-$l.csv").writeText(
-                keyCsvText[l] ?: (listOf("key,request_id,amount,state,response_status") + keyRows.getValue(l)).joinToString("\n", postfix = "\n"),
+                keyCsvText[l] ?: (
+                    listOf("key,request_id,amount,state,response_status") +
+                        keyRows.getValue(l).map { "${it.key},${it.requestId},${it.amount},${it.state},${it.status ?: ""}" }
+                    ).joinToString("\n", postfix = "\n"),
             )
+        }
+        for (l in LAYERS) {
+            if ("db/row-ids-$l.csv" !in omit) {
+                db.resolve("row-ids-$l.csv").writeText(
+                    rowIdsText[l] ?: (listOf("id,request_id") + rowIds.getValue(l).mapIndexed { i, id -> "${i + 1},$id" })
+                        .joinToString("\n", postfix = "\n"),
+                )
+            }
+            if ("db/idempotency-row-ids-$l.csv" !in omit) {
+                db.resolve("idempotency-row-ids-$l.csv").writeText(
+                    keyRowIdsText[l] ?: (
+                        listOf("key,row_id") + keyRows.getValue(l).map {
+                            "${it.key},${it.rowId ?: rowIdOf(l, it.requestId) ?: MISSING_ROW_ID}"
+                        }
+                        ).joinToString("\n", postfix = "\n"),
+                )
+            }
         }
         val timingDir = dir.resolve("timing").createDirectories()
         for (l in LAYERS) {
@@ -200,9 +266,16 @@ class IdemRecord(root: Path, name: String = "idem-20261124T000000-r1") {
         }
         for (l in LAYERS) {
             if ("settings-$l.json" in omit) continue
+            val retry = retryEnabled[l]?.let { ""","retry":{"enabled":$it}""" } ?: ""
             dir.resolve("settings-$l.json").writeText(
-                settingsText[l] ?: """{"service":"$l","idempotency":{"enabled":${enabled.getValue(l)}}}""",
+                settingsText[l] ?: """{"service":"$l","idempotency":{"enabled":${enabled.getValue(l)}}$retry}""",
             )
+        }
+        for ((l, list) in attempts) {
+            if ("timing/attempts-$l.json" in omit) continue
+            if (retryEnabled.getValue(l) || l in attemptsText) {
+                timingDir.resolve("attempts-$l.json").writeText(attemptsText[l] ?: list.joinToString(",", "[", "]") { it.json() })
+            }
         }
         val resendFile = dir.resolve("resends.jsonl")
         when {
