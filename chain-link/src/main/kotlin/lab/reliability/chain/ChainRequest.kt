@@ -107,6 +107,8 @@ class InFlightController(private val inFlight: InFlightRequests) {
  * `fail-after-commit`은 처리 코드가 커밋한 뒤 [FaultInjection.respond]에서 낸다.
  * 3. (task 04) X-Drop-Fault의 문법이 틀리면 400. 멱등 키가 켜져 있는데 Idempotency-Key가 없거나 비면 400.
  *    이번에 든 것을 끊어야 하면 [ChainContext.dropConnection]을 넣는다 — 끊는 것은 [FaultInjection.respond].
+ * 4. (task 04-b) 한도가 켜져 있으면([OverloadLimit]) 1~3을 지난 호출마다 창에 넣고, 한도를 넘으면 처리하지 않고 503.
+ *    거절한 호출도 시각 기록에 남는다(status 503). 꺼져 있으면 한도를 부르지 않는다(task 01~04의 경로 그대로).
  */
 class ChainEntryFilter(
     private val faultInjection: FaultInjection,
@@ -115,6 +117,7 @@ class ChainEntryFilter(
     private val attemptFaults: AttemptFaultInjection,
     private val dropFaults: DropFaultInjection = DropFaultInjection(),
     private val idempotency: Idempotency? = null,
+    private val overload: OverloadLimit = OverloadLimit(false, 0, 0),
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) =
         inFlight.track { handle(request, response, chain) }
@@ -163,9 +166,16 @@ class ChainEntryFilter(
             }
         }
         // 시각 기록: 입구에 든 때(지연 장애로 자기 전)부터 나갈 때까지. 예외로 끝나도 남긴다(finally).
-        val start = epochMicros()
+        // task 04-b: 한도가 켜져 있으면 든 시각은 한도가 잠금 안에서 읽어 판정에 쓴 그 값이다(docs/measurement.md 10-1).
+        val admission = if (overload.enabled) overload.arrive() else null
+        val start = admission?.atUs ?: epochMicros()
         try {
             ChainContext.with(ctx) {
+                // task 04-b: 창 안에 받은 호출이 한도를 넘었다 — 처리하지 않고 503(다른 장애는 판정하지 않는다)
+                if (admission?.rejected == true) {
+                    reject(response, 503, """{"fault":"overload","service":"${faultInjection.service}"}""")
+                    return@with
+                }
                 // task 03: 시도마다 넣는 실패(헤더가 없으면 None — task 01·02의 경로 그대로)
                 when (val action = attemptFaults.decide(requestId, attemptFault, start)) {
                     AttemptAction.Fail -> {

@@ -98,6 +98,10 @@ services:
     build: { context: ., target: payment }
     environment:
       <<: *service-env
+      # task 04-b의 조건: 부하에 따라 실패(docs/measurement.md 10절). 주지 않으면 꺼짐(task 01~04와 같다). 실제 값은 /settings의 overload
+      OVERLOAD_ENABLED: ${PAYMENT_OVERLOAD_ENABLED:-false}
+      OVERLOAD_LIMIT: ${PAYMENT_OVERLOAD_LIMIT:-0}
+      OVERLOAD_WINDOW: ${PAYMENT_OVERLOAD_WINDOW:-1000ms}
     ports:
       - "8083:8080"
 
