@@ -24,10 +24,11 @@ fun main(args: Array<String>) {
 
 /**
  * 명령줄 계약 그대로의 입구(테스트도 이것을 부른다 — docs/measurement.md 5절). 첫 인자가 `timing`이면 task 02의 시각 지표
- * (Timing.kt, 7절), 아니면 대조 분석 — 보고는 <실행 폴더>/report.json, report.md에 쓴다.
+ * (Timing.kt, 7절), `retry`면 task 03의 재시도 지표(Retry.kt, 8절), 아니면 대조 분석 — 보고는 <실행 폴더>/report.json, report.md에 쓴다.
  */
 fun runAnalyzer(args: Array<String>): Int {
     if (args.firstOrNull() == "timing") return runTiming(args.drop(1).toTypedArray())
+    if (args.firstOrNull() == "retry") return runRetry(args.drop(1).toTypedArray())
     val options = try {
         parseArgs(args)
     } catch (e: InputException) {
