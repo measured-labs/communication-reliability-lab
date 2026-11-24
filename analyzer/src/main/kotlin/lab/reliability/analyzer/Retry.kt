@@ -18,6 +18,9 @@ const val BIN_MS = 50L
 /** 시간 흐름(보고의 series)의 칸(ms). */
 const val SERIES_BIN_MS = 100L
 
+/** 재시도가 이 수 이상 든 50ms 칸을 "꽉 찬 칸"으로 센다 — 실험 나의 무리(20건)의 3/4(docs/measurement.md 8-4). */
+const val CROWDED_BIN = 15
+
 val DECISIONS = listOf("success", "not-retryable", "retry", "max-attempts", "budget-denied")
 
 private val OUTCOME = Regex("Completed|(Failed|Unknown):\\S+")
@@ -182,11 +185,15 @@ fun readAttemptFaultCounts(path: Path): Map<String, Map<String, Long>> {
 
 // ───────────── 계산 ─────────────
 
-private fun peak(times: List<Long>, binMs: Long, origin: Long, keep: (Long) -> Boolean = { true }): Int {
+/** origin부터 binMs 칸으로 나눠, 하나 이상 든 칸 가운데 칸 시작이 [keep]을 만족하는 칸마다의 수. */
+private fun binCounts(times: List<Long>, binMs: Long, origin: Long, keep: (Long) -> Boolean = { true }): List<Int> {
     val counts = HashMap<Long, Int>()
     times.forEach { t -> counts.merge(Math.floorDiv(t - origin, binMs), 1, Int::plus) }
-    return counts.filterKeys { keep(origin + it * binMs) }.values.maxOrNull() ?: 0
+    return counts.filterKeys { keep(origin + it * binMs) }.values.toList()
 }
+
+private fun peak(times: List<Long>, binMs: Long, origin: Long, keep: (Long) -> Boolean = { true }): Int =
+    binCounts(times, binMs, origin, keep).maxOrNull() ?: 0
 
 /** settings-<서비스>.json의 retry.enabled — 떠 있는 감싸개에서 읽은 값(docs/retry.md 1절). */
 private fun retryEnabled(run: Path, service: String): Boolean {
@@ -377,6 +384,8 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
         val times = arrivalMs.getValue(layer)
         val retryStarts = caller?.let { c -> attempts[c]?.filter { it.attempt >= 2 }?.map { it.startUs / 1000 } }.orEmpty()
         val during = answers.filter { it.sentAtMs >= o.fromMs && it.sentAtMs < o.toMs }
+        val inWindow: (Long) -> Boolean = { it >= o.fromMs && it + BIN_MS <= o.toMs }
+        val retryBins = binCounts(retryStarts, BIN_MS, t0, inWindow)
         report["outage"] = linkedMapOf(
             "startMs" to o.fromMs - t0,
             "endMs" to o.toMs - t0,
@@ -386,7 +395,10 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
             "calleePeakPer50msBefore" to peak(times, BIN_MS, t0) { it + BIN_MS <= o.fromMs },
             "calleePeakPer50msDuring" to peak(times, BIN_MS, t0) { it >= o.fromMs && it + BIN_MS <= o.toMs },
             "calleePeakPer50msAfter" to peak(times, BIN_MS, t0) { it >= o.toMs },
-            "retriesPeakPer50msDuring" to peak(retryStarts, BIN_MS, t0) { it >= o.fromMs && it + BIN_MS <= o.toMs },
+            "retriesPeakPer50msDuring" to (retryBins.maxOrNull() ?: 0),
+            // 재시도만의 칸 분포(구간 안, 재시도가 하나 이상 든 칸만): 칸의 수(count)와 칸마다의 수의 분위수
+            "retryBinsDuring" to quantiles(retryBins.map { it.toDouble() }),
+            "retriesInCrowdedBinsDuring" to retryBins.sum().takeIf { it > 0 }?.let { total -> retryBins.filter { it >= CROWDED_BIN }.sum().toDouble() / total },
             "retryTailMs" to retryStarts.maxOrNull()?.let { it - o.toMs },
             "clientRecoveryMs" to answers.filter { !it.completed }.maxOfOrNull { it.sentAtMs }?.let { it - o.toMs },
         )

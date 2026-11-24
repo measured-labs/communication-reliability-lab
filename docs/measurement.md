@@ -401,7 +401,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 
 분위수는 7-3절의 규칙(nearest-rank, p50·p90·p99·max, 0건이면 `count` 0과 `null`). t0 = 정답의 `sentAtMs` 가운데 **가장 이른 값**(파일의 첫 줄이 아니다 — 정답 줄의 차례는 보지 않는다). 시각 기록의 "든 시각" = `startUs ÷ 1000`(정수 나눗셈, ms).
 
-**칸 지표가 무엇의 시각으로 나누나**(시계가 둘이다): `bins.<L>.*`와 `outage.callee*`는 **불린 층의 입구에 든 시각**(그 층의 시각 기록 `startUs`)으로, `edges.<U>-><L>.retriesPeakPer50ms`와 `outage.retriesPeakPer50msDuring`·`retryTailMs`는 **부르는 층이 그 시도를 시작한 시각**(시도 기록 `startUs` — 보내기 직전)으로 나눈다. 한 시도의 둘은 연결과 전달에 든 시간만큼 다르다 — 칸 경계 가까이의 시도는 두 계열에서 다른 칸에 들 수 있다.
+**칸 지표가 무엇의 시각으로 나누나**(시계가 둘이다): `bins.<L>.*`와 `outage.callee*`는 **불린 층의 입구에 든 시각**(그 층의 시각 기록 `startUs`)으로, `edges.<U>-><L>.retriesPeakPer50ms`와 `outage.retriesPeakPer50msDuring`·`retryBinsDuring`·`retriesInCrowdedBinsDuring`·`retryTailMs`는 **부르는 층이 그 시도를 시작한 시각**(시도 기록 `startUs` — 보내기 직전)으로 나눈다. 한 시도의 둘은 연결과 전달에 든 시간만큼 다르다 — 칸 경계 가까이의 시도는 두 계열에서 다른 칸에 들 수 있다.
 
 | 지표(`report-retry.json`의 자리) | 식 |
 |---|---|
@@ -437,7 +437,9 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | `outage.requestsSentDuring`, `completedSentDuring` | `sentAtMs`가 [from, to)인 정답 수, 그 가운데 완료 |
 | `outage.calleeArrivalsDuring` | 장애를 넣은 서비스 S의 시각 기록 가운데 `startUs`가 [from·1000, to·1000)인 수 |
 | `outage.calleePeakPer50msBefore`·`During`·`After` | S의 50ms 칸 가운데 칸 끝 ≤ from / from ≤ 칸 시작이고 칸 끝 ≤ to / 칸 시작 ≥ to인 칸의 최대(칸 시작 = t0 + 50·i) |
-| `outage.retriesPeakPer50msDuring` | S의 바로 위 층의 `attempt ≥ 2` 시도 시작을 같은 칸으로 — 구간 안의 칸(위 `During`과 같은 조건)의 최대. |
+| `outage.retriesPeakPer50msDuring` | S의 바로 위 층의 `attempt ≥ 2` 시도 시작을 같은 칸으로 — 구간 안의 칸(위 `During`과 같은 조건)의 최대. 재시도가 든 칸이 없으면 0 |
+| `outage.retryBinsDuring` | 같은 칸(구간 안) 가운데 **재시도가 하나 이상 든 칸만**의, 칸마다 든 재시도 수의 분위수(7-3절 규칙 — `count` = 재시도가 든 칸의 수, `p90` = 그 칸들의 p90, `max` = `retriesPeakPer50msDuring`과 같다). 빈 칸을 넣지 않는 까닭: 빈 칸의 수는 간격이 재시도를 얼마나 떨어뜨렸나에 따라 달라져, 넣으면 분위수가 칸의 높이가 아니라 빈 칸의 몫을 말한다 |
+| `outage.retriesInCrowdedBinsDuring` | 같은 칸(구간 안)에 든 재시도 가운데, **15건 이상 든 칸**(꽉 찬 칸 — 문턱 15 = 실험 나의 무리 20건의 3/4, 코드의 `CROWDED_BIN`)에 든 것의 몫(0~1). 구간 안의 칸에 든 재시도가 없으면 `null`. "칸 최대"는 칸 하나의 극값이라 재시도가 흩어졌는지를 말하지 못한다 — 이 몫과 `retryBinsDuring`이 그것을 본다 |
 | `outage.retryTailMs` | S의 바로 위 층의 `attempt ≥ 2` 시도 시작(ms)의 최대 − to. 재시도가 없으면 `null`. 음수면 구간이 끝나기 전에 재시도가 멎었다. **회복 시간이 아니다** — 재시도가 구간 뒤로 얼마나 이어졌나(간격 표와 시도 수로 정해지는 값)이고, 장애가 시각으로 끝나는 이 실험에서는 불린 쪽의 회복을 재지 않는다 |
 | `outage.clientRecoveryMs` | 완료가 아닌 정답의 `sentAtMs` 최대 − to. 없으면 `null`. 음수면 그만큼 구간 끝 앞에 보낸 요청부터는 모두 완료됐다 |
 
