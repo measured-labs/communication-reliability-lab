@@ -1,0 +1,285 @@
+{
+  "run" : "retry-mix-20261124T142408-r2",
+  "expect" : null,
+  "differences" : [ ],
+  "answers" : 800,
+  "clients" : {
+    "answers" : 800,
+    "completed" : 393,
+    "failed" : 364,
+    "unknown" : 43,
+    "successRatio" : 0.49125,
+    "elapsedMs" : {
+      "count" : 800,
+      "p50" : 27.0,
+      "p90" : 32.0,
+      "p99" : 1025.0,
+      "max" : 1036.0
+    },
+    "completedElapsedMs" : {
+      "count" : 393,
+      "p50" : 28.0,
+      "p90" : 32.0,
+      "p99" : 40.0,
+      "max" : 46.0
+    },
+    "noResponse" : 0,
+    "notReachedServer" : 0
+  },
+  "doubledTotal" : 0,
+  "layers" : {
+    "order" : {
+      "arrivals" : 800,
+      "arrivalsPerRequest" : 1.0,
+      "requestsReached" : 800,
+      "repeatArrivals" : 0,
+      "rows" : 800,
+      "processedRows" : 393,
+      "doubled" : 0,
+      "extraProcessedRows" : 0,
+      "processedNotCompleted" : 0
+    },
+    "inventory" : {
+      "arrivals" : 800,
+      "arrivalsPerRequest" : 1.0,
+      "requestsReached" : 800,
+      "repeatArrivals" : 0,
+      "rows" : 800,
+      "processedRows" : 393,
+      "doubled" : 0,
+      "extraProcessedRows" : 0,
+      "processedNotCompleted" : 0
+    },
+    "payment" : {
+      "arrivals" : 800,
+      "arrivalsPerRequest" : 1.0,
+      "requestsReached" : 800,
+      "repeatArrivals" : 0,
+      "rows" : 436,
+      "processedRows" : 436,
+      "doubled" : 0,
+      "extraProcessedRows" : 0,
+      "processedNotCompleted" : 43
+    }
+  },
+  "edges" : {
+    "order->inventory" : {
+      "calls" : 0,
+      "attempts" : 0,
+      "retries" : 0,
+      "budgetDenied" : 0,
+      "decisions" : {
+        "success" : 0,
+        "not-retryable" : 0,
+        "retry" : 0,
+        "max-attempts" : 0,
+        "budget-denied" : 0
+      },
+      "callsByAttempts" : { },
+      "attemptsNotArrived" : -800,
+      "delayMs" : { },
+      "gapMs" : { },
+      "gapMinusDelayMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "retriesPeakPer50ms" : 0
+    },
+    "inventory->payment" : {
+      "calls" : 800,
+      "attempts" : 800,
+      "retries" : 0,
+      "budgetDenied" : 0,
+      "decisions" : {
+        "success" : 393,
+        "not-retryable" : 0,
+        "retry" : 0,
+        "max-attempts" : 407,
+        "budget-denied" : 0
+      },
+      "callsByAttempts" : {
+        "1" : 800
+      },
+      "attemptsNotArrived" : 0,
+      "delayMs" : { },
+      "gapMs" : { },
+      "gapMinusDelayMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "retriesPeakPer50ms" : 0
+    }
+  },
+  "attemptFaults" : {
+    "order" : {
+      "fail-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "slow-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "outage" : {
+        "counted" : 0,
+        "expected" : 0
+      }
+    },
+    "inventory" : {
+      "fail-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "slow-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "outage" : {
+        "counted" : 0,
+        "expected" : 0
+      }
+    },
+    "payment" : {
+      "fail-first" : {
+        "counted" : 364,
+        "expected" : 364
+      },
+      "slow-first" : {
+        "counted" : 43,
+        "expected" : 43
+      },
+      "outage" : {
+        "counted" : 0,
+        "expected" : 0
+      }
+    }
+  },
+  "mix" : {
+    "none" : {
+      "count" : 393,
+      "completed" : 393,
+      "unknown" : 0,
+      "paymentArrivals" : 393,
+      "inventoryArrivals" : 393,
+      "elapsedMs" : {
+        "count" : 393,
+        "p50" : 28.0,
+        "p90" : 32.0,
+        "p99" : 40.0,
+        "max" : 46.0
+      }
+    },
+    "payment:fail-first=1" : {
+      "count" : 165,
+      "completed" : 0,
+      "unknown" : 0,
+      "paymentArrivals" : 165,
+      "inventoryArrivals" : 165,
+      "elapsedMs" : {
+        "count" : 165,
+        "p50" : 25.0,
+        "p90" : 27.0,
+        "p99" : 36.0,
+        "max" : 42.0
+      }
+    },
+    "payment:fail-first=2" : {
+      "count" : 76,
+      "completed" : 0,
+      "unknown" : 0,
+      "paymentArrivals" : 76,
+      "inventoryArrivals" : 76,
+      "elapsedMs" : {
+        "count" : 76,
+        "p50" : 24.0,
+        "p90" : 27.0,
+        "p99" : 33.0,
+        "max" : 33.0
+      }
+    },
+    "payment:fail-first=3" : {
+      "count" : 40,
+      "completed" : 0,
+      "unknown" : 0,
+      "paymentArrivals" : 40,
+      "inventoryArrivals" : 40,
+      "elapsedMs" : {
+        "count" : 40,
+        "p50" : 25.0,
+        "p90" : 27.0,
+        "p99" : 30.0,
+        "max" : 30.0
+      }
+    },
+    "payment:fail-first=4" : {
+      "count" : 47,
+      "completed" : 0,
+      "unknown" : 0,
+      "paymentArrivals" : 47,
+      "inventoryArrivals" : 47,
+      "elapsedMs" : {
+        "count" : 47,
+        "p50" : 24.0,
+        "p90" : 27.0,
+        "p99" : 35.0,
+        "max" : 35.0
+      }
+    },
+    "payment:fail-first=9" : {
+      "count" : 36,
+      "completed" : 0,
+      "unknown" : 0,
+      "paymentArrivals" : 36,
+      "inventoryArrivals" : 36,
+      "elapsedMs" : {
+        "count" : 36,
+        "p50" : 24.0,
+        "p90" : 27.0,
+        "p99" : 35.0,
+        "max" : 35.0
+      }
+    },
+    "payment:slow-first=1@1500" : {
+      "count" : 43,
+      "completed" : 0,
+      "unknown" : 43,
+      "paymentArrivals" : 43,
+      "inventoryArrivals" : 43,
+      "elapsedMs" : {
+        "count" : 43,
+        "p50" : 1023.0,
+        "p90" : 1027.0,
+        "p99" : 1036.0,
+        "max" : 1036.0
+      }
+    }
+  },
+  "bins" : {
+    "binMs" : 50,
+    "order" : {
+      "peakPer50ms" : 4,
+      "peakPer1s" : 42
+    },
+    "inventory" : {
+      "peakPer50ms" : 3,
+      "peakPer1s" : 41
+    },
+    "payment" : {
+      "peakPer50ms" : 3,
+      "peakPer1s" : 41
+    }
+  },
+  "series" : {
+    "binMs" : 100,
+    "originSentAtMs" : 1795497870211,
+    "paymentArrivals" : [ 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 0, 0, 0, 0, 0, 0 ],
+    "inventoryRetries" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
+    "orderRetries" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+  }
+}
