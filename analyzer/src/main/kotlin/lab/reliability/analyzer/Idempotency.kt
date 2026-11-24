@@ -425,12 +425,17 @@ fun idempotencyReport(run: Path, rowIds: Boolean = true): Pair<Map<String, Any?>
         val rowsWithoutKey = rows.getValue(layer).count { it.requestId !in keyIds }
         val keysWithoutRow = keys.count { it.requestId !in rowRequestIds }
         val counts = keyCounts.getValue(svc)
-        // R04-5: 서비스가 센 409·422를 그 층의 시각 기록의 status와 견준다. 끊긴 응답(status 0)은 무엇이었는지 모르므로 그만큼만 남는 것을 받는다.
+        // R04-5: 서비스가 센 409·422를 그 층의 시각 기록의 status와 견준다. 끊긴 응답(status 0)은 무엇이었는지 모른다 —
+        // 그 가운데 409·422였을 수 있는 것(같은 requestId의 다른 기록이 그 기록이 끝나기 전에 들었다 — 이 실험은 키 = requestId)만큼만 차를 받는다.
         val layerTimings = timings.getValue(layer)
+        val timingsById = layerTimings.groupBy { it.requestId }
         val responses = linkedMapOf(
             "409" to layerTimings.count { it.status == 409 }.toLong(),
             "422" to layerTimings.count { it.status == 422 }.toLong(),
             "0" to layerTimings.count { it.status == 0 }.toLong(),
+            "0Repeat" to layerTimings.count { t ->
+                t.status == 0 && timingsById.getValue(t.requestId).any { o -> o !== t && o.startUs <= t.endUs }
+            }.toLong(),
         )
         // R04-2: 키 행 하나가 업무 행 하나를 가리키나(row_id)
         val keyLinks = if (rowIdsByLayer == null || keyRowIdsByLayer == null) null else {
@@ -460,12 +465,12 @@ fun idempotencyReport(run: Path, rowIds: Boolean = true): Pair<Map<String, Any?>
             if (keys.isNotEmpty()) always += "layers.$svc: 멱등 키가 꺼져 있는데(settings-$svc.json) 키 행이 ${keys.size}개"
             if (counts.values.any { it != 0L }) always += "layers.$svc: 멱등 키가 꺼져 있는데(settings-$svc.json) 센 수가 0이 아니다($counts)"
         }
-        // ⑤ 다시 온 키의 409·422: 시각 기록의 수 ≤ 서비스가 센 수, 넘친 몫의 합 ≤ 끊긴 응답 수
+        // ⑤ 다시 온 키의 409·422: 시각 기록의 수 ≤ 서비스가 센 수, 넘친 몫의 합 ≤ 409·422였을 수 있는 끊긴 응답 수
         val extra409 = counts.getValue("in-progress") - responses.getValue("409")
         val extra422 = counts.getValue("mismatch") - responses.getValue("422")
-        if (extra409 < 0 || extra422 < 0 || extra409 + extra422 > responses.getValue("0")) {
+        if (extra409 < 0 || extra422 < 0 || extra409 + extra422 > responses.getValue("0Repeat")) {
             always += "layers.$svc.counts: in-progress ${counts.getValue("in-progress")}·mismatch ${counts.getValue("mismatch")}가 " +
-                "시각 기록의 409 ${responses.getValue("409")}·422 ${responses.getValue("422")}와 맞지 않는다(끊긴 응답 ${responses.getValue("0")})"
+                "시각 기록의 409 ${responses.getValue("409")}·422 ${responses.getValue("422")}와 맞지 않는다(409·422였을 수 있는 끊긴 응답 ${responses.getValue("0Repeat")})"
         }
         svc to linkedMapOf<String, Any?>(
             "arrivals" to timings.getValue(layer).size,
