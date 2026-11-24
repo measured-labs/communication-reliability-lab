@@ -118,11 +118,13 @@ WRITE=yes scripts/task04-recompute.sh runs/…                               # �
 ```bash
 scripts/task04b-all.sh                    # 꺼진 상태 확인(task 01~04 보정) → 보정 cal-overload → 실험 가(간격 다섯, 반복을 조건 사이에 번갈아)
 NA_BACKOFF=none scripts/task04b-all.sh na # 실험 나(예산 끔/켬) — 간격은 실험 가의 결과로 고른다(설계 6절)
+scripts/task04b-all.sh pl                 # 리뷰 뒤 더 잰 세 자리(설계 10절) — 간격 다섯 × overload-low·overload-edge·overload-burst
+SCENARIO=overload-edge INDEX=runs/task-04b-index.tsv METRICS=metrics-overload.tsv scripts/task04-table.sh pl payment.rejectionsStopMs
 INDEX=runs/task-04b-index.tsv METRICS=metrics-overload.tsv scripts/task04-table.sh ga payment.rejectionsStopMs clients.recoveryMs
 scripts/task04-recompute.sh runs/overload-spike-…-r1                    # 커밋한 raw.tar.gz에서 분석을 다시 돌려 커밋한 보고와 견준다
 ```
 
 - 결제의 한도는 환경 변수 `PAYMENT_OVERLOAD_ENABLED`·`PAYMENT_OVERLOAD_LIMIT`·`PAYMENT_OVERLOAD_WINDOW`로 켠다(`compose.yaml`이 결제에만 넘긴다). **주지 않으면 꺼짐** — 입구 필터는 task 01~04의 경로 그대로다. 켜면 창(기본 1s) 안에 받은 호출(거절한 것 포함)이 한도를 넘는 호출을 처리하지 않고 503으로 거절한다(미끄러지는 창 — 규칙과 지표: `docs/measurement.md` 10절). `run.sh`가 떠 있는 서비스의 `/settings`의 `overload`와 견주고 다르면 실패한다. 센 수는 `GET /overload`.
-- 시나리오 `cal-overload`·`overload-spike`: 장애 헤더 없이 평소 25/s 위에 10s부터 5s 동안 75/s를 더한다(부하가 원인). 분석은 대조 분석 + `analyzer retry`(8절) + `analyzer overload`(10절) — 서비스가 센 거절 수, 결제의 시각 기록의 503 수, 분석기가 결제의 든 시각에 규칙을 다시 적용한 거절 수가 다르면 불일치(종료 코드 2).
+- 시나리오 `cal-overload`·`overload-spike`: 장애 헤더 없이 평소 25/s 위에 10s부터 5s 동안 75/s를 더한다(부하가 원인). `overload-low`·`overload-edge`·`overload-burst`는 평소만 다르다(15/s · 17/s · 2s마다 30건 무리 — 설계 10절). `scripts/task04.sh`의 `UP=no`는 다시 띄우지 않고 떠 있는 서비스로 잰다(서비스 조건이 같은 자리들을 이어 잴 때). 분석은 대조 분석 + `analyzer retry`(8절) + `analyzer overload`(10절) — 서비스가 센 거절 수, 결제의 시각 기록의 503 수, 분석기가 결제의 든 시각에 규칙을 다시 적용한 거절 수가 다르면 불일치(종료 코드 2).
 - 실행마다 `config.env`에 실행 앞뒤의 `/proc/loadavg`(`host_loadavg_start`·`host_loadavg_end`)를 남기고, `task04b-all.sh`가 조건마다 `uptime`을 `runs/task-04b-uptime.txt`에 남긴다(이 컴퓨터의 다른 부하).
 - 커밋하는 기록: task 04와 같은 꼴(요약·보고와 `raw.tar.gz` — `scripts/task04-pack.sh`), `runs/task-04b-index.tsv`.

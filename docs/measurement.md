@@ -566,7 +566,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 
 ## 10. 한도 지표 (task 04-b) — `analyzer overload`
 
-> task 04-b의 실험(`docs/experiments/task-04b-design.md`)이 쓰는 지표. 1~6절의 대조 분석과 8절의 재시도 분석은 그대로 돌고(두 번 처리됨·잃음, 서버에 닿지 못한 요청, 시도 기록의 대조는 거기서), 이 절의 분석이 그 뒤에 따로 돈다(`scripts/run.sh`의 12단계 — 시나리오가 `cal-overload`·`overload-spike`일 때).
+> task 04-b의 실험(`docs/experiments/task-04b-design.md`)이 쓰는 지표. 1~6절의 대조 분석과 8절의 재시도 분석은 그대로 돌고(두 번 처리됨·잃음, 서버에 닿지 못한 요청, 시도 기록의 대조는 거기서), 이 절의 분석이 그 뒤에 따로 돈다(`scripts/run.sh`의 12단계 — 시나리오가 `cal-overload`·`overload-spike`·`overload-low`·`overload-edge`·`overload-burst`일 때).
 > 1~9절의 형식과 동작은 바꾸지 않았다. 바뀐 서비스 쪽은 셋이다: `GET /settings`에 `overload`가 더해졌고(꺼짐 `{"enabled":false}`), 끝점 `GET /overload`·`DELETE /overload`가 생겼고, 한도가 켜진 서비스의 시각 기록 `startUs`가 한도가 판정에 쓴 시각이다(10-1). 한도가 꺼져 있으면 입구 필터는 task 01~04의 경로 그대로다. 실행 스크립트는 모든 시나리오에서 상태 초기화 때 `DELETE /overload`를 부르고, `config.env`에 실행 앞뒤의 `/proc/loadavg`(`host_loadavg_start`·`host_loadavg_end`)를 남긴다.
 > 왜 `analyzer retry`에 더하지 않고 하위 명령을 새로 두었나: 입력(결제의 한도 설정, 센 수, 정답의 `phase`)과 늘 견주는 것이 다르고, `retry`가 결제의 설정을 읽게 하면 그 칸이 없는 지난 실행(task 03·04의 172개)을 "꺼짐"으로 조용히 읽거나 다시 계산을 깨야 한다. 읽기 코드(정답·시각 기록·분위수·펴기·기대 파일)는 7·8절의 것을 그대로 쓴다.
 
@@ -575,15 +575,18 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 - 설정 `chain.overload.*`(`chain-link.yml`): `enabled`(불, 기본 `false`), `limit`(정수 L ≥ 1), `window`(기간 W ≥ 1ms, 기본 `1000ms`). `compose.yaml`은 결제에만 `PAYMENT_OVERLOAD_ENABLED`·`PAYMENT_OVERLOAD_LIMIT`·`PAYMENT_OVERLOAD_WINDOW`를 그 서비스의 `OVERLOAD_*`로 넘긴다. 범위(L < 1, W < 1ms)는 `enabled=true`일 때만 검사한다(기동 실패). 값의 꼴(정수가 아닌 limit 등)은 Spring이 묶을 때 — 세 서비스 모두 기동 실패.
 - **규칙**: 업무 입구에 든 호출(400으로 끝난 헤더 오류는 들지 않는다 — 시각 기록이 남는 호출과 같은 집합)마다, 든 시각 t(μs)에 대해 (t − W, t] 동안 이 서비스에 든 호출의 수가 — **이 호출 포함, 거절한 호출 포함** — L보다 크면 거절: 처리하지 않고 503(본문 `{"fault":"overload","service":"<서비스>"}`). 창은 미끄러지는 창(지난 W의 든 시각 목록)이다 — 고정 칸이 아닌 까닭은 설계 1절.
 - **시각과 차례**: 서비스는 잠금 안에서 시계(`epochMicros`)를 읽고, 앞 호출의 시각보다 이르면 앞 시각을 쓴다(그래서 판정의 차례 = 시각의 오름차순, 같은 시각은 있을 수 있다). 그 시각으로 판정하고 **같은 값을 시각 기록의 `startUs`로 남긴다**.
-- 거절한 호출에는 다른 장애(`X-Fault`·`X-Attempt-Fault`·`X-Drop-Fault`)를 판정하지 않는다(세지도 않는다). 거절한 호출도 시각 기록에 남는다(`status` 503, call 칸 없음). 그래서 한도와 시도마다 넣는 실패를 한 서비스에 함께 넣으면 8-4의 `fail-first` 기대 수(든 횟수로 셈)와 서비스가 센 수가 다를 수 있다 — task 04-b의 시나리오는 섞지 않는다.
+- **차례**: 헤더 검사(400) → 한도 판정 → (받아들인 호출만) `X-Drop-Fault`의 판정 → `X-Attempt-Fault` → `X-Fault`. 거절한 호출에는 다른 장애(`X-Fault`·`X-Attempt-Fault`·`X-Drop-Fault`)를 판정하지 않는다(세지도 않는다 — 끊김의 "든 횟수"도 쓰지 않는다). 거절한 호출도 시각 기록에 남는다(`status` 503, call 칸 없음).
+  - 고친 것(2026-11-25, `be1acfc`): 그 전 코드는 `X-Drop-Fault`를 한도보다 먼저 판정해, 첫 시도가 한도로 거절된 요청은 재시도가 둘째 듦이 되어 끊기지 않았다(`drop-after-commit=1`). task 04-b 실험 가·나의 실행에는 장애 헤더가 없어 닿지 않았다. 한도가 꺼져 있으면 차례는 task 01~04 그대로다(한도를 부르지 않고, 끊김을 판정한 뒤 시계를 읽는다).
+  - 이 차례는 서비스의 입구 필터 안이라 **단위 테스트의 입구가 없다** — 확인 실행으로만 본다(`runs/task-04b-index.tsv`의 실험 `chk`: 한도 12/100ms + `idem-retry-mix`의 끊김. 고치기 전 `…023356-r1`은 `dropFaults.payment` 서비스가 센 수 78·기록에서 다시 센 수 79, 고친 뒤 `…023708-r1`은 79·79·위 층이 본 수 79).
+  - 그래서 한도와 시도마다 넣는 실패·끊김을 한 서비스에 함께 넣으면 기대 수가 서비스가 센 수와 다를 수 있다: 8-4의 `fail-first` 기대 수와 9-4의 `dropFaults.expected`는 시각 기록의 수(거절된 기록 포함)로 세기 때문이다 — `fail-first`는 거절된 시도가 있으면 다르고(위 확인 실행에서 675·686), 끊김은 그 요청의 모든 시도가 거절되면 다르다. task 04-b의 실험 시나리오는 섞지 않는다.
 - 끝점: `GET /overload` → `{"arrivals":n,"rejected":n}`(마지막 `DELETE /overload` 뒤 한도에 넣은 호출 수와 거절 수 — 꺼진 서비스는 늘 0), `DELETE /overload`(두 수와 창을 비운다). `GET /settings`의 `overload`: 꺼짐 `{"enabled":false}`, 켬 `{"enabled":true,"limit":50,"windowMs":1000,"rule":"sliding-window"}`(떠 있는 객체의 값). `scripts/run.sh`가 실행마다 조건과 견주고 다르면 실패한다.
 
 ### 10-2. 입력
 
 | 파일 | 만드는 곳 | 형식 |
 |---|---|---|
-| `answers.jsonl` | k6 | 7-1절(`sentAtMs` 필수) + **`phase`**(`"base"` 평소 요청 · `"spike"` 구간 동안 더한 요청 — 필수) + `attemptFault`(늘 `""` — 8절의 재시도 분석이 읽는다. 이 분석은 읽지 않는다). requestId마다 한 줄 |
-| `timing/timings-payment.json`, `timing/timings-inventory.json` | 서비스(7-1) | 7-1절 그대로. 결제는 한 requestId의 기록이 여럿이어도 된다(재시도) |
+| `answers.jsonl` | k6 | 7-1절(`sentAtMs` 필수) + **`phase`**(`"base"` 평소 요청 · `"spike"` 구간 동안 더한 요청 — 필수) + `attemptFault`(늘 `""` — 8절의 재시도 분석이 읽는다. **이 분석은 읽지 않으므로 없어도 받는다**). requestId마다 한 줄 |
+| `timing/timings-payment.json`, `timing/timings-inventory.json` | 서비스(7-1) | 7-1절 그대로. 결제는 한 requestId의 기록이 여럿이어도 된다(재시도). 파일이 없거나 내용이 비면(공백) 입력 오류. **기록이 빠진 것(빈 배열 `[]` 포함)은 입력 오류가 아니라 10-4 ②의 불일치**다(서비스가 센 든 수와 견준다 — 결제의 기록이 모두 빠지면 ⑦도) |
 | `settings-order.json`, `settings-inventory.json`, `settings-payment.json` | 실행 스크립트(`GET /settings`) | 셋 모두 **`overload.enabled`(불)**. 결제는 켜져 있어야 하고 `overload.limit`(정수 ≥ 1)·`overload.windowMs`(정수 ≥ 1)를 읽는다. 다른 칸은 읽지 않는다 |
 | `overload-counts.json` | 실행 스크립트(세 서비스의 `GET /overload`) | `{"order":{"arrivals":n,"rejected":n},"inventory":{…},"payment":{…}}` — 서비스 셋·칸 둘 모두, 0 이상의 JSON 정수, 여분의 키는 입력 오류 |
 
@@ -622,18 +625,19 @@ t0 = 정답의 `sentAtMs` 가운데 가장 이른 값. **구간** = `phase`가 `
 
 ### 10-4. 판정과 출력
 
-- 출력: `<실행 폴더>/report-overload.json`, `<실행 폴더>/metrics-overload.tsv`(수와 `null`만 편 것 — 7-4절과 같은 꼴), 표준 출력에 한 줄 요약, 표준 오류에 불일치.
+- 출력: `<실행 폴더>/report-overload.json`, `<실행 폴더>/metrics-overload.tsv`(수와 `null`만 편 것 — 7-4절과 같은 꼴), 표준 출력에 한 줄 요약, 표준 오류에 불일치(줄마다 `불일치: <차이>`).
+- 한 줄 요약의 꼴: `<실행 폴더 이름>: 한도 분석 — payment.rejectedCounted=<n>, payment.rejectedObserved=<n>, payment.rejectedReplayed=<n>, payment.recovered=<0|1>, payment.rejectionsStopMs=<n>, clients.recovered=<0|1>, clients.recoveryMs=<n>, clients.failed=<n>` — 값이 `null`이면(회복하지 못함) `없음`, 차이가 있으면 끝에 `, 불일치 <k>건`. 입력 오류면 요약 없이 표준 오류에 `입력 오류: <까닭>`.
 - **늘 견주는 것**(기대 파일이 없어도, 이 차례로):
   ① 한도가 꺼진 서비스(주문 → 재고)의 센 수가 0이 아니면 `overload.<서비스>: 한도가 꺼져 있는데(settings-<서비스>.json) 센 수가 0이 아니다(arrivals a, rejected r)`.
   ② `payment.arrivalsCounted ≠ payment.arrivals`이면 `payment.arrivalsCounted: 서비스가 센 든 수 <c>, 시각 기록 <n>` — 시각 기록이 빠지거나 더해지면 다시 적용한 거절이 조용히 달라진다.
-  ③ 셋이 모두 같지 않으면 `payment.rejected: 서비스가 센 수 <c>, 시각 기록의 503 <o>, 규칙을 다시 적용한 수 <r>`.
-  ④ `tieGroupsMismatched ≠ 0`이면 `payment.rejectedByMicros: 같은 μs 묶음 <n>개에서 시각 기록의 503과 규칙을 다시 적용한 거절 수가 다르다([<앞의 셋의 startUs>])`.
+  ③ 셋이 모두 같지 않으면 `payment.rejected: 서비스가 센 수 <c>, 시각 기록의 503 <o>, 규칙을 다시 적용한 수 <r>`(대괄호 없음).
+  ④ `tieGroupsMismatched ≠ 0`이면 `payment.rejectedByMicros: 같은 μs 묶음 <n>개에서 시각 기록의 503과 규칙을 다시 적용한 거절 수가 다르다([<앞의 셋의 startUs>])` — 대괄호 안은 어긋난 묶음의 `startUs`를 오름차순으로 많아야 셋, `, `(쉼표와 공백)로 잇는다. 예: `([1795538961013191, 1795538961013200])`.
   ⑤ `payment.otherStatus ≠ 0`이면 `payment.otherStatus: 늘 0, 실제 <n>`.
   ⑥ `payment.rejectedBeforeSpike ≠ 0`이면 `payment.rejectedBeforeSpike: 늘 0, 실제 <n>`, `clients.badBeforeSpike ≠ 0`이면 `clients.badBeforeSpike: 늘 0, 실제 <n>` — 구간 앞은 평소(한도 아래)여야 "평소로 돌아온다"가 정의된다.
   ⑦ `payment.rejectedDuringSpike = 0`이면 `payment.rejectedDuringSpike: 0보다 커야 한다(구간이 한도를 넘지 않았다)` — 조건의 부하가 아니다.
   그 뒤에 기대 파일의 차이(7-4절과 같은 꼴과 수의 표기).
 - **③·④가 받아 주는 폭은 0이다.** 서비스가 판정한 차례는 `startUs`의 오름차순이고(10-1 — 같은 잠금 안에서 시각을 읽고 판정한다), 같은 μs의 묶음 안에서는 어느 호출이 거절인지는 차례에 따르지만 **거절되는 수는 차례와 무관하다**(묶음 앞의 창은 같고, 묶음의 j번째가 보는 수는 앞 수 + j다). 그래서 묶음마다의 수는 정확히 같아야 한다 — 다르면 서비스의 시계·차례·센 수 가운데 무언가가 규칙과 다르게 돈 것이다.
-- **이 대조가 잡는 것**: 시각 기록의 빠짐·더해짐, 실행 사이에 비워지지 않은 창이나 센 수, 서비스가 잠금 밖에서 시계를 읽어 판정의 차례와 `startUs`의 차례가 어긋나는 것, 503이 한도 밖의 까닭으로 나는 것. **잡지 못하는 것**: 규칙 자체의 착오 — 서비스와 분석기가 같은 규칙 코드(`fault-header`의 `OverloadWindow`)를 부르므로 창의 끝을 열고 닫는 쪽, 거절한 호출을 세는가 같은 규칙의 착오는 셋에 똑같이 든다. 그것은 단위 테스트(10-6)와, 정의에서 손으로 계산한 기대 범위를 쓰는 보정(`load/expectations/cal-overload.overload.json` — 설계 4절)이 본다.
+- **이 대조가 잡는 것**: 시각 기록의 빠짐·더해짐, 실행 사이에 비워지지 않은 창이나 센 수, 503이 한도 밖의 까닭으로 나는 것. **거의 잡지 못하는 것**: 서비스가 잠금 밖에서 시계를 읽어 판정의 차례와 `startUs`의 차례가 어긋나는 것 — 거절 수가 달라지려면 차례가 바뀐 호출이 창 안의 수가 한도 경계(L·L+1)인 판정이어야 하는데, task 04-b의 기록에서 그런 판정은 실행마다 2~3건뿐이다(폭풍 동안은 창의 수가 75~310이라 차례가 바뀌어도 판정이 같다). **잡지 못하는 것**: 규칙 자체의 착오 — 서비스와 분석기가 같은 규칙 코드(`fault-header`의 `OverloadWindow`)를 부르므로 창의 끝을 열고 닫는 쪽, 거절한 호출을 세는가 같은 규칙의 착오는 셋에 똑같이 든다. 한 건 착오(`>`/`>=`, 경계의 열림·닫힘, 한도 ±1)는 단위 테스트(10-6)가 본다. 정의에서 손으로 계산한 기대 범위를 쓰는 보정(`load/expectations/cal-overload.overload.json` — 설계 4절)이 잡는 것은 **큰 착오**뿐이다(거절한 호출을 세지 않음 → 거절 약 250건. 한도 45~55, 창 900~950ms, `>=`, 닫힌 경계는 모두 범위 안).
 - 입력 오류(종료 코드 1, `report-overload.json`·`metrics-overload.tsv`를 쓰지 않고 있던 것은 지운다): 1절·7-2절의 정답 검사(같은 읽기 코드) + `phase`가 없거나 `base`·`spike`가 아님, `phase`가 `spike`인 정답이 없음, 같은 requestId가 정답에 두 줄 이상, 시각 기록의 꼴(7-2), 정답에 없는 requestId의 시각 기록(결제·재고), 설정의 `overload.enabled`가 불이 아님, 결제의 한도가 꺼져 있음(이 분석은 켜진 실행만 다룬다), 주문·재고의 한도가 켜져 있음(결제의 한도만 다룬다), 켜진 결제의 `limit`·`windowMs`가 1 이상의 정수가 아님, `overload-counts.json`의 꼴. 인자: `overload` 뒤에 `--run`(필수), `--expect` 짝(7-4절과 같은 꼴의 기대 파일).
 - 종료 코드: 0 · 1 입력 오류 · 2 불일치. `scripts/run.sh`의 종료 코드는 대조·재시도·한도 분석 가운데 큰 것(대조 분석이 1이면 이 분석을 돌리지 않는다).
 
@@ -653,7 +657,8 @@ class OverloadWindow(val limit: Int, val windowUs: Long) {   // limit < 1, windo
     fun size(): Int                   // 마지막으로 넣은 호출의 창 안의 수(넣은 것이 없으면 0)
 }
 object OverloadRule {
-    fun rejections(arrivalsUs: List<Long>, limit: Int, windowUs: Long): List<Boolean>  // 오름차순의 든 시각 → 같은 차례의 거절 여부(빈 창에서 시작)
+    fun rejections(arrivalsUs: List<Long>, limit: Int, windowUs: Long): List<Boolean>  // 오름차순의 든 시각 → 같은 차례의 거절 여부(빈 창에서 시작). 같은 값은 받는다. 오름차순이 아니면(앞 값보다 작은 값) IllegalArgumentException — 그 값에서 OverloadWindow.arrive가 던진다
+    // 서비스와 분석기는 이것을 부르지 않는다(둘 다 OverloadWindow를 직접 쓴다) — 테스트 입구로만 둔다
 }
 ```
 
