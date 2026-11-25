@@ -1,0 +1,8 @@
+{
+  "answers": {"min": 1500, "max": 1500},
+  "samples.order.maxInflight": {"min": 95, "max": 110},
+  "samples.order.meanLoadDuringSend": {"min": 85, "max": 105},
+  "samples.order.maxQueue": {"min": 0, "max": 0},
+  "samples.order.maxGapMs": {"min": 0, "max": 499},
+  "layers.order.serviceMs.p50": {"min": 2000, "max": 2100}
+}
