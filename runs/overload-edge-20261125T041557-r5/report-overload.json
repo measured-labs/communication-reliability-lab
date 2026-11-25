@@ -1,0 +1,76 @@
+{
+  "run" : "overload-edge-20261125T041557-r5",
+  "expect" : null,
+  "differences" : [ ],
+  "answers" : 970,
+  "limit" : {
+    "limit" : 50,
+    "windowMs" : 1000,
+    "quietMs" : 2000
+  },
+  "spike" : {
+    "startMs" : 9999,
+    "endMs" : 14975,
+    "sent" : 375,
+    "baseSent" : 595,
+    "lastSentAfterEndMs" : 19953
+  },
+  "clients" : {
+    "completed" : 531,
+    "failed" : 439,
+    "unknown" : 0,
+    "successRatio" : 0.5474226804123712,
+    "badBeforeSpike" : 0,
+    "badDuringSpike" : 419,
+    "badAfterSpike" : 20,
+    "sentAfterSpike" : 340,
+    "recovered" : 1,
+    "recoveryMs" : 1188,
+    "completedElapsedMs" : {
+      "count" : 531,
+      "p50" : 23.0,
+      "p90" : 29.0,
+      "p99" : 92.0,
+      "max" : 315.0
+    },
+    "elapsedMs" : {
+      "count" : 970,
+      "p50" : 30.0,
+      "p90" : 237.0,
+      "p99" : 301.0,
+      "max" : 323.0
+    }
+  },
+  "payment" : {
+    "arrivals" : 1851,
+    "arrivalsCounted" : 1851,
+    "rejectedCounted" : 1320,
+    "rejectedObserved" : 1320,
+    "rejectedReplayed" : 1320,
+    "tieGroups" : 0,
+    "tieGroupsMismatched" : 0,
+    "otherStatus" : 0,
+    "maxWindowCount" : 284,
+    "rejectedBeforeSpike" : 0,
+    "rejectedDuringSpike" : 1232,
+    "rejectedAfterSpike" : 88,
+    "arrivalsAfterSpike" : 408,
+    "acceptedAfterSpike" : 320,
+    "recovered" : 1,
+    "rejectionsStopMs" : 1260
+  },
+  "inventory" : {
+    "callOutcomes" : {
+      "Completed" : 531,
+      "Failed:HTTP_503" : 439
+    }
+  },
+  "series" : {
+    "binMs" : 1000,
+    "originSentAtMs" : 1795547780322,
+    "paymentArrivals" : [ 18, 17, 17, 17, 17, 17, 17, 17, 17, 17, 178, 273, 280, 274, 274, 68, 28, 17, 17, 17, 17, 17, 17, 17, 16, 17, 17, 17, 17, 17, 18, 17, 17, 16, 17 ],
+    "paymentRejected" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 138, 273, 280, 274, 274, 68, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
+    "clientSent" : [ 18, 17, 17, 17, 17, 17, 17, 17, 17, 18, 92, 92, 92, 92, 91, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 16 ],
+    "clientBad" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 53, 92, 92, 92, 91, 17, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+  }
+}

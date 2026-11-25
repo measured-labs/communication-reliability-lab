@@ -21,8 +21,12 @@ import javax.sql.DataSource
 
 /** 세 서비스가 같은 규칙으로 쓰는 부품. 각 서비스는 `scanBasePackages`에 `lab.reliability.chain`을 넣는다. */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(IdempotencySettings::class)
+@EnableConfigurationProperties(IdempotencySettings::class, OverloadSettings::class)
 class ChainLinkConfiguration {
+    // task 04-b: 부하에 따라 실패하는 장애(기본 꺼짐 — chain.overload.enabled)
+    @Bean
+    fun overloadLimit(settings: OverloadSettings) = OverloadLimit.of(settings)
+
     // task 04: 멱등 키(기본 꺼짐 — chain.idempotency.enabled)와 커밋 뒤 끊김 장애
     @Bean
     fun idempotencyKeys(jdbc: JdbcClient) = IdempotencyKeys(jdbc)
@@ -63,9 +67,10 @@ class ChainLinkConfiguration {
         attemptFaultInjection: AttemptFaultInjection,
         dropFaultInjection: DropFaultInjection,
         idempotency: Idempotency,
+        overloadLimit: OverloadLimit,
         @Value("\${chain.entry-path}") entryPath: String,
     ) = FilterRegistrationBean(
-        ChainEntryFilter(faultInjection, inFlightRequests, requestTimings, attemptFaultInjection, dropFaultInjection, idempotency),
+        ChainEntryFilter(faultInjection, inFlightRequests, requestTimings, attemptFaultInjection, dropFaultInjection, idempotency, overloadLimit),
     ).apply {
         addUrlPatterns(entryPath)
         order = Ordered.HIGHEST_PRECEDENCE
@@ -101,6 +106,7 @@ class SettingsController(
     private val nextLayerCall: ObjectProvider<NextLayerCall>,
     private val faultInjection: FaultInjection,
     private val idempotency: Idempotency,
+    private val overloadLimit: OverloadLimit,
 ) {
     @GetMapping("/settings")
     fun settings(): Map<String, Any?> = linkedMapOf(
@@ -131,6 +137,8 @@ class SettingsController(
         },
         // task 04: 떠 있는 멱등 키 객체의 값(꺼져 있으면 {"enabled":false})
         "idempotency" to read { idempotency.settings() },
+        // task 04-b: 떠 있는 한도 객체의 값(꺼져 있으면 {"enabled":false})
+        "overload" to read { overloadLimit.settings() },
         "jdkSystemProperties" to SYSTEM_PROPERTIES.associateWith { System.getProperty(it) ?: "설정 안 됨(JDK 기본값)" },
         "runtime" to mapOf(
             "java.version" to System.getProperty("java.version"),

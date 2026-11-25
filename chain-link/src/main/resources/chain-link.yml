@@ -54,6 +54,13 @@ chain:
     # 아래 층의 409(같은 키 처리 중)를 결과 모름(Unknown:HTTP_409)으로 읽나. 기본 false = Failed:HTTP_409(다시 시도하지 않고 키는 FAILED).
     # 키가 꺼져 있으면 켤 수 없다(기동 실패). docs/idempotency.md 3-1절.
     in-progress-as-unknown: ${IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN:false}
+  # task 04-b: 부하에 따라 실패하는 장애(docs/measurement.md 10절). 기본은 꺼짐 — 꺼져 있으면 입구 필터가 한도를 부르지 않는다(task 01~04 그대로).
+  # 켜면: 창(window) 안에 받은 호출(거절한 것 포함)이 limit을 넘으면 처리하지 않고 503. compose.yaml이 결제에만 PAYMENT_OVERLOAD_*를 준다.
+  # 실제로 쓰인 값은 GET /settings 의 overload, 센 수는 GET /overload.
+  overload:
+    enabled: ${OVERLOAD_ENABLED:false}
+    limit: ${OVERLOAD_LIMIT:0}
+    window: ${OVERLOAD_WINDOW:1000ms}
 
 management:
   endpoints:
