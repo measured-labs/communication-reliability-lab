@@ -66,7 +66,7 @@
 - **G3의 "봄"**(gRPC로 받는 재고·결제의 입구 — `GrpcChainLayerService`): ① 입구에서 이미 취소됐거나 남은 기한이 0 이하면 아무것도 시작하지 않는다(`stopped = deadline-before-start`) ② 넣은 지연은 문맥의 취소를 기다리며 자고, 기다리는 중에 취소되면 멈춘다(`cancelled-in-delay`) ③ 지연 뒤, 처리(첫 DB 트랜잭션) 앞에서 한 번 더 본다(`deadline-before-work`). 멈추면 행을 만들지 않고 응답하지 않는다(시각 기록의 `status` 0).
   - **DB 트랜잭션과의 경계**: 멈추는 자리(①②③)는 모두 첫 트랜잭션보다 앞이다 — 그래서 멈추면 되돌릴 것이 없다. 처리를 시작한 뒤에는 취소를 보지 않는다: 결제의 승인(한 트랜잭션)은 시작하면 커밋까지 가고, 재고는 PENDING 행을 커밋한 뒤 결제를 부르며, 그 호출이 gRPC에 의해 끊기면 그 결과로 행을 `UNKNOWN`으로 커밋한다. 트랜잭션 안에서 취소가 와도 SQL을 끊지 않는다(`Statement.cancel`을 쓰지 않는다). 즉 "어디까지 가면 되돌리나" = 없다(시작 전에만 멈춘다), "어디부터 커밋되나" = 첫 트랜잭션을 시작한 뒤의 모든 것.
 - **grpc-java가 스스로 하는 것(G1·G2·G3 모두)**: 서버의 실행기 큐에서 기다리는 동안 취소된 호출(부른 쪽이 끊었거나 받은 기한이 지남)은 처리 코드가 불리지 않는다(grpc-core 1.84.1 `ServerCallImpl.ServerStreamListenerImpl.halfClosed` — 호출이 취소됐으면 돌아간다. unary의 처리 코드는 halfClose에서 불린다). 설계를 쓰기 전의 스모크(결제가 차는 `slow-layer` 부하, G1, 한 번)에서 결제가 받은 3000건 가운데 343건이 그렇게 처리 코드에 닿지 않았다 — 그래서 그 호출은 시각 기록이 없고 넣은 지연도 세지 않는다. 서버가 그 수를 따로 센다(`/transport-counts`의 `grpcCancelledBeforeHandler` — 전송 대조가 "센 수 = 기록 수 + 이것"으로 견준다). 이 task의 실험 부하(동시 처리 ≈ 50)는 실행기가 차지 않으므로 0이 예상된다. 이 몫은 G3의 ①과 겹치는 일(포기한 뒤에 시작하지 않기)을 라이브러리가 큐 단계에서 하는 것이고, HTTP(Tomcat)에는 없다(task 02 나-2에서 결제가 찼을 때 헛일의 약 89%가 포기한 뒤에 시작한 일이었다).
-- 모든 gRPC 조건에서 서버는 이 호출의 문맥이 취소된 것을 안 시각을 기록한다(`cancelledUs` — 위가 끊었거나 받은 기한이 지났다. 기록만 하고 G1·G2에서는 아무것도 바꾸지 않는다). 그래서 "취소가 아래 층에 닿기까지의 시간"을 잴 수 있다: `cancelledUs − giveUp`(5절). HTTP 경로에서는 잴 수 없다 — 이 구현의 HTTP 서버(Tomcat + 서블릿)는 부른 쪽이 끊은 것을 처리 코드에 알리지 않는다(응답을 쓸 때에야 드러난다).
+- 모든 gRPC 조건에서 서버는 이 호출의 문맥이 취소된 것을 안 시각을 기록한다(`cancelledUs` — 위가 끊었거나 받은 기한이 지났다. 기록만 하고 G1·G2에서는 아무것도 바꾸지 않는다). ~~그래서 "취소가 아래 층에 닿기까지의 시간"을 잴 수 있다: `cancelledUs − giveUp`(5절).~~ **(리뷰 뒤 바로잡음 — R05-1)** `cancelledUs − giveUp`은 취소가 닿기까지의 시간이 **아니다**: 서버는 받은 기한이 지나면 스스로 문맥을 취소하고, 위가 포기하는 시각도 같은 기한에서 나온다 — 두 타이머가 같은 때 울린 것을 잰다(전파를 끈 G1에서도 같은 값). G2는 기한과 취소를 한 스위치로 넘기고, 아래 층에는 거의 늘 기한이 먼저 닿는다. 그래서 이 설계로는 **취소 전파만의 지연을 재지 못했다**(결과 문서 "다음에 잴 것"). 기한보다 먼저 안 취소만 `waste.<L>.cancelBeforeDeadline`으로 따로 센다(`docs/measurement.md` 7-3). HTTP 경로에서는 어느 쪽도 잴 수 없다 — 이 구현의 HTTP 서버(Tomcat + 서블릿)는 부른 쪽이 끊은 것을 처리 코드에 알리지 않는다(응답을 쓸 때에야 드러난다).
 - 숨은 기본값(확인한 곳은 `docs/dependencies.md` "task 05"): 채널의 재시도 끔(`disableRetry()` — 서비스 설정의 정책과 투명한 재시도 모두), 서버 실행기는 상한 있는 고정 크기(최대 200 = Tomcat의 최대 스레드, 큐는 상한 없음 — Tomcat의 큐도 상한이 없다), 채널의 기본 기한 없음(기한은 코드에서 요청마다), 관측(서버·클라이언트) 끔, 리플렉션 끔, gRPC 헬스 끔. 실제 값은 `/settings`의 `nextLayer`(채널 객체의 `retryEnabled`를 반사로 읽음)와 `grpc.server`(포트, 등록된 서비스, 실행기, 서버 객체가 그 실행기를 쓰는지).
 
 ## 4. 배치 둘과 돌리는 차례
@@ -89,7 +89,8 @@
 | `waste.<L>.wasted` · `wastedProcessed` · `wastedMsSum` | 위 층이 포기한 뒤에도 L이 계속한 일의 건수 · 그 가운데 L이 처리 행을 커밋한 수 · 시간 합(task 02 그대로 — `giveUp`의 갈래만 2절대로 넓힘) |
 | `waste.<L>.startedAfterGiveUp` | 포기한 뒤에 **시작한** 일의 수 |
 | `waste.<L>.stopped` | 헛일 가운데 G3에서 멈춘 것 |
-| `waste.<L>.cancelSeen` · `cancelAfterGiveUpMs` · `endAfterCancelMs` | 헛일 가운데 L이 취소를 안 것의 수 · 안 시각 − 위가 포기한 시각(취소가 L에 닿기까지) · 끝 − 안 시각(안 뒤에도 계속한 시간) |
+| `waste.<L>.cancelSeen` · `cancelAfterGiveUpMs` · `endAfterCancelMs` | 헛일 가운데 L이 받은 기한이 지났거나 취소를 안 것의 수 · 안 시각 − 위가 포기한 시각(~~취소가 L에 닿기까지~~ — 리뷰 뒤 바로잡음: 받은 기한의 타이머와 위의 타이머의 차다, 3절) · 끝 − 안 시각(안 뒤에도 계속한 시간) |
+| (리뷰 뒤 더함) `waste.<L>.cancelBeforeDeadline` · `cancelMinusDeadlineMs` | 헛일 가운데 L이 받은 기한보다 0.5ms 넘게 먼저 취소를 안 것의 수 · 안 시각 − 받은 기한(`docs/measurement.md` 7-3) |
 | `layers.<L>.stopped.<자리>` | G3에서 멈춘 기록의 수(자리마다) |
 | 대조 분석 `layers.<L>.unknownProcessed`·`failedButProcessed` | **클라이언트는 결과 모름·실패인데 L에 처리 행이 있는 요청 수** |
 | 전송 대조 `deadline.paymentAfterInventoryMs` · `…OverSlack` | 결제가 받은 기한 − 재고가 받은 기한(분위수), 50ms를 넘는 수 |
@@ -107,7 +108,7 @@
 
 ## 7. 예상(보기 전에) — 수치 범위와 판정 규칙
 
-**설계에서 정해지는 값과 재는 값을 가른다.** 아래 표의 건수와 "넣은 지연 − 경로의 가장 짧은 타임아웃"으로 나오는 시간 합은 **이 섞음과 이 타임아웃 값에서 산수로 정해지는 값**이다 — 맞으면 도구와 조건이 규칙대로 걸렸다는 뜻이지 새로 안 것이 아니다. 새로 재는 것은 ① G3에서 취소가 일을 얼마나 빨리 멈추는가(헛일 시간의 남은 몫, `endAfterCancelMs`) ② 취소가 아래 층에 닿기까지의 시간(`cancelAfterGiveUpMs`) ③ 기한·취소가 경계에서 새는 몫(G3인데 처리 행이 커밋된 수, 헛일로 세진 수의 흔들림) ④ H와 G1의 차(프로토콜과 서버가 함께 바뀐 차 — 한계 참조)다.
+**설계에서 정해지는 값과 재는 값을 가른다.** 아래 표의 건수와 "넣은 지연 − 경로의 가장 짧은 타임아웃"으로 나오는 시간 합은 **이 섞음과 이 타임아웃 값에서 산수로 정해지는 값**이다 — 맞으면 도구와 조건이 규칙대로 걸렸다는 뜻이지 새로 안 것이 아니다. 새로 재는 것은 ① G3에서 취소가 일을 얼마나 빨리 멈추는가(헛일 시간의 남은 몫, `endAfterCancelMs`) ② 취소가 아래 층에 닿기까지의 시간(`cancelAfterGiveUpMs` — **리뷰 뒤 바로잡음: 이 지표는 그것을 재지 못한다**, 3절) ③ 기한·취소가 경계에서 새는 몫(G3인데 처리 행이 커밋된 수, 헛일로 세진 수의 흔들림) ④ H와 G1의 차(프로토콜과 서버가 함께 바뀐 차 — 한계 참조)다.
 
 넣은 지연 1500·2500ms의 400건만 헛일이 생긴다(없음·500ms짜리는 두 배치 모두 모든 구간 안에 끝난다). 칸은 실행 하나의 값.
 
@@ -167,15 +168,15 @@
 
 | 입구 | 서명 | 지키는 규칙 |
 |---|---|---|
-| 전송 해석 | `Transport.parse(raw: String): Transport` · `Transport.label` | `"http"`·`"grpc"`(앞뒤 공백 무시) 밖은 `IllegalArgumentException` |
+| 전송 해석 | `Transport.parse(raw: String): Transport` · `Transport.label` | `"http"`·`"grpc"`(앞뒤 공백 무시) 밖은 `IllegalArgumentException`. **대소문자를 가린다** — `"GRPC"`·`"Http"`도 `IllegalArgumentException` |
 | 서버가 닫는 꼴 | `GrpcOutcomes.close(httpStatus: Int): GrpcOutcomes.Close` — `Close(code: Status.Code, chainStatus: Int?)` | 2xx → `(OK, null)`, 그 밖 → `(FAILED_PRECONDITION, httpStatus)` |
 | 끝을 결과로 읽기 | `GrpcOutcomes.read(code: Status.Code, chainStatus: Int?): LayerOutcome` | 2절의 표(차례대로). `chainStatus`가 있으면 코드는 보지 않는다 |
 | 트레일러 읽기 | `GrpcOutcomes.chainStatusOf(trailers: Metadata?): Int?` · `GrpcOutcomes.CHAIN_STATUS`(키 `chain-status`) | 없거나 정수가 아니면 null(앞뒤 공백은 무시) |
 | 메타데이터 | `GrpcHeaders.outbound(requestId: String, rawFault: String?, rawAttemptFault: String?, rawDropFault: String?, idempotencyKey: String?): Metadata` · `GrpcHeaders.read(md: Metadata): GrpcHeaders.Inbound` | 키는 HTTP 헤더 이름의 소문자(`x-request-id`, `x-fault`, `x-attempt-fault`, `x-drop-fault`, `idempotency-key`). null인 것은 붙이지 않는다. 읽기는 없으면 null. 값은 바꾸지 않는다 |
 | 아래 호출의 문맥 | `GrpcDeadlines.downstreamContext(current: Context, propagate: Boolean): Context` | true → `current` 그대로(같은 객체). false → 기한이 없고(`deadline == null`) `current`가 취소돼도 취소되지 않는 문맥 |
 | 시작해도 되나 | `GrpcDeadlines.shouldStart(cancelled: Boolean, remainingNanos: Long?): Boolean` | 취소됐으면 false, 남은 기한 ≤ 0이면 false, 기한 없음(null)이면 true |
-| 기한의 절대 시각 | `GrpcDeadlines.absoluteDeadlineUs(nowUs: Long, remainingNanos: Long?): Long?` | `nowUs + floor(remainingNanos / 1000)`, null이면 null(음수 남은 기한도 그대로 더한다) |
-| 취소를 보며 자기 | `GrpcDeadlines.awaitDelay(ms: Long, cancelled: CountDownLatch): Boolean` | 다 잤으면 true, 그 사이 `cancelled`가 열리면(이미 열려 있으면 바로) false |
+| 기한의 절대 시각 | `GrpcDeadlines.absoluteDeadlineUs(nowUs: Long, remainingNanos: Long?): Long?` | `nowUs + floor(remainingNanos / 1000)`, null이면 null(음수 남은 기한도 그대로 더한다). **음수의 내림은 음의 무한대 쪽**(`Math.floorDiv`): `-1` ns → `-1` μs, `-1500` ns → `-2` μs, `-1000` ns → `-1` μs |
+| 취소를 보며 자기 | `GrpcDeadlines.awaitDelay(ms: Long, cancelled: CountDownLatch): Boolean` | 다 잤으면 true, 그 사이 `cancelled`가 열리면(이미 열려 있으면 바로) false. `ms` 0: 열려 있지 않으면 true, **이미 열려 있으면 false**(`CountDownLatch.await(0, …)`가 수가 0이면 true를 돌려준다 — 열린 것이 먼저다) |
 | 멈춘 자리 | `StopReason.BEFORE_START`·`IN_DELAY`·`BEFORE_WORK`·`ALL` | 값 `deadline-before-start`·`cancelled-in-delay`·`deadline-before-work` |
 
 입구가 없어 보정·실험 실행으로만 보는 것: gRPC 입구(`GrpcChainLayerService` — 넣은 장애, 멈추는 차례, 시각 기록의 칸), 채널 맞춤(`disableRetry`)과 서버 실행기, `/settings`의 반사 읽기. 분석기 쪽(`analyzer transport`, 시각 지표의 새 칸)은 `docs/measurement.md` 11절이 정본이다.
