@@ -191,7 +191,15 @@
         "p90" : null,
         "p99" : null,
         "max" : null
-      }
+      },
+      "cancelMinusDeadlineMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "cancelBeforeDeadline" : 0
     },
     "inventory" : {
       "wasted" : 400,
@@ -221,7 +229,15 @@
         "p90" : 7.623,
         "p99" : 11.717,
         "max" : 46.018
-      }
+      },
+      "cancelMinusDeadlineMs" : {
+        "count" : 400,
+        "p50" : 0.515,
+        "p90" : 1.0,
+        "p99" : 1.488,
+        "max" : 4.285
+      },
+      "cancelBeforeDeadline" : 10
     },
     "payment" : {
       "wasted" : 400,
@@ -251,7 +267,15 @@
         "p90" : 1513.396,
         "p99" : 1519.339,
         "max" : 1523.422
-      }
+      },
+      "cancelMinusDeadlineMs" : {
+        "count" : 400,
+        "p50" : 0.533,
+        "p90" : 1.014,
+        "p99" : 1.499,
+        "max" : 2.538
+      },
+      "cancelBeforeDeadline" : 17
     }
   },
   "samples" : {

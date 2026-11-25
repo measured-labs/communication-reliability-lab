@@ -124,6 +124,12 @@ waste.order.endAfterCancelMs.p50
 waste.order.endAfterCancelMs.p90	
 waste.order.endAfterCancelMs.p99	
 waste.order.endAfterCancelMs.max	
+waste.order.cancelMinusDeadlineMs.count	0
+waste.order.cancelMinusDeadlineMs.p50	
+waste.order.cancelMinusDeadlineMs.p90	
+waste.order.cancelMinusDeadlineMs.p99	
+waste.order.cancelMinusDeadlineMs.max	
+waste.order.cancelBeforeDeadline	0
 waste.inventory.wasted	399
 waste.inventory.wastedProcessed	0
 waste.inventory.startedAfterGiveUp	0
@@ -146,6 +152,12 @@ waste.inventory.endAfterCancelMs.p50	6.783
 waste.inventory.endAfterCancelMs.p90	14.53
 waste.inventory.endAfterCancelMs.p99	222.515
 waste.inventory.endAfterCancelMs.max	226.323
+waste.inventory.cancelMinusDeadlineMs.count	399
+waste.inventory.cancelMinusDeadlineMs.p50	0.441
+waste.inventory.cancelMinusDeadlineMs.p90	0.902
+waste.inventory.cancelMinusDeadlineMs.p99	1.324
+waste.inventory.cancelMinusDeadlineMs.max	1.52
+waste.inventory.cancelBeforeDeadline	3
 waste.payment.wasted	400
 waste.payment.wastedProcessed	400
 waste.payment.startedAfterGiveUp	0
@@ -168,6 +180,12 @@ waste.payment.endAfterCancelMs.p50	890.188
 waste.payment.endAfterCancelMs.p90	1515.051
 waste.payment.endAfterCancelMs.p99	1770.247
 waste.payment.endAfterCancelMs.max	1966.591
+waste.payment.cancelMinusDeadlineMs.count	400
+waste.payment.cancelMinusDeadlineMs.p50	0.421
+waste.payment.cancelMinusDeadlineMs.p90	0.861
+waste.payment.cancelMinusDeadlineMs.p99	1.107
+waste.payment.cancelMinusDeadlineMs.max	1.208
+waste.payment.cancelBeforeDeadline	6
 samples.order.count	456
 samples.order.intervalMs	100
 samples.order.maxGapMs	101

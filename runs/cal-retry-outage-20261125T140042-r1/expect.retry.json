@@ -1,0 +1,9 @@
+{
+  "answers": {"min": 400, "max": 400},
+  "outage.requestsSentDuring": {"min": 98, "max": 102},
+  "clients.completed": {"min": 300, "max": 310},
+  "layers.payment.arrivals": {"min": 495, "max": 505},
+  "outage.retryTailMs": {"min": 0, "max": 220},
+  "outage.clientRecoveryMs": {"min": -260, "max": -150},
+  "bins.payment.peakPer50ms": {"min": 1, "max": 4}
+}

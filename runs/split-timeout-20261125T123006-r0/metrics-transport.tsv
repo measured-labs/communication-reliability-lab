@@ -15,18 +15,21 @@ counts.payment.outbound.grpc	0
 counts.payment.cancelledBeforeHandler.grpc	0
 records.order.count	800
 records.order.calls	800
+records.order.attempts	
 records.order.wrongTransport	0
 records.order.grpcFieldsOnHttp	0
 records.order.stopped	0
 records.order.cancelled	0
 records.inventory.count	800
 records.inventory.calls	800
+records.inventory.attempts	
 records.inventory.wrongTransport	0
 records.inventory.grpcFieldsOnHttp	0
 records.inventory.stopped	0
 records.inventory.cancelled	400
 records.payment.count	800
 records.payment.calls	0
+records.payment.attempts	
 records.payment.wrongTransport	0
 records.payment.grpcFieldsOnHttp	0
 records.payment.stopped	0

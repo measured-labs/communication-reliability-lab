@@ -1,0 +1,44 @@
+counts.order.inbound.http	800
+counts.order.inbound.grpc	0
+counts.order.outbound.http	0
+counts.order.outbound.grpc	800
+counts.order.cancelledBeforeHandler.grpc	0
+counts.inventory.inbound.http	0
+counts.inventory.inbound.grpc	800
+counts.inventory.outbound.http	0
+counts.inventory.outbound.grpc	800
+counts.inventory.cancelledBeforeHandler.grpc	0
+counts.payment.inbound.http	0
+counts.payment.inbound.grpc	800
+counts.payment.outbound.http	0
+counts.payment.outbound.grpc	0
+counts.payment.cancelledBeforeHandler.grpc	0
+records.order.count	800
+records.order.calls	800
+records.order.attempts	
+records.order.wrongTransport	0
+records.order.grpcFieldsOnHttp	0
+records.order.stopped	0
+records.order.cancelled	0
+records.inventory.count	800
+records.inventory.calls	800
+records.inventory.attempts	
+records.inventory.wrongTransport	0
+records.inventory.grpcFieldsOnHttp	0
+records.inventory.stopped	0
+records.inventory.cancelled	0
+records.payment.count	800
+records.payment.calls	0
+records.payment.attempts	
+records.payment.wrongTransport	0
+records.payment.grpcFieldsOnHttp	0
+records.payment.stopped	0
+records.payment.cancelled	400
+deadline.inventoryMissing	0
+deadline.paymentMissing	0
+deadline.paymentAfterInventoryMs.count	800
+deadline.paymentAfterInventoryMs.p50	-990.56
+deadline.paymentAfterInventoryMs.p90	-985.697
+deadline.paymentAfterInventoryMs.p99	-976.521
+deadline.paymentAfterInventoryMs.max	-931.888
+deadline.paymentAfterInventoryOverSlack	0

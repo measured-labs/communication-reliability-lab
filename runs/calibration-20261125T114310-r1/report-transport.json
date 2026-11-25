@@ -62,6 +62,7 @@
     "order" : {
       "count" : 600,
       "calls" : 550,
+      "attempts" : null,
       "wrongTransport" : 0,
       "grpcFieldsOnHttp" : 0,
       "stopped" : 0,
@@ -70,6 +71,7 @@
     "inventory" : {
       "count" : 550,
       "calls" : 500,
+      "attempts" : null,
       "wrongTransport" : 0,
       "grpcFieldsOnHttp" : 0,
       "stopped" : 0,
@@ -78,6 +80,7 @@
     "payment" : {
       "count" : 450,
       "calls" : 0,
+      "attempts" : null,
       "wrongTransport" : 0,
       "grpcFieldsOnHttp" : 0,
       "stopped" : 0,

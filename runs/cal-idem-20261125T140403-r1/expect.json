@@ -1,0 +1,19 @@
+{
+  "answers": 550,
+  "lostTotal": 0,
+  "doubledTotal": 350,
+  "layerMismatch": 150,
+  "orphanRows": 0,
+  "pendingRows": 0,
+  "amountMismatch": 0,
+  "faultCountsMatch": true,
+  "labels": {
+    "": {
+      "completed | COMPLETED | RESERVED | APPROVED": 50,
+      "unknown | COMPLETED+COMPLETED | RESERVED+RESERVED | APPROVED+APPROVED": 50,
+      "unknown | COMPLETED+UNKNOWN | RESERVED+RESERVED | APPROVED+APPROVED": 50,
+      "unknown | COMPLETED+UNKNOWN | RESERVED+UNKNOWN | APPROVED+APPROVED": 100,
+      "completed+completed | COMPLETED+COMPLETED | RESERVED+RESERVED | APPROVED+APPROVED": 150
+    }
+  }
+}

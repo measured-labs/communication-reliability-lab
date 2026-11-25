@@ -1,0 +1,8 @@
+{
+  "answers": {"min": 300, "max": 300},
+  "clients.completed": {"min": 0, "max": 0},
+  "layers.payment.arrivals": {"min": 300, "max": 300},
+  "edges.inventory->payment.retries": {"min": 0, "max": 0},
+  "edges.inventory->payment.budgetDenied": {"min": 300, "max": 300},
+  "attemptFaults.payment.fail-first.counted": {"min": 300, "max": 300}
+}
