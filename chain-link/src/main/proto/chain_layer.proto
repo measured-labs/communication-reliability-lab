@@ -1,0 +1,21 @@
+// task 05: 서비스 사이의 gRPC(주문 → 재고, 재고 → 결제). HTTP의 POST /reservations·/payments와 같은 일 하나.
+// requestId·장애 지시·멱등 키는 본문이 아니라 메타데이터로 간다(HTTP의 헤더와 같은 이름의 소문자 — chain-link/…/GrpcRules.kt).
+// 처리 코드의 답(HTTP와 같은 응답 상태 201·500·502·504·400)은 2xx면 OK, 아니면 FAILED_PRECONDITION과 트레일러 chain-status로 간다.
+syntax = "proto3";
+
+package lab.reliability.chain.grpc;
+
+option java_multiple_files = true;
+option java_package = "lab.reliability.chain.grpc";
+
+service ChainLayer {
+  rpc Handle(AmountMessage) returns (LayerReply);
+}
+
+message AmountMessage {
+  int64 amount = 1;
+}
+
+// 비어 있다 — 결과는 끝난 꼴(OK, 또는 오류 코드와 chain-status)로만 읽는다.
+message LayerReply {
+}

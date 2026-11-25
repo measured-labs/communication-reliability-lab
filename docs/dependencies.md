@@ -23,7 +23,8 @@
 | 관측 | 직접 센 카운터(`GET /faults`) + Actuator health | 넣은 수와 센 수의 대조에 필요. 대시보드는 필요 없다 | Prometheus, Grafana, micrometer-registry-prometheus |
 | 실행 | Docker Compose(2.40.3, 있음) + 멀티스테이지 Dockerfile | 필요, 새 의존성 없음 | Jib, Buildpacks, spring-boot-docker-compose |
 | 테스트 | JUnit Jupiter 6.1.3 + kotlin-test (`kotlin-test-junit5`, `junit-platform-launcher`) — 분석기 모듈 | 명세 5절(분석기 단위 테스트). 테스트는 다른 워커가 쓴다 | Kotest, Strikt, AssertJ 따로 들이기, Testcontainers(task 04에서 다시) |
-| 쓰지 않는 것 | Resilience4j, Spring Retry, `@Retryable`/`@EnableResilientMethods`, Spring Cloud, gRPC(task 05) | 명세 2절 — 재시도·백오프·예산·멱등 키는 직접 짠다 | — |
+| gRPC(task 05) | Spring Boot gRPC 스타터(`spring-boot-starter-grpc-server`·`-client` 4.2.0 — Spring gRPC 1.1.2, grpc-java **1.84.1**) + `io.grpc:grpc-protobuf` + blocking 스텁, protobuf Gradle 플러그인 **0.9.6**(protoc **4.36.2**) — 사용자 11-25 10:48 | 기한·취소 전파를 재는 데 필요(task 05만 — 기본은 HTTP). 아래 "task 05에서 정한 것" | grpc-java만, grpc-kotlin(코루틴 스텁) |
+| 쓰지 않는 것 | Resilience4j, Spring Retry, `@Retryable`/`@EnableResilientMethods`, Spring Cloud, grpc-kotlin(코루틴 스텁), 서비스 메시, 서킷 브레이커 | 명세 2절 — 재시도·백오프·예산·멱등 키는 직접 짠다. task 05의 범위는 기한·취소 전파만 | — |
 
 ## 구현하며 더 정한 것
 
@@ -183,3 +184,57 @@ keep-alive 두 설정의 출처(2026-11-24 확인):
 
 - 선택지: (가) `ramping-arrival-rate`의 단계로 올렸다 내린다 — 단계 사이가 선형으로 이어져 계단을 만들려면 짧은 단계를 끼워야 하고, 정답 줄이 어느 단계에서 나왔는지를 따로 셈해야 한다. (나) 이미 쓰는 `constant-arrival-rate` 둘 — 평소 시나리오는 그대로 두고 구간 시나리오를 `startTime`으로 겹친다. 구간 요청은 자기 requestId(`-spike-`)와 정답의 `phase`로 가려진다.
 - 고른 것: (나). 보내는 수는 시나리오마다 계획한 수에서 끊는다(task 01의 "끝 경계에서 하나 더" 규칙과 같다).
+
+## task 05에서 정한 것 — gRPC(스타터·protobuf 플러그인·grpc-java)
+
+> 2026-11-25에 다시 확인했다: Maven Central의 `spring-boot-dependencies-4.2.0.pom`(관리 버전), 스타터 4.2.0의 pom(끌어오는 것), `spring-boot-grpc-server-4.2.0.jar`·`spring-boot-grpc-client-4.2.0.jar`의 `META-INF/spring-configuration-metadata.json`(설정 이름과 기본값)과 소스 jar, `spring-grpc-core-1.1.2-sources.jar`, `grpc-api`·`grpc-core`·`grpc-stub`·`grpc-netty` 1.84.1의 소스 jar, `spring-boot-gradle-plugin-4.2.0-sources.jar`. 소스의 자리는 `파일:줄`이 아니라 클래스·필드 이름으로 적는다(판이 바뀌면 줄이 움직인다). 조사 문서(`research/dependencies-draft.md` 4절, 11-24)와 달랐던 것은 **달랐다**로 표시한다.
+
+### 정말 필요한가, 왜
+
+- 필요하다 — task 05의 물음(기한·취소 전파가 헛일을 얼마나 줄이나)은 기한과 취소가 프로토콜에 실려 아래로 가는 전송에서만 잴 수 있다. HTTP 경로(JDK `HttpClient` + Tomcat)에는 그것이 없다. **기본은 HTTP**이고(`chain.transport=http`), gRPC 부품은 `grpc`를 골랐을 때만 만들어진다 — HTTP 전송에서는 gRPC 서버·헬스·리플렉션 서비스가 생기지 않는다(Boot의 서버 자동 구성은 `BindableService` 빈이 있을 때만 돈다 — `GrpcServerAutoConfiguration`의 `@ConditionalOnBean(BindableService.class)`). 클라이언트 자동 구성(채널 팩토리 빈)은 HTTP 전송에서도 만들어지지만 채널은 만들지 않는다.
+- 덜 만드는 순서: ①~⑤(이미 있는 것, JDK, 프레임워크 기본, 들인 의존성)로는 기한이 실리는 RPC가 없다 → ⑥ 새 의존성. 무엇을 들일지는 사용자가 골랐다(스타터 + blocking 스텁).
+
+### 선택지
+
+| 선택지 | 장점 | 단점 |
+|---|---|---|
+| **(가) Spring Boot gRPC 스타터 + grpc-java blocking 스텁 — 고름(사용자)** | Boot BOM이 grpc-java·protobuf 판을 맞춘다. 서버 수명·채널 팩토리를 Boot가 관리한다 | 관측·헬스·리플렉션이 기본으로 켜진다, 채널에 Spring의 기본값이 몇 개 더 붙는다(아래 표) — 끄거나 명시해야 한다 |
+| (나) grpc-java만(서버·채널을 직접) | 숨은 설정이 가장 적다 | 서버 수명·판 맞춤을 직접 짠다. 사용자가 고른 것이 아니다 |
+| (다) + grpc-kotlin(코루틴 스텁) | Kotlin다운 `suspend` | 코루틴이 들어와 HTTP 쪽("요청 하나 = 스레드 하나")과 조건이 달라진다 — 들이지 않는다 |
+
+### 들인 것과 판
+
+| 들인 것 | 판(확인한 곳) | 왜 |
+|---|---|---|
+| `org.springframework.boot:spring-boot-starter-grpc-server` | 4.2.0(Boot 관리). 끌어오는 것: `spring-boot-grpc-server` 4.2.0, `grpc-netty`, `grpc-services`(스타터 pom) | 재고·결제의 gRPC 서버(Netty) |
+| `org.springframework.boot:spring-boot-starter-grpc-client` | 4.2.0. 끌어오는 것: `spring-boot-grpc-client` 4.2.0, `grpc-netty`, `grpc-stub` | 주문·재고의 채널 팩토리 |
+| `io.grpc:grpc-protobuf` | 1.84.1(Boot BOM의 `grpc-java.version`) | protobuf 메시지의 직렬화. 스타터가 끌어오지 않는다(`spring-grpc-core`에서는 optional) — **조사 문서에 없던 것** |
+| protobuf-java | 4.36.2(Boot BOM의 `protobuf-java.version`) — grpc-protobuf를 따라온다 | 만든 메시지 코드 |
+| `com.google.protobuf` Gradle 플러그인 | 0.9.6(Boot 문서의 예와 같은 판 — 조사 문서와 같다. Maven Central 최신은 0.10.1) | `chain-link/src/main/proto/chain_layer.proto`에서 메시지와 스텁을 만든다 |
+| protoc · protoc-gen-grpc-java | 4.36.2 · 1.84.1 — `gradle.properties`에 BOM과 같은 값을 적었다 | **조사 문서와 달랐다**: Boot Gradle 플러그인이 둘의 판을 런타임 클래스패스에 맞춰 주지만(`ProtobufPluginAction`), 그것은 Boot 플러그인을 쓴 모듈뿐이다. `.proto`는 세 서비스가 같이 쓰는 라이브러리 모듈 `chain-link`에 있어(Boot 플러그인을 쓰지 않는다) 판을 적었다. 만든 스텁에 `@generated=omit`(Boot 플러그인이 거는 것과 같은 선택 — `javax.annotation.Generated` 의존성을 들이지 않으려고) |
+
+- 이 스택(Boot 4.2.0, Kotlin 2.4.21, Gradle 9.9.2, JDK 25 컨테이너)에서 섰다: Kotlin 컴파일이 만든 Java 코드(`build/generated/source/proto`)를 따로 설정하지 않고 보았고, 세 서비스가 컨테이너에서 떴다(스모크 — 결과 문서 "스모크").
+- **조사 문서와 달랐던 것**: Boot 4.2에서는 gRPC 자동 구성과 설정이 Spring gRPC가 아니라 **Boot의 모듈**(`spring-boot-grpc-server`·`-client`, 패키지 `org.springframework.boot.grpc.*`)에 있다. 설정 이름(`spring.grpc.*`)은 조사 문서와 같다.
+
+### 숨은 기본값 — 끄거나 명시한 것
+
+| 숨은 기본값 | 확인한 곳(받은 판의 소스·메타데이터) | 한 것 | 실제 값을 보는 곳 |
+|---|---|---|---|
+| **채널의 재시도 켜짐**(`ManagedChannelImplBuilder.retryEnabled = true`) — 서비스 설정에 재시도 정책이 있으면 다시 시도하고, 정책이 없어도 투명한 재시도(`RetriableStream`)가 돈다 | grpc-core 1.84.1 `ManagedChannelImplBuilder`(필드 기본값), `ManagedChannelImpl.ChannelStreamProvider.newStream`(`retryEnabled`가 false면 `RetriableStream`을 만들지 않는다 — 투명한 재시도도 그 안에 있다) | 채널을 만들 때 `disableRetry()`(`GrpcNextLayerCall.create` — Spring의 전역 맞춤 뒤에 돈다: `DefaultGrpcChannelFactory.createChannel`) | `/settings`의 `nextLayer.retryEnabled`(떠 있는 채널 객체의 필드를 반사로 읽음 — `false`). 실행으로 확인: 결과 문서 "스모크" |
+| **서버 실행기 = 상한 없는 캐시 스레드 풀**(`GrpcUtil.SHARED_CHANNEL_EXECUTOR` → `Executors.newCachedThreadPool`) — 조사 문서와 같다 | grpc-core `ServerImplBuilder.DEFAULT_EXECUTOR_POOL`, `GrpcUtil.SHARED_CHANNEL_EXECUTOR` | Boot의 갈고리 `GrpcServerExecutorProvider` 빈(`GrpcServerBuilderCustomizers`가 `builder.executor(...)`로 건다)으로 고정 크기 실행기: 스레드 200(`chain.grpc.server-threads` = Tomcat 최대 스레드), 큐 상한 없음(`LinkedBlockingQueue` — Tomcat의 `TaskQueue`도 상한이 없다), 60초 쉬면 줄임 | `/settings`의 `grpc.server.executor`와 `serverUsesThisExecutor`(서버 객체의 `executor` 필드가 이 빈과 같은 객체인지 — `true`) |
+| **기본 기한**: `spring.grpc.client.channel.<이름>.default.deadline` — 값이 0보다 크면 기한 없는 호출에 기한을 붙이는 인터셉터(`DefaultDeadlineSetupClientInterceptor`)가 걸린다. 기본값 없음 — 조사 문서와 같다 | `PropertiesGrpcChannelBuilderCustomizer.customize` | 비워 둔다. 기한은 코드에서 요청마다(`withDeadlineAfter` — 구간의 타임아웃 값) | `chain-link.yml`(주석) |
+| 관측: `spring.grpc.server.observation.enabled`·`spring.grpc.client.observation.enabled` 기본 `true` — 조사 문서와 같다 | 두 jar의 메타데이터, `GrpcServerObservationAutoConfiguration`·`GrpcClientObservationAutoConfiguration` | 둘 다 `false` | `/settings`의 `grpc.globalInterceptorBeans` — 서버 `[grpcGlobalExceptionHandlerInterceptor]`, 클라이언트 `[]`(관측 인터셉터 없음) |
+| 리플렉션: `spring.grpc.server.reflection.enabled` 기본 `true` — 같다 | 메타데이터, `GrpcServerServicesAutoConfiguration` | `false` | `/settings`의 `grpc.server.services` — `lab.reliability.chain.grpc.ChainLayer` 하나 |
+| 헬스: `spring.grpc.server.health.enabled` — 기본은 `BindableService`가 있으면 켜짐, `health.schedule`이 5초 뒤부터 5초마다 앱 헬스(DB 확인 포함)로 갱신 — 같다 | `GrpcServerHealthAutoConfiguration`, 메타데이터(`schedule.delay`·`period` 5s) | `false`(HTTP 경로에 없는 DB 질의를 5초마다 더하지 않게) | 같은 `services`(헬스 서비스 없음) |
+| **채널이 쉬는 시간**: Spring의 기본 `spring.grpc.client.channel.<이름>.idle.timeout` = **20s** — **조사 문서와 달랐다**(문서는 grpc-java의 기본 30분을 적었다 — Spring이 모든 채널에 20s를 건다) | `GrpcClientProperties.Channel.Idle.timeout`, `PropertiesGrpcChannelBuilderCustomizer` | 같은 값을 명시(`default` 채널). 이 실험의 부하는 이어져 있어 쉬지 않는다 — 워밍업과 부하 사이의 틈(수 초)은 20s보다 짧다 | `chain-link.yml` |
+| **부하 분산 정책**: Spring의 기본 `…default.load-balancing-policy` = `round_robin`(grpc-java의 기본은 `pick_first`) — **조사 문서에 없던 것** | `GrpcClientProperties.Channel.Default` | 같은 값을 명시. 대상 주소(Compose의 서비스 이름)는 하나라 차이가 없다 | `chain-link.yml` |
+| 채널 keepalive: 시간 5m·대기 20s·호출 없을 때 안 함 / 서버 keepalive 2h·20s·허용 5m — 조사 문서에 없던 것 | 두 jar의 메타데이터 | 채널 쪽은 같은 값을 명시. 실험 길이(1분 안팎)보다 길어 닿지 않는다 | `chain-link.yml` |
+| 서버 포트: 문서의 기본 9090(메타데이터에는 기본값이 적혀 있지 않다) · 서블릿 위에 얹기 `spring.grpc.server.servlet.enabled` 기본 `false`(따로 된 Netty 서버) — 조사 문서와 같다 | Boot 문서(조사 문서), 메타데이터 | 9090을 명시. Netty 서버 그대로(Tomcat의 스레드와 섞지 않게). **호스트에는 열지 않는다**(Compose 네트워크 안에서만) | `/settings`의 `grpc.server.port` |
+| 전역 예외 처리 인터셉터(`grpcGlobalExceptionHandlerInterceptor`)가 늘 걸린다 — 조사 문서에 없던 것 | `GrpcServerAutoConfiguration` | 그대로 둔다(처리 코드가 예외를 밖으로 내지 않는다 — 입구가 500으로 닫는다) | `/settings`의 `grpc.globalInterceptorBeans.server` |
+
+### 기한·취소 — 받은 판에서 확인한 동작(설계가 기대는 것)
+
+- 호출의 기한 = 호출에 건 기한과 문맥의 기한 가운데 이른 것(grpc-core `ClientCallImpl.effectiveDeadline`의 `min(callOptions.getDeadline(), context.getDeadline())`). 문맥이 취소되면 그 문맥에서 시작한 호출도 끊긴다(`ClientCallImpl.CancellationHandler.cancelled` → `stream.cancel(statusFromCancelled(context))`) — 취소의 까닭이 기한(`TimeoutException`)이면 `DEADLINE_EXCEEDED`, 아니면 `CANCELLED`(grpc-api `Contexts.statusFromCancelled`).
+- 서버는 받은 `grpc-timeout`으로 그 호출의 문맥에 기한을 건다(grpc-core `ServerImpl.createContext`의 `withDeadline`) — 기한이 지나거나 부른 쪽이 끊으면 문맥이 취소된다. 처리 코드가 하는 일(잠, DB)은 grpc가 멈추지 않는다 — 조사 문서의 "the server application is responsible for stopping any activity it has spawned"와 같다.
+- `Context.fork()`는 값을 넘기되 취소할 수 있는 조상을 두지 않는 새 문맥을 만든다(grpc-api `Context.fork` → `new Context(keyValueEntries, generation + 1)`, `getDeadline()`은 그 조상이 없으면 null) — G1이 받은 기한·취소를 아래로 넘기지 않는 방법.
+- 단항(unary) 호출에서 서버가 끊긴 호출에 응답을 내도 예외가 나지 않는다(grpc-stub `ServerCalls.ServerCallStreamObserverImpl.onNext` — 스트리밍에서만 던진다). 그래도 `setOnCancelHandler`를 걸어 둔다.

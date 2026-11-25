@@ -11,3 +11,6 @@ chain:
     url: ${NEXT_LAYER_URL}
     connect-timeout: ${NEXT_LAYER_CONNECT_TIMEOUT}
     request-timeout: ${NEXT_LAYER_REQUEST_TIMEOUT}
+    grpc-target: ${NEXT_LAYER_GRPC_TARGET:}   # task 05: chain.transport=grpc일 때의 아래 층(compose.yaml)
+  grpc:
+    serve: true   # task 05: chain.transport=grpc이면 gRPC 서버(포트 9090)를 띄워 위 층의 호출을 받는다

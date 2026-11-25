@@ -32,10 +32,44 @@ spring:
     init:
       mode: always             # 기본 embedded → PostgreSQL에서는 schema.sql이 조용히 안 돈다
       continue-on-error: false
+  # task 05: Spring Boot gRPC(서버·클라이언트 스타터, Spring gRPC 1.1.2). 서버는 chain.transport=grpc이고 chain.grpc.serve=true인 서비스(재고·결제)에서만
+  # 뜬다(BindableService 빈이 있을 때만 Boot가 서버를 만든다). 숨은 기본값을 값으로 적는다 — 확인한 곳: docs/dependencies.md "task 05".
+  grpc:
+    server:
+      port: 9090                # 기본 9090(문서). Compose 네트워크 안에서만 쓴다 — 호스트에 열지 않는다
+      reflection:
+        enabled: false          # 기본 true — 리플렉션 서비스를 띄우지 않는다
+      health:
+        enabled: false          # 기본: 서비스가 있으면 켜짐 + 5초마다 앱 헬스(DB 확인)로 갱신 — HTTP 경로에 없는 DB 질의를 더하지 않게 끈다
+      observation:
+        enabled: false          # 기본 true(관측 인터셉터). 둘 다 끈다 — 실제로 걸린 인터셉터 빈은 /settings의 grpc.globalInterceptorBeans
+    client:
+      observation:
+        enabled: false          # 기본 true
+      channel:
+        default:                # 이름 없는 대상(payment:9090 등)의 채널이 쓰는 값. Spring의 기본값과 같은 값을 적는다
+          idle:
+            timeout: 20s        # Spring 기본 20s(grpc-java 기본은 30분) — 이 시간 동안 호출이 없으면 채널이 쉰다
+          keepalive:
+            time: 5m            # Spring 기본
+            timeout: 20s        # Spring 기본
+            without-calls: false
+          default:
+            load-balancing-policy: round_robin # Spring 기본(grpc-java 기본은 pick_first). 대상 주소는 하나다
+            # deadline: 비워 둔다 — 값이 있으면 기한 없는 호출에 기한을 붙이는 인터셉터가 걸린다. 기한은 코드에서 요청마다 건다
 
-# task 03: 아래 층 호출의 재시도(docs/retry.md). 기본은 꺼짐 — 꺼져 있으면 감싸개를 만들지 않는다(task 01·02 그대로).
-# 실제로 쓰인 값은 GET /settings 의 retry(떠 있는 감싸개에서 읽는다). compose.yaml이 서비스마다 ORDER_RETRY_*·INVENTORY_RETRY_*로 준다.
+# task 05: 서비스 사이의 전송(docs/experiments/task-05-design.md). 기본 http — task 01~04-b의 동작 그대로. 실제 값은 GET /settings 의 transport·grpc.
+# grpc의 deadline-propagation(G2)·observe-cancellation(G3)은 http 전송에서 켜면 기동 실패. compose.yaml이 세 서비스에 같은 값을 준다.
 chain:
+  transport: ${CHAIN_TRANSPORT:http}
+  grpc:
+    # serve(gRPC 서버를 띄우나)는 여기에 적지 않는다 — 가져온 파일(이 파일)의 값이 가져온 쪽(application.yml)보다 앞서므로,
+    # 여기에 false를 적으면 재고·결제의 true를 덮는다. 기본값 false는 GrpcSettings에 있다.
+    deadline-propagation: ${GRPC_DEADLINE_PROPAGATION:false}
+    observe-cancellation: ${GRPC_OBSERVE_CANCELLATION:false}
+    server-threads: 200          # gRPC 서버 실행기의 스레드 수 — server.tomcat.threads.max와 같게
+  # task 03: 아래 층 호출의 재시도(docs/retry.md). 기본은 꺼짐 — 꺼져 있으면 감싸개를 만들지 않는다(task 01·02 그대로).
+  # 실제로 쓰인 값은 GET /settings 의 retry(떠 있는 감싸개에서 읽는다). compose.yaml이 서비스마다 ORDER_RETRY_*·INVENTORY_RETRY_*로 준다.
   retry:
     enabled: ${RETRY_ENABLED:false}
     max-attempts: ${RETRY_MAX_ATTEMPTS:1}      # 처음 시도를 센다
