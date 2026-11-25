@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # task 04의 커밋한 실행 기록에서 분석을 다시 돌려 커밋한 보고와 견준다.
 #   scripts/task04-recompute.sh <실행 폴더>...
-# raw.tar.gz를 runs/.recompute/<이름>/에 풀고, 대조 분석(그리고 보고가 있는 것만: analyzer retry, analyzer timing, analyzer idem, analyzer overload)을
-# 그 실행과 같은 인자로 돌린 뒤 보고(report.json, 있으면 report-retry.json·metrics-retry.tsv·report-timing.json·metrics.tsv·
-# report-idem.json·metrics-idem.tsv·report-overload.json·metrics-overload.tsv)가 커밋한 것과 바이트까지 같은지 견준다. 분석기 이미지는 지금의 코드로 짓는다.
+# raw.tar.gz를 runs/.recompute/<이름>/에 풀고, 대조 분석(그리고 보고가 있는 것만: analyzer transport, analyzer retry, analyzer timing, analyzer idem,
+# analyzer overload)을 그 실행과 같은 인자로 돌린 뒤 보고(report.json, 있으면 report-transport.json·metrics-transport.tsv·report-retry.json·
+# metrics-retry.tsv·report-timing.json·metrics.tsv·report-idem.json·metrics-idem.tsv·report-overload.json·metrics-overload.tsv)가
+# 커밋한 것과 바이트까지 같은지 견준다. 분석기 이미지는 지금의 코드로 짓는다.
 # 대조 분석의 --planned는 config.env의 planned_answers(없으면 planned_requests — task 01~03의 실행).
 # analyzer idem: config.env에 row_ids_exported=yes가 없는 실행(row_id를 내보내기 전 — task 04의 첫 62개)에는 --no-row-ids를 준다
 #   (그 실행의 보고에는 layers.<L>.keyLinks가 없다 — docs/measurement.md 9-4).
@@ -55,6 +56,13 @@ for run in "$@"; do
   codes=""; analyzeFailed=no
   analyze_into 대조 "${args[@]}"
   files=(report.json)
+  # task 05: 전송 대조(보고가 있는 실행만 — task 05 앞의 실행에는 없다)
+  if [[ -f $run/report-transport.json ]]; then
+    xargs_=(transport --run "/runs/.recompute/${name}")
+    [[ -f $tmp/expect.transport.json ]] && xargs_+=(--expect "/runs/.recompute/${name}/expect.transport.json")
+    analyze_into 전송 "${xargs_[@]}"
+    files+=(report-transport.json metrics-transport.tsv)
+  fi
   if [[ -f $run/report-retry.json ]]; then
     rargs=(retry --run "/runs/.recompute/${name}")
     [[ -f $tmp/expect.retry.json ]] && rargs+=(--expect "/runs/.recompute/${name}/expect.retry.json")

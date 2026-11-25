@@ -38,7 +38,7 @@ fun runAnalyzer(args: Array<String>): Int {
     } catch (e: InputException) {
         System.err.println(e.message)
         System.err.println(USAGE)
-        runValueOf(args)?.let(::removeReports)
+        removeOnArgError(args, listOf("report.json", "report.md"))
         return EXIT_INPUT
     }
     val run = Path.of(options.getValue("--run"))
@@ -71,9 +71,24 @@ private fun removeReports(run: Path) {
     }
 }
 
-private fun runValueOf(args: Array<String>): Path? {
+/**
+ * 인자에서 실행 폴더를 알 수 있으면 그 경로: 첫 `--run` 바로 뒤의 값이 있고, `--`로 시작하지 않고, 이름이 있는 경로(빈 값·`/`이 아님)일 때.
+ * 알 수 없으면 null(`--run`이 없음, 값이 없음, 값이 다른 인자 이름). 하위 명령 모두의 인자 오류가 이것을 쓴다(docs/measurement.md 5절).
+ */
+internal fun runValueOf(args: Array<String>): Path? {
     val i = args.indexOf("--run")
-    return args.getOrNull(i + 1)?.takeIf { i >= 0 && !it.startsWith("--") }?.let { runCatching { Path.of(it) }.getOrNull() }
+    if (i < 0) return null
+    val v = args.getOrNull(i + 1)?.takeIf { it.isNotBlank() && !it.startsWith("--") } ?: return null
+    return runCatching { Path.of(v) }.getOrNull()?.takeIf { it.fileName != null }
+}
+
+/**
+ * 인자 오류(종료 코드 1)일 때 실행 폴더를 알 수 있으면 그 폴더의 이 명령의 보고 [names]를 지운다 — 옛 보고가 남아 통과로 읽히지 않게.
+ * 알 수 없으면 지울 곳이 없다(아무것도 지우지 않는다). 대조 분석과 하위 명령(timing·retry·idem·overload·transport)이 같은 규칙이다.
+ */
+internal fun removeOnArgError(args: Array<String>, names: List<String>) {
+    val run = runValueOf(args) ?: return
+    names.forEach { runCatching { Files.deleteIfExists(run.resolve(it)) } }
 }
 
 private val DIGITS = Regex("[0-9]+")

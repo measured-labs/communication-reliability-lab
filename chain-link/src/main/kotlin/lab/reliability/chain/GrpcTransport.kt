@@ -160,6 +160,9 @@ class GrpcNextLayerCall(
         "deadlinePropagation" to propagateDeadline,
         "retryEnabled" to channelRetryEnabled(channel),
         "channelClass" to channel.javaClass.name,
+        // R05-6: 떠 있는 채널에 걸린 인터셉터(부르는 차례). Spring gRPC의 기본 기한은 채널에 DefaultDeadlineSetupClientInterceptor로만 붙는다 —
+        // 이 목록에 없으면 채널의 기본 기한이 없다(grpc-java 채널 자체에는 기본 기한이 없다). 관측 인터셉터도 여기 보인다
+        "channelInterceptors" to channelInterceptors(channel),
         "stub" to "blocking",
     )
 
@@ -193,7 +196,29 @@ class GrpcNextLayerCall(
             "읽지 못함: ${e.javaClass.simpleName}: ${e.message}"
         }
 
-        private fun findField(cls: Class<*>, name: String): java.lang.reflect.Field? {
+        /**
+         * 떠 있는 채널의 인터셉터 클래스 이름(부르는 차례). grpc-core 1.84.1 `ManagedChannelImpl.interceptorChannel` =
+         * `ClientInterceptors.intercept(realChannel, 인터셉터들)` — `ClientInterceptors.InterceptorChannel`(필드 `interceptor`·`channel`)이 이어진 사슬을 따라간다.
+         * 못 읽으면 "읽지 못함: …".
+         */
+        internal fun channelInterceptors(channel: Any): Any = try {
+            var c: Any = channel
+            repeat(4) {
+                val delegate = findField(c.javaClass, "delegate") ?: return@repeat
+                c = delegate.get(c) ?: return@repeat
+            }
+            var next: Any? = (findField(c.javaClass, "interceptorChannel") ?: error("${c.javaClass.name}에 interceptorChannel 필드가 없다")).get(c)
+            val names = mutableListOf<String>()
+            while (next != null && next.javaClass.name == "io.grpc.ClientInterceptors\$InterceptorChannel") {
+                names += findField(next.javaClass, "interceptor")!!.get(next).javaClass.name
+                next = findField(next.javaClass, "channel")!!.get(next)
+            }
+            names
+        } catch (e: Exception) {
+            "읽지 못함: ${e.javaClass.simpleName}: ${e.message}"
+        }
+
+        internal fun findField(cls: Class<*>, name: String): java.lang.reflect.Field? {
             var k: Class<*>? = cls
             while (k != null) {
                 k.declaredFields.firstOrNull { it.name == name }?.let { return it.apply { isAccessible = true } }
@@ -380,7 +405,7 @@ class GrpcChainLayerService(
     }
 }
 
-/** 떠 있는 gRPC 서버(시작 이벤트에서 받는다) — `/settings`가 포트·서비스·실행기를 읽는다. */
+/** 떠 있는 gRPC 서버(시작 이벤트에서 받는다) — `/settings`가 포트·서비스·실행기·인터셉터를 읽는다. */
 class GrpcServerHolder {
     @Volatile
     var server: Server? = null
@@ -389,6 +414,34 @@ class GrpcServerHolder {
     @EventListener
     fun started(event: GrpcServerStartedEvent) {
         server = event.server
+    }
+
+    companion object {
+        /**
+         * R05-6: 떠 있는 서버에 걸린 인터셉터. `builder` = 서버 객체의 `interceptors` 필드(grpc-core 1.84.1 `ServerImpl` — 빌더의 `intercept`로 건 것),
+         * `methods` = 등록된 메서드마다 처리 코드 앞에 감긴 인터셉터(`ServerInterceptors.InterceptCallHandler`의 `interceptor`·`callHandler`를 따라가며 —
+         * Spring gRPC의 전역 인터셉터와 이 서비스의 [InboundInterceptor]는 여기 보인다). 클래스 이름, 부르는 차례. 못 읽으면 "읽지 못함: …".
+         */
+        internal fun interceptors(server: Server): Any = try {
+            val f = generateSequence<Class<*>>(server.javaClass) { it.superclass }.firstNotNullOfOrNull { k -> k.declaredFields.firstOrNull { it.name == "interceptors" } }
+                ?: error("${server.javaClass.name}에 interceptors 필드가 없다")
+            f.isAccessible = true
+            val builder = (f.get(server) as Array<*>).map { it!!.javaClass.name }
+            val methods = server.services.flatMap { s ->
+                s.methods.map { m ->
+                    val names = mutableListOf<String>()
+                    var h: Any? = m.serverCallHandler
+                    while (h != null && h.javaClass.name == "io.grpc.ServerInterceptors\$InterceptCallHandler") {
+                        names += GrpcNextLayerCall.findField(h.javaClass, "interceptor")!!.get(h).javaClass.name
+                        h = GrpcNextLayerCall.findField(h.javaClass, "callHandler")!!.get(h)
+                    }
+                    m.methodDescriptor.fullMethodName to names
+                }
+            }.toMap()
+            linkedMapOf("builder" to builder, "methods" to methods)
+        } catch (e: Exception) {
+            "읽지 못함: ${e.javaClass.simpleName}: ${e.message}"
+        }
     }
 }
 

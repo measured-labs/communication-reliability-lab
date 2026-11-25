@@ -25,6 +25,15 @@ const val TIMEOUT_OUTCOME = "Unknown:REQUEST_TIMEOUT"
  */
 val GIVE_UP_OUTCOMES = setOf(TIMEOUT_OUTCOME, "Unknown:DEADLINE_EXCEEDED", "Unknown:CANCELLED")
 
+/**
+ * task 05(R05-1): 이 층이 취소를 안 시각이 받은 기한보다 이만큼(μs) 넘게 이르면 "기한 전에 닿은 취소"(위가 끊은 신호)로 센다 —
+ * 받은 기한의 타이머로 안 취소는 기한 뒤 0.4~0.6ms에 온다(task 05 잰 실행의 가운데값). 같은 시계의 μs 정수 비교.
+ */
+const val CANCEL_BEFORE_DEADLINE_MARGIN_US = 500L
+
+/** `cancelledUs − deadlineUs`(μs). 둘 가운데 하나라도 없으면 null. */
+internal fun cancelMinusDeadlineUs(t: Timing): Long? = if (t.cancelledUs == null || t.deadlineUs == null) null else t.cancelledUs - t.deadlineUs
+
 /** task 05: 시각 기록의 `stopped`에 올 수 있는 값(G3에서 처리 코드가 멈춘 자리 — chain-link `StopReason`). */
 val STOP_REASONS = setOf("deadline-before-start", "cancelled-in-delay", "deadline-before-work")
 
@@ -61,6 +70,7 @@ fun runTiming(args: Array<String>): Int {
     } catch (e: InputException) {
         System.err.println(e.message)
         System.err.println(TIMING_USAGE)
+        removeOnArgError(args, listOf("report-timing.json", "metrics.tsv"))
         return EXIT_INPUT
     }
     val run = Path.of(options.getValue("--run"))
@@ -415,12 +425,17 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
             "startedAfterGiveUpMsSum" to wasted.filter { (t, _) -> giveUp(layer, t.requestId)!! <= t.startUs }.sumOf { it.second }.round1(),
             "wastedMsSum" to wasted.sumOf { it.second }.round1(),
             "wastedMs" to quantiles(wasted.map { it.second }),
-            // task 05(gRPC로 들어온 기록만 cancelledUs·stopped가 있다): 헛일 가운데 G3에서 멈춘 것, 이 층이 취소를 안 것,
-            // 취소를 안 시각 − 위가 포기한 시각(취소가 이 층에 닿기까지), 끝 − 취소를 안 시각(안 뒤에도 계속한 시간)
+            // task 05(gRPC로 들어온 기록만 cancelledUs·stopped가 있다): 헛일 가운데 G3에서 멈춘 것, 이 층이 받은 기한이 지났거나 취소를 안 것,
+            // 안 시각 − 위가 포기한 시각(R05-1: 취소 전파의 지연이 아니다 — 받은 기한의 타이머와 위의 타이머가 같은 기한에서 나온다),
+            // 끝 − 안 시각(안 뒤에도 계속한 시간)
             "stopped" to wasted.count { (t, _) -> t.stopped != null },
             "cancelSeen" to wasted.count { (t, _) -> t.cancelledUs != null },
             "cancelAfterGiveUpMs" to quantiles(wasted.mapNotNull { (t, _) -> t.cancelledUs?.let { ms(it - giveUp(layer, t.requestId)!!) } }),
             "endAfterCancelMs" to quantiles(wasted.mapNotNull { (t, _) -> t.cancelledUs?.let { ms(t.endUs - it) } }),
+            // R05-1: 안 시각 − 이 층이 받은 기한. 서버는 받은 기한이 지나면 스스로 문맥을 취소하므로 cancelledUs만으로는 위가 끊은 신호와
+            // 기한 만료를 가르지 못한다 — 기한보다 여유(CANCEL_BEFORE_DEADLINE_MARGIN_US) 넘게 먼저 안 것만 "기한 전에 닿은 취소"로 센다
+            "cancelMinusDeadlineMs" to quantiles(wasted.mapNotNull { (t, _) -> cancelMinusDeadlineUs(t)?.let(::ms) }),
+            "cancelBeforeDeadline" to wasted.count { (t, _) -> (cancelMinusDeadlineUs(t) ?: 0L) < -CANCEL_BEFORE_DEADLINE_MARGIN_US },
         )
     }
 

@@ -275,7 +275,10 @@ for svc in order inventory payment; do
 done
 impl=$([[ $CHAIN_TRANSPORT == grpc ]] && echo GrpcNextLayerCall || echo HttpNextLayerCall)
 for svc in order inventory; do
-  want_settings "$OUT/settings-${svc}.json" "\"nextLayerCall\":\"$impl\"" "$svc 의 아래 층 호출 구현"
+  # 재시도(task 03)를 켠 층은 감싸개가 그 구현을 감싼다 — /settings는 "RetryingNextLayerCall(<구현>)"
+  r="$(tr '[:lower:]' '[:upper:]' <<< "$svc")_RETRY_ENABLED"
+  want=$impl; [[ ${!r} == true ]] && want="RetryingNextLayerCall($impl)"
+  want_settings "$OUT/settings-${svc}.json" "\"nextLayerCall\":\"$want\"" "$svc 의 아래 층 호출 구현"
 done
 for svc in inventory payment; do
   want_settings "$OUT/settings-${svc}.json" "\"grpcServerRunning\":$([[ $CHAIN_TRANSPORT == grpc ]] && echo true || echo false)" "$svc 의 gRPC 서버"

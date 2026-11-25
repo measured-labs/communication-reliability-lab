@@ -22,8 +22,11 @@ private val transportSummaryKeys = listOf(
     "deadline.paymentAfterInventoryOverSlack",
 )
 
-/** settings-<서비스>.json에서 이 분석이 읽는 것. */
-data class TransportSetting(val chosen: String, val deadlinePropagation: Boolean, val observeCancellation: Boolean)
+/**
+ * settings-<서비스>.json에서 이 분석이 읽는 것. [retryEnabled]는 `retry.enabled`(task 03의 재시도 감싸개가 떠 있었나) —
+ * `retry`가 객체가 아니거나(맨 아래 층의 "없음", 읽지 못함) `enabled`가 없으면 false, 있는데 불이 아니면 입력 오류(11-3 ④).
+ */
+data class TransportSetting(val chosen: String, val deadlinePropagation: Boolean, val observeCancellation: Boolean, val retryEnabled: Boolean = false)
 
 fun runTransport(args: Array<String>): Int {
     val options = try {
@@ -31,6 +34,7 @@ fun runTransport(args: Array<String>): Int {
     } catch (e: InputException) {
         System.err.println(e.message)
         System.err.println(TRANSPORT_USAGE)
+        removeOnArgError(args, listOf("report-transport.json", "metrics-transport.tsv"))
         return EXIT_INPUT
     }
     val run = Path.of(options.getValue("--run"))
@@ -91,7 +95,19 @@ internal fun readTransportSetting(path: Path): TransportSetting {
     if (chosen == null || !chosen.isString || chosen.stringValue() !in TRANSPORTS) throw InputException("$path: transport.chosen이 http|grpc가 아니다")
     val g = node.get("grpc")
     if (g == null || !g.isObject) throw InputException("$path: grpc가 객체가 아니다")
-    return TransportSetting(chosen.stringValue(), g.bool("deadlinePropagation", "$path grpc"), g.bool("observeCancellation", "$path grpc"))
+    val retry = node.get("retry")?.takeIf { it.isObject }?.get("enabled")
+    if (retry != null && !retry.isBoolean) throw InputException("$path: retry.enabled가 불 값이 아니다")
+    return TransportSetting(
+        chosen.stringValue(), g.bool("deadlinePropagation", "$path grpc"), g.bool("observeCancellation", "$path grpc"), retry?.booleanValue() ?: false,
+    )
+}
+
+/** timing/attempts-<서비스>.json(재시도 감싸개의 시도 기록 — 8-2절)의 원소 수. 재시도가 켜진 층의 나간 호출 수와 견준다(11-3 ④). */
+internal fun attemptRecordCount(path: Path): Long {
+    val node = readJson(path)
+    if (!node.isArray) throw InputException("$path: JSON 배열이 아니다")
+    node.forEachIndexed { i, a -> if (!a.isObject) throw InputException("$path[$i]: 객체가 아니다") }
+    return node.size().toLong()
 }
 
 /**
@@ -167,8 +183,17 @@ fun transportReport(run: Path): Pair<Map<String, Any?>, List<String>> {
             differences += "counts.$svc.cancelledBeforeHandler.grpc: gRPC로 받지 않는 서비스에서 늘 0, 실제 ${c(svc, "cancelledBeforeHandler", "grpc")}"
         }
     }
+    // 나간 것: 재시도가 꺼진 층은 시각 기록의 call 수(요청 하나 = 나간 호출 하나), 켜진 층은 시도 기록의 수 —
+    // 재시도 감싸개는 시도마다 아래 호출을 한 번씩 부르고 시각 기록의 call 칸은 마지막 시도로 덮인다(chain-link Retry.kt)
+    val attempts = listOf("order", "inventory").associateWith { svc ->
+        if (settings.getValue(svc).retryEnabled) attemptRecordCount(run.resolve("timing").resolve("attempts-$svc.json")) else null
+    }
     for (svc in listOf("order", "inventory")) {
-        if (c(svc, "outbound", chosen) != calls.getValue(svc)) differences += "counts.$svc.outbound.$chosen: 기록의 call 수 ${calls.getValue(svc)}와 같아야 한다, 실제 ${c(svc, "outbound", chosen)}"
+        val n = c(svc, "outbound", chosen)
+        when (val a = attempts.getValue(svc)) {
+            null -> if (n != calls.getValue(svc)) differences += "counts.$svc.outbound.$chosen: 기록의 call 수 ${calls.getValue(svc)}와 같아야 한다, 실제 $n"
+            else -> if (n != a) differences += "counts.$svc.outbound.$chosen: 시도 기록 수 ${a}와 같아야 한다(재시도 켬), 실제 $n"
+        }
     }
 
     // ⑤ 기한·취소의 칸: HTTP면 없어야 하고, gRPC면 받은 기한이 모두 있어야 한다(위 층은 늘 기한을 건다)
@@ -203,6 +228,8 @@ fun transportReport(run: Path): Pair<Map<String, Any?>, List<String>> {
             linkedMapOf(
                 "count" to records.getValue(svc),
                 "calls" to calls.getValue(svc),
+                // 재시도가 켜진 층의 시도 기록 수(꺼졌거나 맨 아래 층이면 null — ④가 나간 수를 견준 쪽)
+                "attempts" to attempts[svc],
                 "wrongTransport" to wrongRecords.getValue(svc),
                 "grpcFieldsOnHttp" to fieldsOnHttp.getValue(svc),
                 "stopped" to stopped.getValue(svc),

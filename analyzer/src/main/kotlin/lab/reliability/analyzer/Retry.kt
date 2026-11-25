@@ -53,6 +53,7 @@ fun runRetry(args: Array<String>): Int {
     } catch (e: InputException) {
         System.err.println(e.message)
         System.err.println(RETRY_USAGE)
+        removeOnArgError(args, listOf("report-retry.json", "metrics-retry.tsv"))
         return EXIT_INPUT
     }
     val run = Path.of(options.getValue("--run"))

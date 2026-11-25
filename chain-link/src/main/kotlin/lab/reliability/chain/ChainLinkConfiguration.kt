@@ -209,10 +209,16 @@ class SettingsController(
                 "allowCoreThreadTimeOut" to exec.allowsCoreThreadTimeOut(),
             ),
             "serverUsesThisExecutor" to serverExecutor.fold({ it === exec }, { "읽지 못함: ${it.javaClass.simpleName}: ${it.message}" }),
+            // R05-6: 떠 있는 서버 객체에 실제로 걸린 인터셉터(빈 이름이 아니라 객체에서 — 관측 인터셉터가 걸렸으면 여기 보인다)
+            "interceptors" to GrpcServerHolder.interceptors(server),
         )
     }
 
-    /** 전역으로 걸리는 gRPC 인터셉터 빈의 이름(관측을 껐으면 관측 인터셉터가 없어야 한다). */
+    /**
+     * 전역으로 걸리는 gRPC 인터셉터 빈의 이름(관측을 껐으면 관측 인터셉터가 없어야 한다 — Boot 4.2.0의 관측 인터셉터는 `@GlobalServerInterceptor`·
+     * `@GlobalClientInterceptor` 빈이다: `GrpcServerObservationAutoConfiguration`·`GrpcClientObservationAutoConfiguration`). 실제로 걸린 것은
+     * `grpc.server.interceptors`(서버 객체)와 `nextLayer.channelInterceptors`(채널 객체)가 본다.
+     */
     private fun interceptorBeans(): Map<String, List<String>> = linkedMapOf(
         "server" to context.getBeanNamesForType(ServerInterceptor::class.java).sorted(),
         "client" to context.getBeanNamesForType(ClientInterceptor::class.java).sorted(),

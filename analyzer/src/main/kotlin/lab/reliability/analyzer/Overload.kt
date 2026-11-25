@@ -31,6 +31,7 @@ fun runOverload(args: Array<String>): Int {
     } catch (e: InputException) {
         System.err.println(e.message)
         System.err.println(OVERLOAD_USAGE)
+        removeOnArgError(args, listOf("report-overload.json", "metrics-overload.tsv"))
         return EXIT_INPUT
     }
     val run = Path.of(options.getValue("--run"))

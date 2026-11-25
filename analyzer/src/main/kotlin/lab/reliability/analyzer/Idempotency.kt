@@ -68,6 +68,7 @@ fun runIdempotency(args: Array<String>): Int {
     } catch (e: InputException) {
         System.err.println(e.message)
         System.err.println(IDEM_USAGE)
+        removeOnArgError(args, listOf("report-idem.json", "metrics-idem.tsv"))
         return EXIT_INPUT
     }
     val run = Path.of(options.getValue("--run"))
