@@ -1,10 +1,13 @@
 pluginManagement {
     val kotlinVersion: String by settings
     val springBootVersion: String by settings
+    val protobufPluginVersion: String by settings
     plugins {
         kotlin("jvm") version kotlinVersion
         kotlin("plugin.spring") version kotlinVersion
         id("org.springframework.boot") version springBootVersion
+        // task 05: chain-link의 .proto에서 메시지·스텁 코드를 만든다(docs/dependencies.md "task 05")
+        id("com.google.protobuf") version protobufPluginVersion
     }
 }
 

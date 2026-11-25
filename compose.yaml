@@ -22,6 +22,11 @@ x-service-env: &service-env
   IDEMPOTENCY_ENABLED: ${IDEMPOTENCY_ENABLED:-false}
   # task 04(더 재는 조건): 아래 층의 409를 결과 모름으로 읽나. 주지 않으면 false(지금까지의 동작). 실제 값은 /settings의 idempotency.inProgressAsUnknown
   IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN: ${IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN:-false}
+  # task 05의 조건: 서비스 사이의 전송과 gRPC의 기한·취소(docs/experiments/task-05-design.md). 주지 않으면 http·꺼짐(task 01~04-b와 같다).
+  # 세 서비스에 같은 값. gRPC 서버(재고·결제, 포트 9090)는 이 프로젝트의 네트워크 안에서만 듣는다(호스트에 열지 않는다). 실제 값은 /settings의 transport·grpc
+  CHAIN_TRANSPORT: ${CHAIN_TRANSPORT:-http}
+  GRPC_DEADLINE_PROPAGATION: ${GRPC_DEADLINE_PROPAGATION:-false}
+  GRPC_OBSERVE_CANCELLATION: ${GRPC_OBSERVE_CANCELLATION:-false}
   # JDK HttpClient의 숨은 기본값: 연결 실패 자동 재시도(기본 켜짐)를 끈다. 나머지는 값을 명시한다.
   # keepalive.timeout(초, 기본 30): 유휴 연결을 풀에 두는 시간. 서버(Tomcat)의 keep-alive 20s보다 짧은 15s —
   # 서버가 먼저 닫은 연결을 클라이언트가 재사용하지 않게(chain-link.yml의 keep-alive-timeout).
@@ -56,6 +61,7 @@ services:
     environment:
       <<: *service-env
       NEXT_LAYER_URL: http://inventory:8080/reservations
+      NEXT_LAYER_GRPC_TARGET: inventory:9090
       NEXT_LAYER_CONNECT_TIMEOUT: 500ms
       # task 02의 조건: 주지 않으면 task 01의 값. 실제 값은 /settings의 nextLayer.requestTimeoutMs
       NEXT_LAYER_REQUEST_TIMEOUT: ${ORDER_TO_INVENTORY_TIMEOUT:-2000ms}
@@ -78,6 +84,7 @@ services:
     environment:
       <<: *service-env
       NEXT_LAYER_URL: http://payment:8080/payments
+      NEXT_LAYER_GRPC_TARGET: payment:9090
       NEXT_LAYER_CONNECT_TIMEOUT: 500ms
       NEXT_LAYER_REQUEST_TIMEOUT: ${INVENTORY_TO_PAYMENT_TIMEOUT:-1000ms}
       # task 03의 조건: 재시도(docs/retry.md). 주지 않으면 꺼짐(task 01·02와 같다). 실제 값은 /settings의 retry

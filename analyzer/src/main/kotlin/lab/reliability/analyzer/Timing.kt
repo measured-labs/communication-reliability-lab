@@ -19,6 +19,24 @@ const val MAX_SAMPLE_GAP_MS = 1000L
 
 const val TIMEOUT_OUTCOME = "Unknown:REQUEST_TIMEOUT"
 
+/**
+ * 부른 쪽이 기다리기를 그만둔 결과(docs/measurement.md 7-3 `giveUp`, 11절): HTTP의 요청 타임아웃과, task 05의 gRPC 경로에서
+ * 기한이 지났거나(`DEADLINE_EXCEEDED`) 위의 취소가 전해져 호출이 끊긴 것(`CANCELLED`). HTTP 경로의 기록에는 뒤의 둘이 나오지 않는다.
+ */
+val GIVE_UP_OUTCOMES = setOf(TIMEOUT_OUTCOME, "Unknown:DEADLINE_EXCEEDED", "Unknown:CANCELLED")
+
+/**
+ * task 05(R05-1): 이 층이 취소를 안 시각이 받은 기한보다 이만큼(μs) 넘게 이르면 "기한 전에 닿은 취소"(위가 끊은 신호)로 센다 —
+ * 받은 기한의 타이머로 안 취소는 기한 뒤 0.4~0.6ms에 온다(task 05 잰 실행의 가운데값). 같은 시계의 μs 정수 비교.
+ */
+const val CANCEL_BEFORE_DEADLINE_MARGIN_US = 500L
+
+/** `cancelledUs − deadlineUs`(μs). 둘 가운데 하나라도 없으면 null. */
+internal fun cancelMinusDeadlineUs(t: Timing): Long? = if (t.cancelledUs == null || t.deadlineUs == null) null else t.cancelledUs - t.deadlineUs
+
+/** task 05: 시각 기록의 `stopped`에 올 수 있는 값(G3에서 처리 코드가 멈춘 자리 — chain-link `StopReason`). */
+val STOP_REASONS = setOf("deadline-before-start", "cancelled-in-delay", "deadline-before-work")
+
 /** 정답 한 줄 가운데 시각 지표가 쓰는 것. */
 data class TimedAnswer(val requestId: String, val fault: String, val status: Int, val elapsedMs: Double, val sentAtMs: Long) {
     /** k6가 응답을 받지 못했으면 포기한 시각(μs) */
@@ -33,6 +51,11 @@ data class Timing(
     val callStartUs: Long?,
     val callEndUs: Long?,
     val callOutcome: String?,
+    // task 05(칸이 없는 옛 기록은 null): 들어온 전송, 받은 기한·취소를 안 시각(μs), G3에서 멈춘 자리
+    val transport: String? = null,
+    val deadlineUs: Long? = null,
+    val cancelledUs: Long? = null,
+    val stopped: String? = null,
 )
 
 data class Sample(val atMs: Long, val inflight: Int, val active: Int?, val maxThreads: Int?, val queue: Int?, val connections: Long?) {
@@ -47,6 +70,7 @@ fun runTiming(args: Array<String>): Int {
     } catch (e: InputException) {
         System.err.println(e.message)
         System.err.println(TIMING_USAGE)
+        removeOnArgError(args, listOf("report-timing.json", "metrics.tsv"))
         return EXIT_INPUT
     }
     val run = Path.of(options.getValue("--run"))
@@ -162,6 +186,22 @@ private fun JsonNode.str(name: String, where: String): String {
     return v.stringValue()
 }
 
+/** task 05의 칸: 없거나 null이면 null, 있으면 비지 않은 문자열이어야 한다. */
+private fun JsonNode.optionalString(name: String, where: String): String? {
+    val v = get(name) ?: return null
+    if (v.isNull) return null
+    if (!v.isString || v.stringValue().isBlank()) throw InputException("$where: '$name'이 비지 않은 문자열이나 null이 아니다")
+    return v.stringValue()
+}
+
+/** task 05의 칸: 없거나 null이면 null, 있으면 정수여야 한다. */
+private fun JsonNode.optionalLong(name: String, where: String): Long? {
+    val v = get(name) ?: return null
+    if (v.isNull) return null
+    if (!v.isIntegralNumber || !v.canConvertToLong()) throw InputException("$where: '$name'이 정수나 null이 아니다")
+    return v.longValue()
+}
+
 private fun readLines(path: Path): List<String> {
     if (!Files.isRegularFile(path)) throw InputException("$path: 파일이 없다")
     val text = Files.readString(path)
@@ -192,7 +232,14 @@ fun readTimings(path: Path, hasNextLayer: Boolean): List<Timing> {
             r.str("requestId", where), r.long("startUs", where), r.long("endUs", where), r.long("status", where).toInt(),
             r.longOrNull("callStartUs", where), r.longOrNull("callEndUs", where),
             r.get("callOutcome")?.takeUnless { it.isNull }?.let { if (it.isString && it.stringValue().isNotBlank()) it.stringValue() else throw InputException("$where: 'callOutcome'이 문자열이 아니다") },
+            r.optionalString("transport", where),
+            r.optionalLong("deadlineUs", where),
+            r.optionalLong("cancelledUs", where),
+            r.optionalString("stopped", where),
         )
+        if (t.transport != null && t.transport !in setOf("http", "grpc")) throw InputException("$where: transport '${t.transport}' 는 http|grpc")
+        if (t.stopped != null && t.stopped !in STOP_REASONS) throw InputException("$where: stopped '${t.stopped}' 는 $STOP_REASONS 가운데 하나")
+        if (t.cancelledUs != null && t.cancelledUs < 0) throw InputException("$where: cancelledUs가 음수다")
         if (t.startUs < 0) throw InputException("$where: startUs가 음수다")
         if (t.endUs < t.startUs) throw InputException("$where: endUs < startUs")
         val callFields = listOf(t.callStartUs, t.callEndUs, t.callOutcome)
@@ -302,7 +349,7 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
     val edges = linkedMapOf<String, Any?>()
     for ((caller, callee, settingsOf) in listOf(Triple(Layer.ORDER, Layer.INVENTORY, "order"), Triple(Layer.INVENTORY, Layer.PAYMENT, "inventory"))) {
         val calls = timings.getValue(caller).values.filter { it.callOutcome != null }
-        val timeouts = calls.filter { it.callOutcome == TIMEOUT_OUTCOME }
+        val timeouts = calls.filter { it.callOutcome in GIVE_UP_OUTCOMES }
         val falseTimeouts = timeouts.count { it.requestId in processed.getValue(callee) }
         val timeoutMs = requestTimeoutMs(run, settingsOf)
         // 넣은 지연이 타임아웃보다 짧은데 끊긴 요청을 요청마다의 시각으로 가른다(불린 쪽에 지연을 넣지 않았으면 지연 0)
@@ -349,6 +396,8 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
         layer.label to linkedMapOf(
             "records" to ts.size,
             "serviceMs" to quantiles(ts.map { ms(it.endUs - it.startUs) }),
+            // task 05: G3에서 처리 코드가 멈춘 기록의 수(자리마다). HTTP·G1·G2에서는 0
+            "stopped" to STOP_REASONS.sorted().associateWith { r -> ts.count { it.stopped == r } },
         )
     }
 
@@ -359,7 +408,7 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
         val above = Layer.entries.takeWhile { it != layer }
         for (u in above) {
             val t = timings.getValue(u)[id] ?: continue
-            if (t.callOutcome == TIMEOUT_OUTCOME) candidates += t.callEndUs!!
+            if (t.callOutcome in GIVE_UP_OUTCOMES) candidates += t.callEndUs!!
         }
         return candidates.minOrNull()
     }
@@ -376,6 +425,17 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
             "startedAfterGiveUpMsSum" to wasted.filter { (t, _) -> giveUp(layer, t.requestId)!! <= t.startUs }.sumOf { it.second }.round1(),
             "wastedMsSum" to wasted.sumOf { it.second }.round1(),
             "wastedMs" to quantiles(wasted.map { it.second }),
+            // task 05(gRPC로 들어온 기록만 cancelledUs·stopped가 있다): 헛일 가운데 G3에서 멈춘 것, 이 층이 받은 기한이 지났거나 취소를 안 것,
+            // 안 시각 − 위가 포기한 시각(R05-1: 취소 전파의 지연이 아니다 — 받은 기한의 타이머와 위의 타이머가 같은 기한에서 나온다),
+            // 끝 − 안 시각(안 뒤에도 계속한 시간)
+            "stopped" to wasted.count { (t, _) -> t.stopped != null },
+            "cancelSeen" to wasted.count { (t, _) -> t.cancelledUs != null },
+            "cancelAfterGiveUpMs" to quantiles(wasted.mapNotNull { (t, _) -> t.cancelledUs?.let { ms(it - giveUp(layer, t.requestId)!!) } }),
+            "endAfterCancelMs" to quantiles(wasted.mapNotNull { (t, _) -> t.cancelledUs?.let { ms(t.endUs - it) } }),
+            // R05-1: 안 시각 − 이 층이 받은 기한. 서버는 받은 기한이 지나면 스스로 문맥을 취소하므로 cancelledUs만으로는 위가 끊은 신호와
+            // 기한 만료를 가르지 못한다 — 기한보다 여유(CANCEL_BEFORE_DEADLINE_MARGIN_US) 넘게 먼저 안 것만 "기한 전에 닿은 취소"로 센다
+            "cancelMinusDeadlineMs" to quantiles(wasted.mapNotNull { (t, _) -> cancelMinusDeadlineUs(t)?.let(::ms) }),
+            "cancelBeforeDeadline" to wasted.count { (t, _) -> (cancelMinusDeadlineUs(t) ?: 0L) < -CANCEL_BEFORE_DEADLINE_MARGIN_US },
         )
     }
 

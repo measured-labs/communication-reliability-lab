@@ -1,0 +1,10 @@
+{
+  "answers": {"min": 400, "max": 400},
+  "edges.inventory->payment.calls": {"min": 400, "max": 400},
+  "edges.inventory->payment.timeouts": {"min": 0, "max": 0},
+  "edges.inventory->payment.falseTimeouts": {"min": 0, "max": 0},
+  "waste.payment.wasted": {"min": 0, "max": 0},
+  "waste.inventory.wasted": {"min": 0, "max": 0},
+  "waste.order.wasted": {"min": 0, "max": 0},
+  "layers.payment.serviceMs.p50": {"min": 600, "max": 650}
+}

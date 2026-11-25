@@ -7,8 +7,10 @@ import lab.reliability.chain.Idempotency
 import lab.reliability.chain.IdempotencyCounters
 import lab.reliability.chain.IdempotencyKeys
 import lab.reliability.chain.KeyState
+import lab.reliability.chain.LayerHandler
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.context.annotation.Bean
 import org.springframework.http.ResponseEntity
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
@@ -19,7 +21,11 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
 @SpringBootApplication(scanBasePackages = ["lab.reliability.chain", "lab.reliability.payment"])
-class PaymentApplication
+class PaymentApplication {
+    /** task 05: gRPC로 들어온 호출도 HTTP 컨트롤러와 같은 메서드로 처리한다(chain.transport=grpc일 때 gRPC 입구가 부른다). */
+    @Bean
+    fun layerHandler(controller: PaymentController) = LayerHandler { controller.pay(AmountRequest(it)) }
+}
 
 fun main(args: Array<String>) {
     runApplication<PaymentApplication>(*args)

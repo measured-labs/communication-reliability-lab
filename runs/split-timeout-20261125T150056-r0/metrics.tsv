@@ -1,0 +1,217 @@
+answers	800
+clients.noResponse	0
+clients.notReachedServer	0
+clients.notReachedServerFirstSentMs	
+clients.notReachedServerLastSentMs	
+delays.inventory.count	0
+delays.inventory.p50	
+delays.inventory.p90	
+delays.inventory.p99	
+delays.inventory.max	
+delays.order.count	0
+delays.order.p50	
+delays.order.p90	
+delays.order.p99	
+delays.order.max	
+delays.payment.count	600
+delays.payment.p50	1500.0
+delays.payment.p90	2500.0
+delays.payment.p99	2500.0
+delays.payment.max	2500.0
+edges.order->inventory.timeoutMs	1000
+edges.order->inventory.calls	800
+edges.order->inventory.timeouts	400
+edges.order->inventory.falseTimeouts	200
+edges.order->inventory.falseTimeoutRatio	0.25
+edges.order->inventory.outcomes.Completed	400
+edges.order->inventory.outcomes.Unknown:DEADLINE_EXCEEDED	400
+edges.order->inventory.callMs.count	800
+edges.order->inventory.callMs.p50	558.343
+edges.order->inventory.callMs.p90	1002.109
+edges.order->inventory.callMs.p99	1004.44
+edges.order->inventory.callMs.max	1018.147
+edges.order->inventory.injectedCalleeDelayAtLeastTimeout	0
+edges.order->inventory.belowDelay.timeouts	400
+edges.order->inventory.belowDelay.calleeServiceAtLeastTimeout	400
+edges.order->inventory.belowDelay.calleeEndedAfterGiveUp	0
+edges.order->inventory.belowDelay.calleeEndedBeforeGiveUp	0
+edges.order->inventory.belowDelay.calleeNotStarted	0
+edges.order->inventory.belowDelay.callToCalleeStartMs.count	400
+edges.order->inventory.belowDelay.callToCalleeStartMs.p50	2.336
+edges.order->inventory.belowDelay.callToCalleeStartMs.p90	3.476
+edges.order->inventory.belowDelay.callToCalleeStartMs.p99	7.362
+edges.order->inventory.belowDelay.callToCalleeStartMs.max	9.684
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.count	400
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.p50	1550.417
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.p90	2018.812
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.p99	2027.539
+edges.order->inventory.belowDelay.calleeServiceBeyondDelayMs.max	2043.087
+edges.inventory->payment.timeoutMs	2000
+edges.inventory->payment.calls	800
+edges.inventory->payment.timeouts	200
+edges.inventory->payment.falseTimeouts	200
+edges.inventory->payment.falseTimeoutRatio	0.25
+edges.inventory->payment.outcomes.Completed	600
+edges.inventory->payment.outcomes.Unknown:DEADLINE_EXCEEDED	200
+edges.inventory->payment.callMs.count	800
+edges.inventory->payment.callMs.p50	523.148
+edges.inventory->payment.callMs.p90	2001.739
+edges.inventory->payment.callMs.p99	2003.199
+edges.inventory->payment.callMs.max	2029.267
+edges.inventory->payment.injectedCalleeDelayAtLeastTimeout	200
+edges.inventory->payment.belowDelay.timeouts	0
+edges.inventory->payment.belowDelay.calleeServiceAtLeastTimeout	0
+edges.inventory->payment.belowDelay.calleeEndedAfterGiveUp	0
+edges.inventory->payment.belowDelay.calleeEndedBeforeGiveUp	0
+edges.inventory->payment.belowDelay.calleeNotStarted	0
+edges.inventory->payment.belowDelay.callToCalleeStartMs.count	0
+edges.inventory->payment.belowDelay.callToCalleeStartMs.p50	
+edges.inventory->payment.belowDelay.callToCalleeStartMs.p90	
+edges.inventory->payment.belowDelay.callToCalleeStartMs.p99	
+edges.inventory->payment.belowDelay.callToCalleeStartMs.max	
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.count	0
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.p50	
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.p90	
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.p99	
+edges.inventory->payment.belowDelay.calleeServiceBeyondDelayMs.max	
+layers.order.records	800
+layers.order.serviceMs.count	800
+layers.order.serviceMs.p50	588.368
+layers.order.serviceMs.p90	1020.187
+layers.order.serviceMs.p99	1028.853
+layers.order.serviceMs.max	1054.32
+layers.order.stopped.cancelled-in-delay	0
+layers.order.stopped.deadline-before-start	0
+layers.order.stopped.deadline-before-work	0
+layers.inventory.records	800
+layers.inventory.serviceMs.count	800
+layers.inventory.serviceMs.p50	548.59
+layers.inventory.serviceMs.p90	2015.224
+layers.inventory.serviceMs.p99	2024.727
+layers.inventory.serviceMs.max	2043.087
+layers.inventory.stopped.cancelled-in-delay	0
+layers.inventory.stopped.deadline-before-start	0
+layers.inventory.stopped.deadline-before-work	0
+layers.payment.records	800
+layers.payment.serviceMs.count	800
+layers.payment.serviceMs.p50	517.751
+layers.payment.serviceMs.p90	2506.392
+layers.payment.serviceMs.p99	2513.076
+layers.payment.serviceMs.max	2525.055
+layers.payment.stopped.cancelled-in-delay	0
+layers.payment.stopped.deadline-before-start	0
+layers.payment.stopped.deadline-before-work	0
+waste.order.wasted	0
+waste.order.wastedProcessed	0
+waste.order.startedAfterGiveUp	0
+waste.order.startedAfterGiveUpMsSum	0.0
+waste.order.wastedMsSum	0.0
+waste.order.wastedMs.count	0
+waste.order.wastedMs.p50	
+waste.order.wastedMs.p90	
+waste.order.wastedMs.p99	
+waste.order.wastedMs.max	
+waste.order.stopped	0
+waste.order.cancelSeen	0
+waste.order.cancelAfterGiveUpMs.count	0
+waste.order.cancelAfterGiveUpMs.p50	
+waste.order.cancelAfterGiveUpMs.p90	
+waste.order.cancelAfterGiveUpMs.p99	
+waste.order.cancelAfterGiveUpMs.max	
+waste.order.endAfterCancelMs.count	0
+waste.order.endAfterCancelMs.p50	
+waste.order.endAfterCancelMs.p90	
+waste.order.endAfterCancelMs.p99	
+waste.order.endAfterCancelMs.max	
+waste.order.cancelMinusDeadlineMs.count	0
+waste.order.cancelMinusDeadlineMs.p50	
+waste.order.cancelMinusDeadlineMs.p90	
+waste.order.cancelMinusDeadlineMs.p99	
+waste.order.cancelMinusDeadlineMs.max	
+waste.order.cancelBeforeDeadline	0
+waste.inventory.wasted	400
+waste.inventory.wastedProcessed	200
+waste.inventory.startedAfterGiveUp	0
+waste.inventory.startedAfterGiveUpMsSum	0.0
+waste.inventory.wastedMsSum	308528.4
+waste.inventory.wastedMs.count	400
+waste.inventory.wastedMs.p50	555.12
+waste.inventory.wastedMs.p90	1019.756
+waste.inventory.wastedMs.p99	1028.348
+waste.inventory.wastedMs.max	1043.501
+waste.inventory.stopped	0
+waste.inventory.cancelSeen	400
+waste.inventory.cancelAfterGiveUpMs.count	400
+waste.inventory.cancelAfterGiveUpMs.p50	0.231
+waste.inventory.cancelAfterGiveUpMs.p90	0.776
+waste.inventory.cancelAfterGiveUpMs.p99	1.58
+waste.inventory.cancelAfterGiveUpMs.max	2.383
+waste.inventory.endAfterCancelMs.count	400
+waste.inventory.endAfterCancelMs.p50	554.836
+waste.inventory.endAfterCancelMs.p90	1019.815
+waste.inventory.endAfterCancelMs.p99	1028.283
+waste.inventory.endAfterCancelMs.max	1043.643
+waste.inventory.cancelMinusDeadlineMs.count	400
+waste.inventory.cancelMinusDeadlineMs.p50	0.474
+waste.inventory.cancelMinusDeadlineMs.p90	1.104
+waste.inventory.cancelMinusDeadlineMs.p99	1.951
+waste.inventory.cancelMinusDeadlineMs.max	4.846
+waste.inventory.cancelBeforeDeadline	14
+waste.payment.wasted	400
+waste.payment.wastedProcessed	400
+waste.payment.startedAfterGiveUp	0
+waste.payment.startedAfterGiveUpMsSum	0.0
+waste.payment.wastedMsSum	407121.3
+waste.payment.wastedMs.count	400
+waste.payment.wastedMs.p50	541.393
+waste.payment.wastedMs.p90	1520.442
+waste.payment.wastedMs.p99	1530.496
+waste.payment.wastedMs.max	1534.469
+waste.payment.stopped	0
+waste.payment.cancelSeen	200
+waste.payment.cancelAfterGiveUpMs.count	200
+waste.payment.cancelAfterGiveUpMs.p50	1009.309
+waste.payment.cancelAfterGiveUpMs.p90	1014.377
+waste.payment.cancelAfterGiveUpMs.p99	1019.479
+waste.payment.cancelAfterGiveUpMs.max	1024.681
+waste.payment.endAfterCancelMs.count	200
+waste.payment.endAfterCancelMs.p50	506.383
+waste.payment.endAfterCancelMs.p90	511.777
+waste.payment.endAfterCancelMs.p99	519.895
+waste.payment.endAfterCancelMs.max	525.213
+waste.payment.cancelMinusDeadlineMs.count	200
+waste.payment.cancelMinusDeadlineMs.p50	0.677
+waste.payment.cancelMinusDeadlineMs.p90	1.359
+waste.payment.cancelMinusDeadlineMs.p99	2.579
+waste.payment.cancelMinusDeadlineMs.max	3.029
+waste.payment.cancelBeforeDeadline	3
+samples.order.count	475
+samples.order.intervalMs	100
+samples.order.maxGapMs	105
+samples.order.maxInflight	14
+samples.order.maxActive	14
+samples.order.maxThreads	200
+samples.order.maxQueue	0
+samples.order.maxConnections	301
+samples.order.saturatedMs	0
+samples.order.meanLoadDuringSend	12.5
+samples.inventory.count	473
+samples.inventory.intervalMs	100
+samples.inventory.maxGapMs	117
+samples.inventory.maxInflight	22
+samples.inventory.maxActive	22
+samples.inventory.maxThreads	200
+samples.inventory.maxQueue	1
+samples.inventory.maxConnections	
+samples.inventory.saturatedMs	0
+samples.inventory.meanLoadDuringSend	20.2
+samples.payment.count	472
+samples.payment.intervalMs	100
+samples.payment.maxGapMs	102
+samples.payment.maxInflight	24
+samples.payment.maxActive	24
+samples.payment.maxThreads	200
+samples.payment.maxQueue	0
+samples.payment.maxConnections	
+samples.payment.saturatedMs	0
+samples.payment.meanLoadDuringSend	22.0

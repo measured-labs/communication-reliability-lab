@@ -1,0 +1,180 @@
+name: communication-reliability-lab
+services:
+  inventory:
+    build:
+      context: /home/jun/project/lab/system-design-labs/communication-reliability-lab
+      dockerfile: Dockerfile
+      target: inventory
+    cpus: 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: true
+    environment:
+      CHAIN_TRANSPORT: grpc
+      DB_HOST: postgres
+      DB_PASSWORD: lab
+      DB_PORT: "5432"
+      DB_USER: lab
+      GRPC_DEADLINE_PROPAGATION: "false"
+      GRPC_OBSERVE_CANCELLATION: "true"
+      IDEMPOTENCY_ENABLED: "false"
+      IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN: "false"
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75 -Djdk.httpclient.disableRetryConnect=true -Djdk.httpclient.enableAllMethodRetry=false -Djdk.httpclient.keepalive.timeout=15 -Djdk.httpclient.connectionPoolSize=0
+      NEXT_LAYER_CONNECT_TIMEOUT: 500ms
+      NEXT_LAYER_GRPC_TARGET: payment:9090
+      NEXT_LAYER_REQUEST_TIMEOUT: 1000ms
+      NEXT_LAYER_URL: http://payment:8080/payments
+      RETRY_BACKOFF: none
+      RETRY_BASE_DELAY: 0ms
+      RETRY_BUDGET_CAPACITY: "0"
+      RETRY_BUDGET_DEPOSIT: "0"
+      RETRY_BUDGET_ENABLED: "false"
+      RETRY_ENABLED: "false"
+      RETRY_MAX_ATTEMPTS: "1"
+      RETRY_MAX_DELAY: 0ms
+      RETRY_ON: failed,unknown
+      VIRTUAL_THREADS: "false"
+    mem_limit: "805306368"
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8082"
+        protocol: tcp
+    restart: "no"
+  order:
+    build:
+      context: /home/jun/project/lab/system-design-labs/communication-reliability-lab
+      dockerfile: Dockerfile
+      target: order
+    cpus: 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: true
+    environment:
+      CHAIN_TRANSPORT: grpc
+      DB_HOST: postgres
+      DB_PASSWORD: lab
+      DB_PORT: "5432"
+      DB_USER: lab
+      GRPC_DEADLINE_PROPAGATION: "false"
+      GRPC_OBSERVE_CANCELLATION: "true"
+      IDEMPOTENCY_ENABLED: "false"
+      IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN: "false"
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75 -Djdk.httpclient.disableRetryConnect=true -Djdk.httpclient.enableAllMethodRetry=false -Djdk.httpclient.keepalive.timeout=15 -Djdk.httpclient.connectionPoolSize=0
+      NEXT_LAYER_CONNECT_TIMEOUT: 500ms
+      NEXT_LAYER_GRPC_TARGET: inventory:9090
+      NEXT_LAYER_REQUEST_TIMEOUT: 2000ms
+      NEXT_LAYER_URL: http://inventory:8080/reservations
+      RETRY_BACKOFF: none
+      RETRY_BASE_DELAY: 0ms
+      RETRY_BUDGET_CAPACITY: "0"
+      RETRY_BUDGET_DEPOSIT: "0"
+      RETRY_BUDGET_ENABLED: "false"
+      RETRY_ENABLED: "false"
+      RETRY_MAX_ATTEMPTS: "1"
+      RETRY_MAX_DELAY: 0ms
+      RETRY_ON: failed,unknown
+      VIRTUAL_THREADS: "false"
+    mem_limit: "805306368"
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8081"
+        protocol: tcp
+    restart: "no"
+  payment:
+    build:
+      context: /home/jun/project/lab/system-design-labs/communication-reliability-lab
+      dockerfile: Dockerfile
+      target: payment
+    cpus: 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: true
+    environment:
+      CHAIN_TRANSPORT: grpc
+      DB_HOST: postgres
+      DB_PASSWORD: lab
+      DB_PORT: "5432"
+      DB_USER: lab
+      GRPC_DEADLINE_PROPAGATION: "false"
+      GRPC_OBSERVE_CANCELLATION: "true"
+      IDEMPOTENCY_ENABLED: "false"
+      IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN: "false"
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75 -Djdk.httpclient.disableRetryConnect=true -Djdk.httpclient.enableAllMethodRetry=false -Djdk.httpclient.keepalive.timeout=15 -Djdk.httpclient.connectionPoolSize=0
+      OVERLOAD_ENABLED: "false"
+      OVERLOAD_LIMIT: "0"
+      OVERLOAD_WINDOW: 1000ms
+      VIRTUAL_THREADS: "false"
+    mem_limit: "805306368"
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8083"
+        protocol: tcp
+    restart: "no"
+  postgres:
+    cpus: 2
+    command:
+      - postgres
+      - -c
+      - max_connections=100
+    environment:
+      POSTGRES_PASSWORD: lab
+      POSTGRES_USER: lab
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -h 127.0.0.1 -U lab -d payment_db
+      interval: 2s
+      retries: 30
+    image: postgres:18.7
+    mem_limit: "1073741824"
+    networks:
+      default: null
+    restart: "no"
+    volumes:
+      - type: bind
+        source: /home/jun/project/lab/system-design-labs/communication-reliability-lab/infra/postgres
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: pgdata
+        target: /var/lib/postgresql
+        volume: {}
+networks:
+  default:
+    name: communication-reliability-lab_default
+volumes:
+  pgdata:
+    name: communication-reliability-lab_pgdata
+x-service:
+  cpus: 2
+  depends_on:
+    postgres:
+      condition: service_healthy
+  mem_limit: 768m
+  restart: "no"
+x-service-env:
+  CHAIN_TRANSPORT: grpc
+  DB_HOST: postgres
+  DB_PASSWORD: lab
+  DB_PORT: "5432"
+  DB_USER: lab
+  GRPC_DEADLINE_PROPAGATION: "false"
+  GRPC_OBSERVE_CANCELLATION: "true"
+  IDEMPOTENCY_ENABLED: "false"
+  IDEMPOTENCY_IN_PROGRESS_AS_UNKNOWN: "false"
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75 -Djdk.httpclient.disableRetryConnect=true -Djdk.httpclient.enableAllMethodRetry=false -Djdk.httpclient.keepalive.timeout=15 -Djdk.httpclient.connectionPoolSize=0
+  VIRTUAL_THREADS: "false"

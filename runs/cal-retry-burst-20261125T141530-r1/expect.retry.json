@@ -1,0 +1,8 @@
+{
+  "answers": {"min": 600, "max": 600},
+  "clients.completed": {"min": 600, "max": 600},
+  "layers.payment.arrivals": {"min": 600, "max": 600},
+  "edges.inventory->payment.retries": {"min": 0, "max": 0},
+  "bins.payment.peakPer50ms": {"min": 15, "max": 20},
+  "bins.payment.peakPer1s": {"min": 40, "max": 40}
+}

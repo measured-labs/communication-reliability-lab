@@ -27,7 +27,12 @@ fun epochMicros(): Long {
 /** 아래 층을 부른 기록. outcome 예: "Completed", "Failed:HTTP_500", "Unknown:REQUEST_TIMEOUT". */
 data class CallRecord(val callStartUs: Long, val callEndUs: Long, val callOutcome: String)
 
-/** 업무 입구에 든 요청 하나. 아래 층을 부르지 않았으면 call* 칸은 null. */
+/**
+ * 업무 입구에 든 요청 하나. 아래 층을 부르지 않았으면 call* 칸은 null.
+ * task 05: [transport] = 이 요청이 들어온 전송("http" · "grpc"). gRPC로 들어왔을 때만 [deadlineUs](받은 기한의 절대 시각 μs, 없으면 null),
+ * [cancelledUs](이 호출이 취소된 것을 서비스가 처음 안 시각, 취소되지 않았으면 null), [stopped](G3에서 처리 코드가 멈춘 자리 — [StopReason])가
+ * 값을 가진다. HTTP로 들어온 요청은 셋 다 null(docs/measurement.md 11절).
+ */
 data class TimingRecord(
     val requestId: String,
     val startUs: Long,
@@ -36,9 +41,22 @@ data class TimingRecord(
     val callStartUs: Long?,
     val callEndUs: Long?,
     val callOutcome: String?,
+    val transport: String = Transport.HTTP.label,
+    val deadlineUs: Long? = null,
+    val cancelledUs: Long? = null,
+    val stopped: String? = null,
 ) {
-    constructor(requestId: String, startUs: Long, endUs: Long, status: Int, call: CallRecord?) :
-        this(requestId, startUs, endUs, status, call?.callStartUs, call?.callEndUs, call?.callOutcome)
+    constructor(
+        requestId: String,
+        startUs: Long,
+        endUs: Long,
+        status: Int,
+        call: CallRecord?,
+        transport: String = Transport.HTTP.label,
+        deadlineUs: Long? = null,
+        cancelledUs: Long? = null,
+        stopped: String? = null,
+    ) : this(requestId, startUs, endUs, status, call?.callStartUs, call?.callEndUs, call?.callOutcome, transport, deadlineUs, cancelledUs, stopped)
 }
 
 /** 단순화: 상한 없이 메모리에 쌓는다 — 실행 하나(수천 건)마다 비우는 실험용. 상주 서비스라면 내보내기로 바꾼다. */
@@ -84,6 +102,14 @@ data class LoadSample(
  * 끝점이 그것을 알리고 분석기가 실패한다(조용히 잘리지 않게).
  */
 class LoadSampler(private val context: ApplicationContext, private val inFlight: InFlightRequests) : AutoCloseable {
+    /**
+     * task 05: gRPC 서버를 띄운 서비스(재고·결제의 gRPC 전송)에서는 업무 요청이 Tomcat이 아니라 gRPC 서버 실행기에서 돈다 —
+     * 그 실행기가 있으면 `active`·`poolSize`·`maxThreads`·`queue`를 그것에서 뜨고 `connections`는 null이다(docs/measurement.md 11절).
+     */
+    private val grpcExecutor: java.util.concurrent.ThreadPoolExecutor? by lazy {
+        context.getBeanProvider(java.util.concurrent.ThreadPoolExecutor::class.java).ifAvailable
+    }
+
     private val samples = ConcurrentLinkedQueue<LoadSample>()
     private val size = AtomicInteger()
     private val overflow = AtomicBoolean(false)
@@ -107,6 +133,22 @@ class LoadSampler(private val context: ApplicationContext, private val inFlight:
         try {
             if (size.get() >= MAX_SAMPLES) {
                 overflow.set(true)
+                return
+            }
+            val grpc = grpcExecutor
+            if (grpc != null) {
+                samples.add(
+                    LoadSample(
+                        atMs = System.currentTimeMillis(),
+                        inflight = inFlight.current(),
+                        active = grpc.activeCount,
+                        poolSize = grpc.poolSize,
+                        maxThreads = grpc.maximumPoolSize,
+                        queue = grpc.queue.size,
+                        connections = null,
+                    ),
+                )
+                size.incrementAndGet()
                 return
             }
             val protocol = protocol()

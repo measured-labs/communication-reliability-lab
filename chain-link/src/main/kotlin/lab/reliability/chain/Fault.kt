@@ -18,9 +18,14 @@ class FaultInjection(val service: String) {
     fun reset() = counts.values.forEach { it.set(0) }
 
     internal fun delayIfAsked(ctx: ChainContext) {
-        val delay = ctx.faults.firstOrNull { it.kind == FaultKind.DELAY } ?: return
+        delayAsked(ctx)?.let(Thread::sleep)
+    }
+
+    /** `delay`가 이 서비스를 가리키면 세고 그 ms를 돌려준다(아니면 null, 세지 않는다). 자는 것은 부르는 쪽 — task 05의 gRPC 입구가 G3에서 취소를 보며 기다린다. */
+    internal fun delayAsked(ctx: ChainContext): Long? {
+        val delay = ctx.faults.firstOrNull { it.kind == FaultKind.DELAY } ?: return null
         counts.getValue(FaultKind.DELAY).incrementAndGet()
-        Thread.sleep(delay.delayMs!!)
+        return delay.delayMs!!
     }
 
     internal fun errorIfAsked(ctx: ChainContext): Boolean {

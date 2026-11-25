@@ -8,3 +8,5 @@ spring:
 chain:
   service: payment
   entry-path: /payments
+  grpc:
+    serve: true   # task 05: chain.transport=grpc이면 gRPC 서버(포트 9090)를 띄워 위 층의 호출을 받는다

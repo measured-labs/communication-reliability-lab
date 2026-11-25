@@ -81,7 +81,21 @@ class ChainContext(
 class InFlightRequests {
     private val count = AtomicInteger()
 
+    /** task 05: 받았지만 아직 닫히지 않은 gRPC 호출(실행기의 큐에서 기다리는 것 포함). HTTP 전송에서는 늘 0. */
+    private val grpcOpen = AtomicInteger()
+
+    /** 처리 코드 안의 수 — 표본의 `inflight`(HTTP와 같은 뜻). */
     fun current(): Int = count.get()
+
+    /**
+     * `GET /inflight`의 값: 처리 코드 안의 수 + 열린 gRPC 호출 수. 가라앉기(0이 될 때까지 기다림)에만 쓴다 — gRPC 서버를 띄운 서비스에서는
+     * 처리 중인 호출이 두 번 세지므로 0인지만 뜻이 있다. HTTP 전송에서는 [current]와 같다.
+     */
+    fun forDrain(): Int = count.get() + grpcOpen.get()
+
+    internal fun grpcOpened() = grpcOpen.incrementAndGet()
+
+    internal fun grpcClosed() = grpcOpen.decrementAndGet()
 
     internal fun <T> track(block: () -> T): T {
         count.incrementAndGet()
@@ -97,7 +111,7 @@ class InFlightRequests {
 class InFlightController(private val inFlight: InFlightRequests) {
     /** 예: {"inflight":0} */
     @GetMapping("/inflight")
-    fun inflight() = mapOf("inflight" to inFlight.current())
+    fun inflight() = mapOf("inflight" to inFlight.forDrain())
 }
 
 /**
@@ -119,9 +133,13 @@ class ChainEntryFilter(
     private val dropFaults: DropFaultInjection = DropFaultInjection(),
     private val idempotency: Idempotency? = null,
     private val overload: OverloadLimit = OverloadLimit(false, 0, 0),
+    /** task 05: 들어온 HTTP 업무 호출을 센다 — 어떤 검사보다 먼저(전송 대조, docs/measurement.md 11절). */
+    private val transportCounts: TransportCounts? = null,
 ) : OncePerRequestFilter() {
-    override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) =
+    override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
+        transportCounts?.inbound(Transport.HTTP)
         inFlight.track { handle(request, response, chain) }
+    }
 
     private fun handle(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         val requestId = request.getHeader(ChainHeaders.REQUEST_ID)

@@ -1,0 +1,102 @@
+{
+  "run" : "calibration-20261125T114310-r1",
+  "expect" : null,
+  "differences" : [ ],
+  "chosen" : "grpc",
+  "settings" : {
+    "order" : {
+      "deadlinePropagation" : true,
+      "observeCancellation" : false
+    },
+    "inventory" : {
+      "deadlinePropagation" : true,
+      "observeCancellation" : false
+    },
+    "payment" : {
+      "deadlinePropagation" : true,
+      "observeCancellation" : false
+    }
+  },
+  "counts" : {
+    "order" : {
+      "inbound" : {
+        "http" : 600,
+        "grpc" : 0
+      },
+      "outbound" : {
+        "http" : 0,
+        "grpc" : 550
+      },
+      "cancelledBeforeHandler" : {
+        "grpc" : 0
+      }
+    },
+    "inventory" : {
+      "inbound" : {
+        "http" : 0,
+        "grpc" : 550
+      },
+      "outbound" : {
+        "http" : 0,
+        "grpc" : 500
+      },
+      "cancelledBeforeHandler" : {
+        "grpc" : 0
+      }
+    },
+    "payment" : {
+      "inbound" : {
+        "http" : 0,
+        "grpc" : 450
+      },
+      "outbound" : {
+        "http" : 0,
+        "grpc" : 0
+      },
+      "cancelledBeforeHandler" : {
+        "grpc" : 0
+      }
+    }
+  },
+  "records" : {
+    "order" : {
+      "count" : 600,
+      "calls" : 550,
+      "attempts" : null,
+      "wrongTransport" : 0,
+      "grpcFieldsOnHttp" : 0,
+      "stopped" : 0,
+      "cancelled" : 0
+    },
+    "inventory" : {
+      "count" : 550,
+      "calls" : 500,
+      "attempts" : null,
+      "wrongTransport" : 0,
+      "grpcFieldsOnHttp" : 0,
+      "stopped" : 0,
+      "cancelled" : 50
+    },
+    "payment" : {
+      "count" : 450,
+      "calls" : 0,
+      "attempts" : null,
+      "wrongTransport" : 0,
+      "grpcFieldsOnHttp" : 0,
+      "stopped" : 0,
+      "cancelled" : 50
+    }
+  },
+  "deadline" : {
+    "inventoryMissing" : 0,
+    "paymentMissing" : 0,
+    "paymentAfterInventoryMs" : {
+      "count" : 450,
+      "p50" : -990.891,
+      "p90" : -692.762,
+      "p99" : -686.246,
+      "max" : -670.684
+    },
+    "paymentAfterInventoryOverSlack" : 0
+  }
+}
