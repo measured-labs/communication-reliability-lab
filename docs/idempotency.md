@@ -70,10 +70,24 @@
 | `false`(기본 — 첫 62개 실행 모두) | `Failed:HTTP_409` | 없음(다시 시도하지 않는다) | **`FAILED`**(502를 저장해 되돌려 준다) | 502 |
 | `true` | **`Unknown:HTTP_409`** | `unknown`(다시 시도한다 — `retry-on`에 `unknown`이 있을 때) | **`UNKNOWN`**(저장한 응답을 되돌려 주지 않고 다음에 같은 키가 오면 이어 한다 — 3절의 갈래 3) | 504 |
 
-- 읽는 곳은 한 곳이다: 아래 층 호출 `HttpNextLayerCall`이 409를 받으면 이 설정에 따라 `Failed:HTTP_409` 또는 `Unknown:HTTP_409`를 만든다. 그 뒤는 바뀐 것이 없다 — 재시도 감싸개는 결과 이름으로 갈래를 정하고(`Unknown` → `unknown`), 키 상태는 `KeyState.of`(`Unknown` → `UNKNOWN`), 응답 상태는 `httpStatus`(`Unknown` → 504)가 정한다.
+- 읽는 곳은 한 곳이다: 아래 층 호출 `HttpNextLayerCall`이 응답 상태를 받으면 순수 함수 `HttpOutcomes.read`(아래 표)를 부르고, 409는 이 설정에 따라 `Failed:HTTP_409` 또는 `Unknown:HTTP_409`가 된다. 그 뒤는 바뀐 것이 없다 — 재시도 감싸개는 결과 이름으로 갈래를 정하고(`Unknown` → `unknown`), 키 상태는 `KeyState.of`(`Unknown` → `UNKNOWN`), 응답 상태는 `httpStatus`(`Unknown` → 504)가 정한다.
 - **`unknown`으로 둔 까닭**(`docs/retry.md` 2절의 정의 — `failed` = "아래 층이 처리하지 않았다고 볼 수 있는 실패", `unknown` = "처리했는지 모름"): 409는 이 요청을 아래 층이 처리하지 않았다는 뜻이지만, 같은 키(같은 논리 요청)의 다른 요청을 아래 층이 처리하는 중이라는 뜻이기도 하다. 부르는 쪽이 알고 싶은 것은 그 논리 요청의 결과이고, 그것은 아직 정해지지 않았다 — 그래서 "처리했는지 모름"이다. `failed`로 두면 위 층의 키가 `FAILED`로 굳어 아래 층이 끝내 처리한 것과 어긋난다(3절 "`FAILED`의 뜻").
 - 이 설정은 위 층의 읽기만 바꾼다. 아래 층이 동시에 온 같은 키를 409로 거절하는 것(기다리지 않는다), 재고가 결제의 실패를 다 쓰고 `FAILED`(502)를 저장해 되돌려 주는 것은 바꾸지 않는다.
 - 결제는 아래 층이 없어 이 설정을 쓰지 않는다(`/settings`에는 같은 값이 나온다).
+
+**응답 상태를 결과로 읽는 규칙 전체** — `HttpOutcomes.read(status: Int, inProgressAsUnknown: Boolean): LayerOutcome`(`chain-link`, `lab.reliability.chain`, 파일 `NextLayerCall.kt`. Spring·HTTP 클라이언트 없이 부른다). 위에서 아래로 처음 맞는 줄:
+
+| `status` | `inProgressAsUnknown` | 결과 | `label()` |
+|---|---|---|---|
+| 200~299(양끝 포함) | 상관없음 | `LayerOutcome.Completed` | `Completed` |
+| 504 | 상관없음 | `LayerOutcome.Unknown("HTTP_504")` | `Unknown:HTTP_504` |
+| 409 | `false` | `LayerOutcome.Failed("HTTP_409")` | `Failed:HTTP_409` |
+| 409 | `true` | `LayerOutcome.Unknown("HTTP_409")` | `Unknown:HTTP_409` |
+| 그 밖의 모든 정수(1xx, 3xx, 409 밖의 4xx, 504 밖의 5xx — 범위를 검사하지 않으므로 0·음수·600 이상도) | 상관없음 | `LayerOutcome.Failed("HTTP_<status>")`(10진, 앞의 0 없음 — 예 `HTTP_500`, `HTTP_0`, `HTTP_-1`) | `Failed:HTTP_<status>` |
+
+- `inProgressAsUnknown`은 409에만 닿는다. 예외는 던지지 않는다.
+- 응답을 받지 못한 끝은 이 함수 밖이다 — `HttpNextLayerCall`이 JDK HttpClient의 예외로 가른다: 연결 타임아웃 `Failed:CONNECT_TIMEOUT`, 요청 타임아웃 `Unknown:REQUEST_TIMEOUT`, 연결 거절 `Failed:CONNECT_REFUSED`, 그 밖의 `IOException` `Unknown:IO_<예외 이름>`(`docs/retry.md` 2절).
+- gRPC 경로의 같은 규칙은 `GrpcOutcomes.read`(`docs/experiments/task-05-design.md`) — 트레일러의 `chain-status`를 읽는 갈래는 409를 따로 보지 않는다(gRPC 전송에서는 멱등 키를 켜지 않는다).
 
 ## 4. 커밋 뒤 끊김 — `X-Drop-Fault`
 
@@ -120,7 +134,8 @@ class IdempotencyKeys(jdbc: JdbcClient) {         // SQL — DB가 있어야 시
     fun finish(key: String, state: KeyState, responseStatus: Int, responseBody: String)
 }
 data class IdempotencySettings(val enabled: Boolean, val inProgressAsUnknown: Boolean = false)  // enabled=false인데 inProgressAsUnknown=true면 IllegalArgumentException
-class HttpNextLayerCall(settings: NextLayerSettings, inProgressAsUnknown: Boolean = false)       // 409 → Failed:HTTP_409 / Unknown:HTTP_409
+object HttpOutcomes { fun read(status: Int, inProgressAsUnknown: Boolean): LayerOutcome }      // 3-1절의 "응답 상태를 결과로 읽는 규칙 전체"
+class HttpNextLayerCall(settings: NextLayerSettings, inProgressAsUnknown: Boolean = false)       // 응답 상태는 HttpOutcomes.read로 읽는다
 class Idempotency(val enabled: Boolean, keys: IdempotencyKeys, val counters: IdempotencyCounters,
                   val inProgressAsUnknown: Boolean = false) {
     fun json(body: Map<String, Any?>): String
