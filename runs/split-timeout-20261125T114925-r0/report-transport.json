@@ -1,0 +1,99 @@
+{
+  "run" : "split-timeout-20261125T114925-r0",
+  "expect" : null,
+  "differences" : [ ],
+  "chosen" : "http",
+  "settings" : {
+    "order" : {
+      "deadlinePropagation" : false,
+      "observeCancellation" : false
+    },
+    "inventory" : {
+      "deadlinePropagation" : false,
+      "observeCancellation" : false
+    },
+    "payment" : {
+      "deadlinePropagation" : false,
+      "observeCancellation" : false
+    }
+  },
+  "counts" : {
+    "order" : {
+      "inbound" : {
+        "http" : 800,
+        "grpc" : 0
+      },
+      "outbound" : {
+        "http" : 800,
+        "grpc" : 0
+      },
+      "cancelledBeforeHandler" : {
+        "grpc" : 0
+      }
+    },
+    "inventory" : {
+      "inbound" : {
+        "http" : 800,
+        "grpc" : 0
+      },
+      "outbound" : {
+        "http" : 800,
+        "grpc" : 0
+      },
+      "cancelledBeforeHandler" : {
+        "grpc" : 0
+      }
+    },
+    "payment" : {
+      "inbound" : {
+        "http" : 800,
+        "grpc" : 0
+      },
+      "outbound" : {
+        "http" : 0,
+        "grpc" : 0
+      },
+      "cancelledBeforeHandler" : {
+        "grpc" : 0
+      }
+    }
+  },
+  "records" : {
+    "order" : {
+      "count" : 800,
+      "calls" : 800,
+      "wrongTransport" : 0,
+      "grpcFieldsOnHttp" : 0,
+      "stopped" : 0,
+      "cancelled" : 0
+    },
+    "inventory" : {
+      "count" : 800,
+      "calls" : 800,
+      "wrongTransport" : 0,
+      "grpcFieldsOnHttp" : 0,
+      "stopped" : 0,
+      "cancelled" : 0
+    },
+    "payment" : {
+      "count" : 800,
+      "calls" : 0,
+      "wrongTransport" : 0,
+      "grpcFieldsOnHttp" : 0,
+      "stopped" : 0,
+      "cancelled" : 0
+    }
+  },
+  "deadline" : {
+    "inventoryMissing" : 0,
+    "paymentMissing" : 0,
+    "paymentAfterInventoryMs" : {
+      "count" : 0,
+      "p50" : null,
+      "p90" : null,
+      "p99" : null,
+      "max" : null
+    },
+    "paymentAfterInventoryOverSlack" : 0
+  }
+}

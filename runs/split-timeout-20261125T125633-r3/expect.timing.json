@@ -1,0 +1,4 @@
+{
+  "clients.notReachedServer": {"min": 0, "max": 0},
+  "clients.noResponse": {"min": 0, "max": 0}
+}
