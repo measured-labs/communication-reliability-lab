@@ -65,3 +65,15 @@
 - 질문: gRPC(다섯째 단계에서 씁니다)를 어떻게 넣을까요? 지금 정해 두면 첫 단계의 서비스 구조를 그에 맞춰 잡을 수 있고, 다섯째 단계 앞에서 다시 정해도 됩니다.
 - 선택지: 다섯째 단계 앞에서 정한다 (Recommended) / Spring Boot의 gRPC 스타터 / grpc-java를 직접
 - 답: 다섯째 단계 앞에서 정한다 (Recommended)
+
+## 2026-11-25 10:47:48 (toolu_01Ny7mnwPuCqgvivuZWC3Vzh)
+
+### gRPC
+- 질문: task 05(gRPC — 기한과 취소 전파가 미리 나눈 타임아웃보다 헛일을 얼마나 줄이는지)에서 gRPC를 어떻게 넣을까요? 명세에서 task 05 앞에 정하기로 한 것입니다. 이 실험은 재시도·기한을 직접 통제해야 해서 숨은 기본 동작이 적을수록 측정이 깨끗합니다.
+- 선택지: Spring Boot gRPC 스타터 (Recommended) / grpc-java를 직접
+- 답: Spring Boot gRPC 스타터 (Recommended)
+
+### 범위
+- 질문: task 05의 범위를 어디까지 할까요? 계약의 핵심은 '기한·취소 전파가 헛일을 얼마나 줄이나'(task 02의 실험 다를 gRPC로 다시 재는 것)입니다. 재시도·멱등 키·한도까지 gRPC로 다시 재면 시간이 몇 배로 늡니다.
+- 선택지: 기한·취소 전파만 (Recommended) / 기한·취소 + gRPC의 재시도
+- 답: 기한·취소 전파만 (Recommended)
