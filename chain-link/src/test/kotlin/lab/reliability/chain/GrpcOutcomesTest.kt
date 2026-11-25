@@ -42,7 +42,7 @@ class GrpcOutcomesTest {
     @Test
     fun 전송_이름은_소문자_둘만_받는다() {
         // 9절: "http"·"grpc"(앞뒤 공백 무시) 밖은 IllegalArgumentException — 대소문자를 무시한다는 말은 없다
-        for (raw in listOf("HTTP", "Grpc")) {
+        for (raw in listOf("HTTP", "Grpc", "GRPC", "Http")) {
             assertFailsWith<IllegalArgumentException>("'$raw'") { Transport.parse(raw) }
         }
     }

@@ -33,6 +33,8 @@ class TimingGrpcWasteTest {
         paymentProcessed: Boolean = true,
         cancelledUs: Long? = null,
         stopped: String? = null,
+        paymentDeadlineUs: Long? = us(s + 1004),
+        paymentAbsentKeys: Set<String> = emptySet(),
     ): TimingRecord {
         answer(id, s, 504, "", 1010)
         add(GrpcTiming("order", id, us(s + 1), us(s + 1007), 504, us(s + 2), us(s + 1006), "Unknown:CHAIN_504", "http"))
@@ -40,7 +42,8 @@ class TimingGrpcWasteTest {
         add(
             GrpcTiming(
                 "payment", id, us(s + paymentStartMs), paymentEndUs, if (stopped != null) 0 else if (paymentProcessed) 201 else 500,
-                transport = "grpc", deadlineUs = us(s + 1004), cancelledUs = cancelledUs, stopped = stopped,
+                transport = "grpc", deadlineUs = paymentDeadlineUs, cancelledUs = cancelledUs, stopped = stopped,
+                absentKeys = paymentAbsentKeys,
             ),
         )
         row("order", id, "UNKNOWN").row("inventory", id, "UNKNOWN")
@@ -218,6 +221,92 @@ class TimingGrpcWasteTest {
             .inventoryGrpcEnds("b", T + 100)
             .analyze()
         assertEquals(listOf(1.0, 1.0), listOf(r.double("waste", "payment", "cancelAfterGiveUpMs", "count"), r.double("waste", "payment", "endAfterCancelMs", "count")))
+    }
+
+    // ---- 기한 전에 안 취소(7-3: cancelMinusDeadlineMs · cancelBeforeDeadline, 여유 500μs) ----
+    // 결제가 받은 기한 = s+1004ms(포기와 같은 때). 결제는 5~1500ms(헛일). cancelledUs = 기한 + [deltaUs].
+
+    private fun cancelAt(deltaUs: Long) = rec().inventoryGrpcEnds("a", T, cancelledUs = us(T + 1004) + deltaUs).analyze()
+
+    @Test
+    fun 취소가_기한보다_정확히_500마이크로초_먼저면_기한_전에_안_것이_아니다() {
+        val r = cancelAt(-500)
+        assertEquals(0L, r.long("waste", "payment", "cancelBeforeDeadline"))
+        assertEquals(-0.5, r.double("waste", "payment", "cancelMinusDeadlineMs", "p50")!!, 1e-9)
+    }
+
+    @Test
+    fun 취소가_기한보다_501마이크로초_먼저면_기한_전에_안_것이다() {
+        val r = cancelAt(-501)
+        assertEquals(1L, r.long("waste", "payment", "cancelBeforeDeadline"))
+        assertEquals(-0.501, r.double("waste", "payment", "cancelMinusDeadlineMs", "p50")!!, 1e-9)
+    }
+
+    @Test
+    fun 기한의_타이머로_안_취소는_0보다_조금_크고_기한_전이_아니다() {
+        val r = cancelAt(400)
+        assertEquals(listOf(1.0, 0.4, 0.0), listOf(
+            r.double("waste", "payment", "cancelMinusDeadlineMs", "count"),
+            r.double("waste", "payment", "cancelMinusDeadlineMs", "p50"),
+            r.double("waste", "payment", "cancelBeforeDeadline"),
+        ))
+    }
+
+    @Test
+    fun 취소_시각이_없으면_세지_않는다() {
+        val r = rec().inventoryGrpcEnds("a", T).analyze()
+        assertEquals(listOf(0.0, 0.0), listOf(r.double("waste", "payment", "cancelBeforeDeadline"), r.double("waste", "payment", "cancelMinusDeadlineMs", "count")))
+        assertEquals(null, r.double("waste", "payment", "cancelMinusDeadlineMs", "p50"))
+    }
+
+    @Test
+    fun 기한_칸이_null이면_취소가_일러도_세지_않는다() {
+        val r = rec().inventoryGrpcEnds("a", T, cancelledUs = us(T + 500), paymentDeadlineUs = null).analyze()
+        assertEquals(listOf(0.0, 0.0, 1.0), listOf(
+            r.double("waste", "payment", "cancelBeforeDeadline"),
+            r.double("waste", "payment", "cancelMinusDeadlineMs", "count"),
+            r.double("waste", "payment", "cancelSeen"),
+        ))
+    }
+
+    @Test
+    fun 기한_키가_아예_없어도_null과_같아_세지_않는다() {
+        val r = rec().inventoryGrpcEnds("a", T, cancelledUs = us(T + 500), paymentAbsentKeys = setOf("deadlineUs")).analyze()
+        assertEquals(listOf(0.0, 0.0), listOf(r.double("waste", "payment", "cancelBeforeDeadline"), r.double("waste", "payment", "cancelMinusDeadlineMs", "count")))
+    }
+
+    @Test
+    fun 헛일이_아닌_기록의_이른_취소는_세지_않는다() {
+        // 결제가 포기(1004ms) 전인 1000ms 에 끝났다 — 헛일이 아니다. 취소는 기한보다 4ms 먼저
+        val r = rec().inventoryGrpcEnds("a", T, paymentEndUs = us(T + 1000), cancelledUs = us(T + 1000)).analyze()
+        assertEquals(listOf(0.0, 0.0, 0.0), listOf(
+            r.double("waste", "payment", "wasted"),
+            r.double("waste", "payment", "cancelBeforeDeadline"),
+            r.double("waste", "payment", "cancelMinusDeadlineMs", "count"),
+        ))
+    }
+
+    @Test
+    fun 기한_전에_안_취소는_헛일마다_센다() {
+        // a −501μs(셈), b −500μs(안 셈), c −10ms(셈) → 2
+        val r = rec()
+            .inventoryGrpcEnds("a", T, cancelledUs = us(T + 1004) - 501)
+            .inventoryGrpcEnds("b", T + 100, cancelledUs = us(T + 100 + 1004) - 500)
+            .inventoryGrpcEnds("c", T + 200, cancelledUs = us(T + 200 + 994))
+            .analyze()
+        assertEquals(listOf(2.0, 3.0), listOf(r.double("waste", "payment", "cancelBeforeDeadline"), r.double("waste", "payment", "cancelMinusDeadlineMs", "count")))
+    }
+
+    @Test
+    fun timingReport_입구도_같은_값을_낸다() {
+        val t = rec().inventoryGrpcEnds("a", T, cancelledUs = us(T + 1004) - 501)
+        t.write()
+        assertEquals(1L, (timingReport(t.dir, null).at("waste", "payment", "cancelBeforeDeadline") as Number).toLong())
+    }
+
+    @Test
+    fun 기한_전_여유는_500마이크로초다() {
+        assertEquals(500L, CANCEL_BEFORE_DEADLINE_MARGIN_US.toLong())
     }
 
     // ---- 상수(11-5) ----

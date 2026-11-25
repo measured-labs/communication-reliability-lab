@@ -284,9 +284,31 @@ class TransportCompareTest {
 
     @Test
     fun HTTP를_골랐는데_주문이_받은_수가_기록_수와_다르면_불일치다() {
-        val d = countOff(http(), "order.inbound.http")
-        assertEquals(1, d.size, "차이 줄: $d")
-        assertTrue(d[0].startsWith("counts.order.inbound.http: 시각 기록 수 2") && d[0].endsWith("실제 3"), "차이 줄: $d")
+        // 11-3 "코드가 하는 대로 정한 것": gRPC로 받지 않는 서비스도 같은 꼴이고 <d>는 0
+        assertEquals(
+            listOf("counts.order.inbound.http: 시각 기록 수 2 + 처리 코드에 닿기 전에 취소된 수 0 와 같아야 한다, 실제 3"),
+            countOff(http(), "order.inbound.http"),
+        )
+    }
+
+    @Test
+    fun gRPC를_골랐어도_주문이_받은_수의_줄은_같은_꼴이다() {
+        assertEquals(
+            listOf("counts.order.inbound.http: 시각 기록 수 2 + 처리 코드에 닿기 전에 취소된 수 0 와 같아야 한다, 실제 1"),
+            countOff(grpc(), "order.inbound.http", -1),
+        )
+    }
+
+    @Test
+    fun 시각_기록_수는_transport_값과_상관없이_파일의_원소_전부다() {
+        // 재고 a 의 기록이 http(③) — 들어온 grpc 수는 기록 전부(2)와 견주므로 ④ 줄은 없다
+        val r = grpc().change("inventory", "a") { it.copy(transport = "http", deadlineUs = null) }
+        val d = r.expectCode(2)
+        assertEquals(
+            listOf(false, false),
+            listOf(d.any { it.startsWith("counts.inventory.inbound.grpc") }, d.any { it.startsWith("counts.inventory.outbound.grpc") }),
+            "차이 줄: $d",
+        )
     }
 
     @Test
@@ -348,6 +370,19 @@ class TransportCompareTest {
     fun gRPC인데_결제의_기록에_기한이_없으면_불일치다() {
         val r = grpc().change("payment", "b") { it.copy(deadlineUs = null) }
         assertEquals(listOf("deadline.payment.missing: 늘 0(gRPC), 실제 1"), r.expectCode(2))
+    }
+
+    @Test
+    fun gRPC로_받은_기록에_기한_키가_아예_없으면_입력_오류가_아니라_missing이다() {
+        // 11-3 "코드가 하는 대로 정한 것": deadlineUs·cancelledUs·stopped 키가 없으면 null 과 같다
+        val r = grpc().change("payment", "b") { it.copy(absentKeys = setOf("deadlineUs", "cancelledUs", "stopped")) }
+        assertEquals(listOf("deadline.payment.missing: 늘 0(gRPC), 실제 1"), r.expectCode(2))
+    }
+
+    @Test
+    fun 취소와_멈춘_자리_키가_없는_기록은_받는다() {
+        val r = grpc().change("inventory", "a") { it.copy(absentKeys = setOf("cancelledUs", "stopped")) }
+        assertEquals(emptyList(), r.expectCode(0))
     }
 
     @Test
@@ -448,6 +483,26 @@ class TransportCompareTest {
         val e = writeExpect(root, """{"records.payment.count":{"min":5,"max":5}}""", "expect.transport.json")
         val r = grpc()
         assertEquals(2, r.runTransport("--expect", e.toString()), r.lastOutput)
+    }
+
+    @Test
+    fun 기대_파일의_차이_줄은_늘_견주는_것_뒤에_기대_파일에_적은_차례로_보고의_differences에_나온다() {
+        // 11-3 "코드가 하는 대로 정한 것": ①~⑦ 뒤에 7-4의 꼴로. 기대 파일의 키는 보고의 키(deadline.paymentMissing)
+        val e = writeExpect(
+            root,
+            """{"records.payment.count":{"min":5,"max":5},"deadline.paymentMissing":{"min":0,"max":0}}""",
+            "expect.transport.json",
+        )
+        val r = grpc().change("payment", "b") { it.copy(deadlineUs = null) }
+        assertEquals(2, r.runTransport("--expect", e.toString()), r.lastOutput)
+        assertEquals(
+            listOf(
+                "deadline.payment.missing: 늘 0(gRPC), 실제 1",
+                "records.payment.count: 기대 5~5, 실제 2",
+                "deadline.paymentMissing: 기대 0~0, 실제 1",
+            ),
+            r.report().differences(),
+        )
     }
 
     @Test

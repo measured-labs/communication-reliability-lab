@@ -126,6 +126,24 @@ class TransportInputErrorTest {
     fun 센_수가_음수면_입력_오류() =
         withCounts(counts("""{"inbound":{"http":-1,"grpc":2},"outbound":{"http":0,"grpc":2},"grpcCancelledBeforeHandler":0}""")).assertInputError()
 
+    // 11-3 "코드가 하는 대로 정한 것": grpcCancelledBeforeHandler 가 없거나 정수가 아니거나 음수면 입력 오류(차이 줄이 아니다)
+
+    @Test
+    fun 처리_코드_전에_취소된_수가_없으면_입력_오류() =
+        withCounts(counts("""{"inbound":{"http":0,"grpc":2},"outbound":{"http":0,"grpc":2}}""")).assertInputError()
+
+    @Test
+    fun 처리_코드_전에_취소된_수가_음수면_입력_오류() =
+        withCounts(counts("""{"inbound":{"http":0,"grpc":2},"outbound":{"http":0,"grpc":2},"grpcCancelledBeforeHandler":-1}""")).assertInputError()
+
+    @Test
+    fun 처리_코드_전에_취소된_수가_소수면_입력_오류() =
+        withCounts(counts("""{"inbound":{"http":0,"grpc":2},"outbound":{"http":0,"grpc":2},"grpcCancelledBeforeHandler":0.5}""")).assertInputError()
+
+    @Test
+    fun 처리_코드_전에_취소된_수가_문자열이면_입력_오류() =
+        withCounts(counts("""{"inbound":{"http":0,"grpc":2},"outbound":{"http":0,"grpc":2},"grpcCancelledBeforeHandler":"0"}""")).assertInputError()
+
     @Test
     fun 센_수가_소수면_입력_오류() =
         withCounts(counts("""{"inbound":{"http":0,"grpc":2.5},"outbound":{"http":0,"grpc":2},"grpcCancelledBeforeHandler":0}""")).assertInputError()

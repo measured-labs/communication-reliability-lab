@@ -196,6 +196,12 @@ class GrpcDeadlinesTest {
         assertEquals(998L, GrpcDeadlines.absoluteDeadlineUs(1_000, -1_500))
     }
 
+    @Test
+    fun 음수_1나노초는_1마이크로초를_뺀다() {
+        // 9절: -1 ns → -1 μs (Math.floorDiv), -1000 ns → -1 μs
+        assertEquals(listOf<Long?>(999, 999), listOf(GrpcDeadlines.absoluteDeadlineUs(1_000, -1), GrpcDeadlines.absoluteDeadlineUs(1_000, -1_000)))
+    }
+
     // ---- 취소를 보며 자기 ----
 
     @Test
@@ -225,6 +231,12 @@ class GrpcDeadlinesTest {
     @Test
     fun 잘_시간이_0이고_취소되지_않았으면_true() {
         assertTrue(GrpcDeadlines.awaitDelay(0, CountDownLatch(1)))
+    }
+
+    @Test
+    fun 잘_시간이_0이어도_이미_취소됐으면_false() {
+        // 9절: ms 0 — 이미 열려 있으면 false(열린 것이 먼저다)
+        assertFalse(GrpcDeadlines.awaitDelay(0, CountDownLatch(1).also { it.countDown() }))
     }
 
     // ---- 멈춘 자리 ----

@@ -27,12 +27,17 @@ data class GrpcTiming(
     val deadlineUs: Long? = null,
     val cancelledUs: Long? = null,
     val stopped: String? = null,
+    /** 키 자체를 뺄 새 칸("deadlineUs"·"cancelledUs"·"stopped") — null 값과 다른 꼴(11-3: 키가 없으면 null 과 같다). */
+    val absentKeys: Set<String> = emptySet(),
 ) {
     fun json(): String {
         fun q(s: String?) = s?.let { "\"$it\"" } ?: "null"
         val base = """"requestId":"$id","startUs":$startUs,"endUs":$endUs,"status":$status,"callStartUs":$callStartUs,"callEndUs":$callEndUs,"callOutcome":${q(callOutcome)}"""
         val extra = if (transport == null) "" else
-            ""","transport":${q(transport)},"deadlineUs":$deadlineUs,"cancelledUs":$cancelledUs,"stopped":${q(stopped)}"""
+            ",\"transport\":${q(transport)}" +
+                listOf("deadlineUs" to "$deadlineUs", "cancelledUs" to "$cancelledUs", "stopped" to q(stopped))
+                    .filter { it.first !in absentKeys }
+                    .joinToString("") { ",\"${it.first}\":${it.second}" }
         return "{$base$extra}"
     }
 }
@@ -63,6 +68,15 @@ class TransportRecord(
 
     /** 서비스마다 grpcCancelledBeforeHandler(기본 0). 재고·결제가 gRPC로 받으면 들어온 수에도 더해진다. */
     val cancelledBeforeHandler = mutableMapOf<String, Long>()
+
+    /**
+     * 서비스마다 설정의 `retry` 칸(JSON 그대로 — 예 `{"enabled":true}`, `"없음(맨 아래 층)"`). 없으면 그 칸을 쓰지 않는다
+     * (11-3 ④: retry 가 객체가 아니거나 enabled 가 없으면 꺼진 층).
+     */
+    val retryJson = mutableMapOf<String, String>()
+
+    /** 서비스마다 timing/attempts-<서비스>.json 의 내용(JSON 그대로). 없으면 그 파일을 쓰지 않는다. */
+    val attemptsText = mutableMapOf<String, String>()
 
     /** 쓰지 않을 파일: "settings-payment.json", "transport-counts.json", "timing/timings-order.json" 등 */
     val omit = mutableSetOf<String>()
@@ -132,7 +146,8 @@ class TransportRecord(
     fun settingsJson(svc: String): String {
         val next = if (svc == "payment") "" else
             ""","nextLayer":{"requestTimeoutMs":${if (svc == "order") 2000 else 1000}}"""
-        return """{"service":"$svc"$next,"transport":{"chosen":"${chosenOf[svc]}"},"grpc":{"deadlinePropagation":${propagationOf[svc]},"observeCancellation":${observeOf[svc]}}}"""
+        val retry = retryJson[svc]?.let { ""","retry":$it""" } ?: ""
+        return """{"service":"$svc"$next,"transport":{"chosen":"${chosenOf[svc]}"},"grpc":{"deadlinePropagation":${propagationOf[svc]},"observeCancellation":${observeOf[svc]}}$retry}"""
     }
 
     fun write() {
@@ -146,6 +161,7 @@ class TransportRecord(
         val payment = dir.resolve("settings-payment.json")
         if ("settings-payment.json" !in omit) payment.writeText(timing.settingsText.getValue("payment"))
         if ("transport-counts.json" !in omit) dir.resolve("transport-counts.json").writeText(countsText ?: countsJson())
+        for ((svc, text) in attemptsText) dir.resolve("timing/attempts-$svc.json").writeText(text)
     }
 
     var lastOutput: String = ""
