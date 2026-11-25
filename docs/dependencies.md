@@ -238,3 +238,4 @@ keep-alive 두 설정의 출처(2026-11-24 확인):
 - 서버는 받은 `grpc-timeout`으로 그 호출의 문맥에 기한을 건다(grpc-core `ServerImpl.createContext`의 `withDeadline`) — 기한이 지나거나 부른 쪽이 끊으면 문맥이 취소된다. 처리 코드가 하는 일(잠, DB)은 grpc가 멈추지 않는다 — 조사 문서의 "the server application is responsible for stopping any activity it has spawned"와 같다.
 - `Context.fork()`는 값을 넘기되 취소할 수 있는 조상을 두지 않는 새 문맥을 만든다(grpc-api `Context.fork` → `new Context(keyValueEntries, generation + 1)`, `getDeadline()`은 그 조상이 없으면 null) — G1이 받은 기한·취소를 아래로 넘기지 않는 방법.
 - 단항(unary) 호출에서 서버가 끊긴 호출에 응답을 내도 예외가 나지 않는다(grpc-stub `ServerCalls.ServerCallStreamObserverImpl.onNext` — 스트리밍에서만 던진다). 그래도 `setOnCancelHandler`를 걸어 둔다.
+- **실행기 큐에서 기다리는 동안 취소된 호출은 처리 코드가 불리지 않는다**(grpc-core `ServerCallImpl.ServerStreamListenerImpl.halfClosed` — 문맥이 까닭과 함께 취소되면 `call.cancelled`가 서고, 뒤의 `halfClosed`가 돌아간다. unary의 처리 코드는 halfClose에서 불린다). 조사 문서에 없던 것 — 설계 앞의 스모크에서 전송 대조가 드러냈다(결과 문서 "스모크"). 서버가 그 수를 따로 센다(`/transport-counts`의 `grpcCancelledBeforeHandler`).

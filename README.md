@@ -18,6 +18,7 @@
 
 ```
 k6 (load/chain.js) ──HTTP──▶ order :8081 ──HTTP──▶ inventory :8082 ──HTTP──▶ payment :8083
+                                           (task 05: CHAIN_TRANSPORT=grpc면 두 구간이 gRPC — 재고·결제의 :9090, Compose 네트워크 안)
                               │                     │                         │
                               ▼                     ▼                         ▼
                            order_db              inventory_db              payment_db     (PostgreSQL 18 한 인스턴스)
@@ -31,7 +32,7 @@ k6 (load/chain.js) ──HTTP──▶ order :8081 ──HTTP──▶ inventory
 | 폴더 | 내용 |
 |---|---|
 | `fault-header/` | 장애 헤더(`X-Fault`)의 해석 — Spring에 기대지 않아 서비스와 분석기가 같은 코드를 쓴다 |
-| `chain-link/` | 세 서비스가 같은 규칙으로 쓰는 것: 장애 주입과 카운터(`Fault.kt`), 요청 문맥과 입구 필터(`ChainRequest.kt`), 아래 층 호출(`NextLayerCall.kt` — 뒤에 gRPC 구현을 끼울 자리), 같게 두는 설정(`chain-link.yml`) |
+| `chain-link/` | 세 서비스가 같은 규칙으로 쓰는 것: 장애 주입과 카운터(`Fault.kt`), 요청 문맥과 입구 필터(`ChainRequest.kt`), 아래 층 호출(`NextLayerCall.kt` — HTTP, `GrpcTransport.kt` — task 05의 gRPC 전송, 끝을 읽는 규칙은 `GrpcRules.kt`), `.proto`(`src/main/proto`), 같게 두는 설정(`chain-link.yml`) |
 | `order/`, `inventory/`, `payment/` | 세 서비스(Kotlin, Spring Boot 4.2, Spring MVC, `JdbcClient`) |
 | `analyzer/` | 정답과 DB 상태를 대조하는 명령줄 분석기 |
 | `load/` | k6 스크립트와 시나리오마다의 기대 파일 |
@@ -50,6 +51,8 @@ k6 (load/chain.js) ──HTTP──▶ order :8081 ──HTTP──▶ inventory
 | `docs/results/task-04-idempotency.md` | task 04의 결과 표, 예상과의 대조, 한계 |
 | `docs/experiments/task-04b-design.md` | task 04-b(부하에 따라 실패하는 장애와 회복 시간) 실험의 설계, 값을 고른 계산, 보기 전의 예상 |
 | `docs/results/task-04b-overload.md` | task 04-b의 결과 표, 예상과의 대조, 한계 |
+| `docs/experiments/task-05-design.md` | task 05(gRPC — 기한·취소 전파) 실험의 설계, gRPC의 끝을 읽는 규칙, 조건 넷, 보기 전의 예상, 테스트 입구 |
+| `docs/results/task-05-grpc.md` | task 05의 결과 표, 예상과의 대조, 말할 수 있는 것·없는 것, 한계 |
 
 ## 실행
 
@@ -128,3 +131,14 @@ scripts/task04-recompute.sh runs/overload-spike-…-r1                    # 커�
 - 시나리오 `cal-overload`·`overload-spike`: 장애 헤더 없이 평소 25/s 위에 10s부터 5s 동안 75/s를 더한다(부하가 원인). `overload-low`·`overload-edge`·`overload-burst`는 평소만 다르다(15/s · 17/s · 2s마다 30건 무리 — 설계 10절). `scripts/task04.sh`의 `UP=no`는 다시 띄우지 않고 떠 있는 서비스로 잰다(서비스 조건이 같은 자리들을 이어 잴 때). 분석은 대조 분석 + `analyzer retry`(8절) + `analyzer overload`(10절) — 서비스가 센 거절 수, 결제의 시각 기록의 503 수, 분석기가 결제의 든 시각에 규칙을 다시 적용한 거절 수가 다르면 불일치(종료 코드 2).
 - 실행마다 `config.env`에 실행 앞뒤의 `/proc/loadavg`(`host_loadavg_start`·`host_loadavg_end`)를 남기고, `task04b-all.sh`가 조건마다 `uptime`을 `runs/task-04b-uptime.txt`에 남긴다(이 컴퓨터의 다른 부하).
 - 커밋하는 기록: task 04와 같은 꼴(요약·보고와 `raw.tar.gz` — `scripts/task04-pack.sh`), `runs/task-04b-index.tsv`.
+
+## task 05 — gRPC: 기한·취소 전파와 헛일
+
+```bash
+scripts/task05-all.sh                     # 보정(HTTP 기본 → gRPC G1 같은 기대 → G2·G3 답을 아는 실행) → 실험(조건 넷 × 배치 둘, 바퀴마다 번갈아)
+scripts/task05-table.sh exp-P2 waste.payment.wastedMsSum recon.layers.payment.unknownProcessed transport.deadline.paymentAfterInventoryOverSlack
+```
+
+- 서비스 사이의 전송은 환경 변수 `CHAIN_TRANSPORT`(`http` | `grpc`, 세 서비스에 같은 값)로 고른다. **주지 않으면 http** — task 01~04-b의 객체 그대로이고 gRPC 서버도 뜨지 않는다. gRPC는 Spring Boot gRPC 스타터 + blocking 스텁(들인 것과 숨은 기본값: `docs/dependencies.md` "task 05"). 조건 `GRPC_DEADLINE_PROPAGATION`(받은 기한·취소를 아래로 넘김), `GRPC_OBSERVE_CANCELLATION`(처리 코드가 취소와 남은 기한을 봄)은 gRPC에서만 켠다(HTTP에서 켜면 기동 실패). gRPC에서 재시도·멱등 키·한도는 켜지 않는다(기동 실패 — 이 task의 범위 밖).
+- `run.sh`가 `/settings`의 `transport`·`grpc`와 조건을 견주고, **모든 시나리오**에서 `analyzer transport`(`docs/measurement.md` 11절)가 고른 전송·서비스가 전송마다 센 호출 수(`GET /transport-counts`)·시각 기록의 `transport`를 견준다 — gRPC를 골랐는데 HTTP로 불렸으면(그 반대도) 불일치(종료 코드 2).
+- 커밋하는 기록: task 04와 같은 꼴(요약·보고와 `raw.tar.gz` — `scripts/task04-pack.sh`), `runs/task-05-index.tsv`, `runs/task-05-uptime.txt`.
