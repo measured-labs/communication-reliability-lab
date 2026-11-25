@@ -4,7 +4,7 @@
 # 묶는 것: task03-pack.sh의 것 + db/idempotency-*.csv, idempotency-counts.json, drop-faults.json, resends.jsonl,
 #   retry-budget-start.json, expect.idem.json(있으면 — task 04가 아닌 시나리오(꺼진 상태 확인)에는 없다),
 #   db/row-ids-*.csv·db/idempotency-row-ids-*.csv(있으면 — row_id를 내보낸 뒤의 실행만. config.env의 row_ids_exported=yes),
-#   (task 04-b) overload-counts.json, expect.overload.json(있으면).
+#   (task 04-b) overload-counts.json, expect.overload.json(있으면), (task 05) transport-counts.json, expect.transport.json(있으면).
 # 묶지 않는 것: k6-log.txt, resend-k6-log.txt, warmup*-k6-*.txt, image-build.txt. 꼭 있어야 할 것이 없으면 실패.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,7 +28,7 @@ for run in "$@"; do
     db/idempotency-order.csv db/idempotency-inventory.csv db/idempotency-payment.csv idempotency-counts.json drop-faults.json \
     db/row-ids-order.csv db/row-ids-inventory.csv db/row-ids-payment.csv \
     db/idempotency-row-ids-order.csv db/idempotency-row-ids-inventory.csv db/idempotency-row-ids-payment.csv \
-    overload-counts.json expect.overload.json; do
+    overload-counts.json expect.overload.json transport-counts.json expect.transport.json; do
     [[ -f $run/$f ]] && files+=("$f")
   done
   tar -czf "$run/raw.tar.gz" -C "$run" --sort=name --owner=0 --group=0 --mtime='2026-01-01' "${files[@]}"

@@ -32,6 +32,7 @@ REP=${2:?"반복 번호"}
 # RETRY = 재시도 분석(task 03 — analyzer retry)을 하나. task 03의 시나리오는 모두 k6의 연결 재사용을 끈다(task 02 R02-1과 같은 까닭).
 # IDEM = 멱등 키 분석(task 04 — analyzer idem)을 하나. RESEND = 부하가 가라앉은 뒤 결과 모름을 같은 키로 다시 보내나(맞추기 단계).
 # ANSWERS_PER_ITERATION = 반복 하나가 남기는 정답 줄 수(같은 요청을 두 번 보내는 시나리오는 2, cal-idem은 8칸 가운데 셋이 2 → 11/8).
+# (task 05) 모든 시나리오가 전송 대조(analyzer transport)를 거친다 — 고른 전송과 실제로 쓰인 전송을 견준다(docs/measurement.md 11절).
 # OVERLOAD = 한도 분석(task 04-b — analyzer overload)을 하나. SPIKE_* = 평소 RATE 위에 SPIKE_FROM_SECONDS부터 SPIKE_SECONDS 동안 더하는 초당 수.
 LOOKUP_RATE=0; SLOW_LABEL=""; TIMING=no; K6_NO_CONNECTION_REUSE=false; RETRY=no; IDEM=no; RESEND=no; ANSWERS_PER_8_ITERATIONS=8
 OVERLOAD=no; SPIKE_RATE=0; SPIKE_FROM_SECONDS=0; SPIKE_SECONDS=0
@@ -72,6 +73,16 @@ SETTLE_TIMEOUT_SECONDS=${SETTLE_TIMEOUT_SECONDS:-$DEFAULT_SETTLE_TIMEOUT}
 ORDER_TO_INVENTORY_TIMEOUT=${ORDER_TO_INVENTORY_TIMEOUT:-2000ms}
 INVENTORY_TO_PAYMENT_TIMEOUT=${INVENTORY_TO_PAYMENT_TIMEOUT:-1000ms}
 VIRTUAL_THREADS=${VIRTUAL_THREADS:-false}
+# task 05의 조건: 서비스 사이의 전송과 gRPC의 기한·취소(기본 http·꺼짐 — compose.yaml과 같다). 규칙: docs/experiments/task-05-design.md
+CHAIN_TRANSPORT=${CHAIN_TRANSPORT:-http}
+GRPC_DEADLINE_PROPAGATION=${GRPC_DEADLINE_PROPAGATION:-false}
+GRPC_OBSERVE_CANCELLATION=${GRPC_OBSERVE_CANCELLATION:-false}
+[[ $CHAIN_TRANSPORT == http || $CHAIN_TRANSPORT == grpc ]] || die "CHAIN_TRANSPORT '$CHAIN_TRANSPORT' 는 http|grpc"
+for v in GRPC_DEADLINE_PROPAGATION GRPC_OBSERVE_CANCELLATION; do
+  [[ ${!v} == true || ${!v} == false ]] || die "$v '${!v}' 는 true|false"
+  [[ ${!v} == false || $CHAIN_TRANSPORT == grpc ]] || die "$v=true 는 CHAIN_TRANSPORT=grpc 에서만"
+done
+[[ -z ${TRANSPORT_EXPECT:-} || -f $TRANSPORT_EXPECT ]] || die "TRANSPORT_EXPECT '$TRANSPORT_EXPECT' 가 없다"
 # task 04의 조건: 멱등 키(기본 꺼짐 — compose.yaml과 같다). 규칙: docs/idempotency.md
 IDEMPOTENCY_ENABLED=${IDEMPOTENCY_ENABLED:-false}
 # task 04-b의 조건: 결제의 한도(기본 꺼짐 — compose.yaml과 같다). 규칙: docs/measurement.md 10절
@@ -171,6 +182,10 @@ fi
   echo "order_to_inventory_timeout=$ORDER_TO_INVENTORY_TIMEOUT"
   echo "inventory_to_payment_timeout=$INVENTORY_TO_PAYMENT_TIMEOUT"
   echo "virtual_threads=$VIRTUAL_THREADS"
+  echo "chain_transport=$CHAIN_TRANSPORT"
+  echo "grpc_deadline_propagation=$GRPC_DEADLINE_PROPAGATION"
+  echo "grpc_observe_cancellation=$GRPC_OBSERVE_CANCELLATION"
+  echo "transport_expect=${TRANSPORT_EXPECT:-}"
   echo "timing_expect=${TIMING_EXPECT:-}"
   echo "retry_expect=${RETRY_EXPECT:-}"
   echo "idempotency_enabled=$IDEMPOTENCY_ENABLED"
@@ -252,6 +267,20 @@ for svc in order inventory payment; do
   fi
 done
 
+# task 05: 떠 있는 서비스가 고른 전송과 gRPC 조건(세 서비스에 같은 값). 아래 층을 부르는 두 서비스는 그 전송의 구현이 떠 있는지도 본다.
+for svc in order inventory payment; do
+  want_settings "$OUT/settings-${svc}.json" "\"transport\":{\"chosen\":\"$CHAIN_TRANSPORT\"," "$svc 의 전송"
+  want_settings "$OUT/settings-${svc}.json" "\"deadlinePropagation\":$GRPC_DEADLINE_PROPAGATION," "$svc 의 기한 전파"
+  want_settings "$OUT/settings-${svc}.json" "\"observeCancellation\":$GRPC_OBSERVE_CANCELLATION," "$svc 의 취소 보기"
+done
+impl=$([[ $CHAIN_TRANSPORT == grpc ]] && echo GrpcNextLayerCall || echo HttpNextLayerCall)
+for svc in order inventory; do
+  want_settings "$OUT/settings-${svc}.json" "\"nextLayerCall\":\"$impl\"" "$svc 의 아래 층 호출 구현"
+done
+for svc in inventory payment; do
+  want_settings "$OUT/settings-${svc}.json" "\"grpcServerRunning\":$([[ $CHAIN_TRANSPORT == grpc ]] && echo true || echo false)" "$svc 의 gRPC 서버"
+done
+
 # task 04-b: 떠 있는 한도 객체의 값과 조건을 견준다. 주문·재고는 늘 꺼짐(compose.yaml이 결제에만 준다).
 for svc in order inventory; do
   want_settings "$OUT/settings-${svc}.json" '"overload":{"enabled":false}' "$svc 의 한도 꺼짐"
@@ -294,6 +323,7 @@ for entry in "${SERVICE_PORTS[@]}"; do
   curl -sf -X DELETE "localhost:${entry#*:}/drop-faults" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/idempotency-counts" > /dev/null
   curl -sf -X DELETE "localhost:${entry#*:}/overload" > /dev/null # task 04-b(꺼져 있으면 늘 0)
+  curl -sf -X DELETE "localhost:${entry#*:}/transport-counts" > /dev/null # task 05
 done
 left_o=$(psql_lab order_db "select count(*) from orders")
 left_i=$(psql_lab inventory_db "select count(*) from reservations")
@@ -361,6 +391,12 @@ f_order=$(curl -sf localhost:8081/faults)
 f_inventory=$(curl -sf localhost:8082/faults)
 f_payment=$(curl -sf localhost:8083/faults)
 printf '{"order":%s,"inventory":%s,"payment":%s}\n' "$f_order" "$f_inventory" "$f_payment" > "$OUT/fault-counts.json"
+# task 05: 서비스가 전송마다 센 호출 수(GET /transport-counts). 받지 못하면 실패.
+t=()
+for entry in "${SERVICE_PORTS[@]}"; do
+  t+=("$(curl -sf "localhost:${entry#*:}/transport-counts")") || die "/transport-counts를 받지 못했다"
+done
+printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${t[@]}" > "$OUT/transport-counts.json"
 # task 04: 키 표, 서비스가 센 키 수와 끊은 수, 시도마다 넣은 실패(재시도 분석을 하지 않는 실행도 대조하려고). 받지 못하면 실패.
 # 업무 행의 id와 키 행이 가리키는 업무 행(row_id)은 새 파일로 낸다(R04-2 — 대조 분석이 읽는 db/<업무>.csv와 키 표의 꼴은 바꾸지 않는다).
 if [[ $IDEM == yes ]]; then
@@ -423,6 +459,20 @@ set +e
 rc=$?
 set -e
 log "대조 분석 종료 코드 $rc"
+# 8-1. 전송 대조(task 05 — docs/measurement.md 11절). 모든 시나리오. 대조 분석이 입력 오류(1)면 하지 않는다. 종료 코드는 큰 것.
+if [[ $rc != 1 ]]; then
+  xargs_=(transport --run "/runs/${NAME}")
+  if [[ -n ${TRANSPORT_EXPECT:-} ]]; then
+    cp "$TRANSPORT_EXPECT" "$OUT/expect.transport.json"
+    xargs_+=(--expect "/runs/${NAME}/expect.transport.json")
+  fi
+  set +e
+  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${xargs_[@]}"
+  xrc=$?
+  set -e
+  log "전송 대조 종료 코드 $xrc"
+  ((xrc > rc)) && rc=$xrc
+fi
 # 9. 시각 지표(task 02). 대조 분석이 입력 오류(1)면 하지 않는다. 종료 코드는 둘 가운데 큰 것.
 if [[ $TIMING == yes && $rc != 1 ]]; then
   targs=(timing --run "/runs/${NAME}")

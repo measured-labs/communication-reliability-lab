@@ -25,13 +25,14 @@ fun main(args: Array<String>) {
 /**
  * 명령줄 계약 그대로의 입구(테스트도 이것을 부른다 — docs/measurement.md 5절). 첫 인자가 `timing`이면 task 02의 시각 지표
  * (Timing.kt, 7절), `retry`면 task 03의 재시도 지표(Retry.kt, 8절), `idem`이면 task 04의 멱등 키 지표(Idempotency.kt, 9절),
- * `overload`면 task 04-b의 한도 지표(Overload.kt, 10절), 아니면 대조 분석 — 보고는 <실행 폴더>/report.json, report.md에 쓴다.
+ * `overload`면 task 04-b의 한도 지표(Overload.kt, 10절), `transport`면 task 05의 전송 대조(Transport.kt, 11절), 아니면 대조 분석 — 보고는 <실행 폴더>/report.json, report.md에 쓴다.
  */
 fun runAnalyzer(args: Array<String>): Int {
     if (args.firstOrNull() == "timing") return runTiming(args.drop(1).toTypedArray())
     if (args.firstOrNull() == "retry") return runRetry(args.drop(1).toTypedArray())
     if (args.firstOrNull() == "idem") return runIdempotency(args.drop(1).toTypedArray())
     if (args.firstOrNull() == "overload") return runOverload(args.drop(1).toTypedArray())
+    if (args.firstOrNull() == "transport") return runTransport(args.drop(1).toTypedArray())
     val options = try {
         parseArgs(args)
     } catch (e: InputException) {

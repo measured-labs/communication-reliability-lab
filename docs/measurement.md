@@ -276,7 +276,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | `answers.jsonl` | k6 | 1절 + **`sentAtMs`**(정수, 보내기 직전의 벽시계 ms). 이 분석에서는 필수 |
 | `db/*.csv` | 실행 스크립트 | 2절 그대로 |
 | `settings-order.json`, `settings-inventory.json` | 실행 스크립트(`GET /settings`) | `nextLayer.requestTimeoutMs`(정수)를 읽는다 — 구간의 타임아웃 |
-| `timing/timings-<서비스>.json` | 서비스 `GET /timings` | JSON 배열. 원소 = 업무 입구에 든 요청 하나: `requestId`(비지 않은 문자열), `startUs`·`endUs`(정수, 벽시계 μs — 입구 필터에 든 때(지연 장애로 자기 전)와 나간 때), `status`(정수, 필터를 나갈 때의 응답 상태), `callStartUs`·`callEndUs`(정수 또는 `null`), `callOutcome`(`"Completed"` · `"Failed:<까닭>"` · `"Unknown:<까닭>"` 또는 `null`) — 아래 층을 불렀으면 셋 다 있고, 안 불렀으면(맨 아래 층, 장애로 처리 전에 끝남) 셋 다 `null` |
+| `timing/timings-<서비스>.json` | 서비스 `GET /timings` | JSON 배열. 원소 = 업무 입구에 든 요청 하나: `requestId`(비지 않은 문자열), `startUs`·`endUs`(정수, 벽시계 μs — 입구 필터에 든 때(지연 장애로 자기 전)와 나간 때), `status`(정수, 필터를 나갈 때의 응답 상태), `callStartUs`·`callEndUs`(정수 또는 `null`), `callOutcome`(`"Completed"` · `"Failed:<까닭>"` · `"Unknown:<까닭>"` 또는 `null`) — 아래 층을 불렀으면 셋 다 있고, 안 불렀으면(맨 아래 층, 장애로 처리 전에 끝남) 셋 다 `null`. **(task 05)** 칸 넷이 더해졌다 — `transport`·`deadlineUs`·`cancelledUs`·`stopped`(11-1절). 없거나 `null`이어도 이 분석은 받는다(옛 기록) |
 | `timing/samples-<서비스>.json` | 서비스 `GET /samples` | `{"intervalMs": n, "overflow": 불, "samples": [...]}`. 표본 = `atMs`(정수, 벽시계 ms), `inflight`(정수 ≥ 0 — `GET /inflight`와 같은 값), `active`·`poolSize`·`maxThreads`·`queue`(Tomcat 실행기가 플랫폼 스레드 풀이면 정수, 아니면 `null` — 가상 스레드), `connections`(정수 또는 `null`). 서비스가 100ms마다 Tomcat 밖의 데몬 스레드에서 뜬다 |
 | `lookups.jsonl` | k6(`slow-layer`만) | 줄마다 `{"type":"lookup","sentAtMs":정수,"status":정수,"elapsedMs":수,...}` — 가벼운 조회 `GET /orders/{id}` 하나 |
 
@@ -305,7 +305,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | `delays.<서비스>` | 정답의 `fault`에서 그 서비스를 가리키는 `delay=<ms>` 값들의 분위수(넣은 지연) |
 | `edges.<U>-><L>.timeoutMs` | `settings-<U>.json`의 `nextLayer.requestTimeoutMs` |
 | `edges.<U>-><L>.calls` | U의 시각 기록 가운데 `callOutcome`이 있는 것의 수 |
-| `edges.<U>-><L>.timeouts` | 그 가운데 `callOutcome == "Unknown:REQUEST_TIMEOUT"` |
+| `edges.<U>-><L>.timeouts` | 그 가운데 `callOutcome`이 **포기한 결과**인 것 — `Unknown:REQUEST_TIMEOUT`(HTTP의 요청 타임아웃), (task 05의 gRPC 경로) `Unknown:DEADLINE_EXCEEDED`·`Unknown:CANCELLED`(11-2절). HTTP 경로의 기록에는 뒤의 둘이 나오지 않는다 |
 | `clients.noResponse` | 정답 가운데 `status` 0(k6가 응답을 받지 못함 — k6 타임아웃이나 연결 오류) |
 | `clients.notReachedServer` | 그 가운데 주문(맨 위 층)의 시각 기록이 없는 것 — **서버의 업무 입구에 닿지 못한 요청**. 실험의 부하가 서버에 다 닿았는지의 검사다(task 02의 실행에서는 0이어야 한다 — 0이 아니면 결과 문서의 표에 그 수와 시각을 적는다). 한 줄 요약의 첫 칸 |
 | `clients.notReachedServerFirstSentMs`·`LastSentMs` | 그 요청들의 `sentAtMs − (정답의 첫 sentAtMs)`의 최소·최대(0건이면 `null`) |
@@ -321,12 +321,17 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | `….belowDelay.calleeEndedBeforeGiveUp` | 나머지 — L은 U가 포기하기 전에 끝났는데 응답이 U에 닿기 전에 타임아웃이 울렸다(헛일로 세지 않는 거짓 타임아웃) |
 | `….belowDelay.callToCalleeStartMs`·`calleeServiceBeyondDelayMs` | L의 시각 기록이 있는 것의 `start(L) − callStart(U)`, `end(L) − start(L) − 넣은 지연`의 분위수 |
 | `layers.<L>.records`, `layers.<L>.serviceMs` | L의 시각 기록 수, `end − start`의 분위수(불린 쪽 응답 시간 — 넣은 지연 포함) |
-| `giveUp(L, id)`(보고에 따로 나오지 않음) | 다음 가운데 가장 이른 것(없으면 정의되지 않음): k6가 응답을 받지 못했으면(`status` 0) `sentAtMs + elapsedMs` · L보다 위의 층 U마다 U의 `callOutcome`이 `Unknown:REQUEST_TIMEOUT`이면 U의 `callEnd` |
+| `giveUp(L, id)`(보고에 따로 나오지 않음) | 다음 가운데 가장 이른 것(없으면 정의되지 않음): k6가 응답을 받지 못했으면(`status` 0) `sentAtMs + elapsedMs` · L보다 위의 층 U마다 U의 `callOutcome`이 포기한 결과(위 `timeouts`의 셋)이면 U의 `callEnd` |
 | `waste.<L>.wasted` | L의 시각 기록 가운데 `giveUp`이 정의되고 `end > giveUp`인 것 |
 | `waste.<L>.wastedProcessed` | 그 가운데 L의 DB에 그 requestId의 처리 행이 있는 것 |
 | `waste.<L>.startedAfterGiveUp` | 그 가운데 `start ≥ giveUp`인 것(위가 포기한 뒤에 시작한 일) |
 | `waste.<L>.startedAfterGiveUpMsSum` | 그 몫(`startedAfterGiveUp`)의 헛일 시간의 합(소수 첫째 자리). `wastedMsSum − 이것` = 위가 포기한 때 진행 중이던 일의 헛일 시간 |
 | `waste.<L>.wastedMs`, `wastedMsSum` | 헛일 시간 `end − max(start, giveUp)`의 분위수와 합(소수 첫째 자리) |
+| (task 05) `waste.<L>.stopped` | 헛일 가운데 `stopped`가 있는 것(G3에서 처리 코드가 멈춘 것) |
+| (task 05) `waste.<L>.cancelSeen` | 헛일 가운데 `cancelledUs`가 있는 것(L이 그 호출이 취소된 것을 안 것) |
+| (task 05) `waste.<L>.cancelAfterGiveUpMs` | 그것들의 `cancelledUs − giveUp`의 분위수 — **취소가 L에 닿기까지의 시간**(음수일 수 있다 — 받은 기한이 위의 포기보다 먼저 지난 경우) |
+| (task 05) `waste.<L>.endAfterCancelMs` | 그것들의 `end − cancelledUs`의 분위수 — L이 취소를 안 뒤에도 계속한 시간 |
+| (task 05) `layers.<L>.stopped.<자리>` | L의 시각 기록 가운데 `stopped`가 그 자리인 것의 수(자리 셋 모두 — 없으면 0) |
 | `samples.<서비스>.maxGapMs` | 이웃한 표본의 `atMs` 차의 최대. **표본이 하나면 `null`**(간격이 없다 — 7-4의 검사가 차이 줄을 낸다) |
 | `samples.<서비스>.maxInflight`·`maxActive`·`maxThreads`·`maxQueue`·`maxConnections` | 표본의 최대(그 칸이 모두 `null`이면 `null`) |
 | `samples.<서비스>.saturatedMs` | `active ≥ maxThreads`인 표본 수 × `intervalMs`(`maxThreads`가 없으면 `null`) |
@@ -354,7 +359,8 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 
 - 시계: 세 서비스(컨테이너)와 k6가 한 컴퓨터의 같은 커널 시계를 쓴다는 것에 기댄다. 서버 여러 대로 나누면(task 06) 시계가 어긋난 만큼 `giveUp`과 `end`의 차가 틀린다 — 그때 다시 본다.
 - `end`는 입구 필터를 나간 때다. 처리 코드가 예외로 끝나면 `status`는 필터를 나갈 때의 값이라 실제 응답(오류 페이지)과 다를 수 있다.
-- 헛일은 "위가 포기한 뒤 아래가 쓴 시간"이다. 아래가 위의 포기를 알 길이 없으므로(취소가 전해지지 않는다) 이 실험의 아래 층은 늘 끝까지 일한다.
+- 헛일은 "위가 포기한 뒤 아래가 쓴 시간"이다. HTTP 경로에서는 아래가 위의 포기를 알 길이 없으므로(취소가 전해지지 않는다) 아래 층은 늘 끝까지 일한다. task 05의 gRPC 경로에서는 아래 층이 취소를 알 수 있다(`cancelledUs` — 11절) — 알고도 계속하는지는 조건(G3인가)이 정한다.
+- 헛일의 건수(`wasted`)는 `end > giveUp`인 것을 센다 — 취소로 곧 멈춘 일도 `giveUp`보다 조금이라도 늦게 끝나면 한 건이다. 취소의 효과는 건수보다 시간(`wastedMsSum`)과 처리 행(`wastedProcessed`)에 나온다.
 - 표본 간격 100ms보다 짧게 차고 빠지는 것은 보이지 않는다.
 
 ## 8. 재시도 지표 (task 03) — `analyzer retry`
@@ -681,3 +687,57 @@ class OverloadLimit(val enabled: Boolean, val limit: Int, val windowMs: Long, cl
 - 시계: 7-5절과 같다(한 컴퓨터의 같은 시계). 결제의 든 시각(서비스의 시계)과 구간의 끝(k6의 송신 시각)을 바로 뺀다.
 - 한도는 흉내 낸 것이다: 실제 서비스가 지치는 꼴(스레드·연결 풀이 차고, 대기열이 길어지고, GC가 멈추게 하는 것 — 거절 대신 느려지는 것)과 다르다. 거절은 처리 전 503이라 싸다.
 - 창의 수는 실행 사이에 `DELETE /overload`로 비운다 — 워밍업의 호출은 들지 않는다. 부하가 시작된 첫 W 동안은 창이 덜 차 있다(평소 도착률에서는 한도에 닿지 않는다).
+
+## 11. 전송 대조와 gRPC 경로의 기록 (task 05) — `analyzer transport`
+
+> task 05(`docs/experiments/task-05-design.md`)가 서비스 사이의 전송을 설정으로 고르게 했다(`chain.transport` = `http`(기본) · `grpc`). 이 절의 분석은 **모든 시나리오**에서 대조 분석 뒤에 돈다(`scripts/run.sh` 8-1단계) — gRPC를 골랐는데 HTTP로 불렸다면(또는 그 반대) 실행이 불일치로 끝나게. 1~10절의 형식은 바꾸지 않았다(시각 기록에 칸 넷이 더해졌다 — 7절의 분석은 모르는 칸을 읽지 않던 것에서 넷을 읽게 됐다).
+
+### 11-1. 입력
+
+| 파일 | 만드는 곳 | 형식 |
+|---|---|---|
+| `settings-<서비스>.json` | 실행 스크립트(`GET /settings`) | `transport.chosen`(`"http"`·`"grpc"` — 떠 있는 서비스가 고른 전송), `grpc.deadlinePropagation`·`grpc.observeCancellation`(불). 다른 칸은 읽지 않는다 |
+| `transport-counts.json` | 실행 스크립트(세 서비스의 `GET /transport-counts`) | `{"order":{"inbound":{"http":n,"grpc":n},"outbound":{"http":n,"grpc":n},"grpcCancelledBeforeHandler":n},"inventory":…,"payment":…}` — 서비스가 마지막 `DELETE /transport-counts` 뒤 전송마다 센 호출 수(0 이상의 정수). `grpcCancelledBeforeHandler` = 들어온 gRPC 호출 가운데 처리 코드에 닿기 전에 취소돼(실행기 큐에서 기다리는 동안 부른 쪽이 끊었거나 기한이 지남) grpc-java가 처리 코드를 부르지 않은 것 — 그 호출은 시각 기록이 없다(서버 인터셉터가 halfClose 없이 취소를 본 호출을 센다). 세는 자리는 시각 기록을 남기는 자리와 다르다: 들어온 HTTP = 업무 입구 필터의 맨 앞(어떤 검사보다 먼저), 들어온 gRPC = 서비스 정의를 감싼 서버 인터셉터(서비스 구현에 닿기 전), 나간 HTTP = HTTP 클라이언트가 보내기 직전, 나간 gRPC = 채널에 건 클라이언트 인터셉터 |
+| `timing/timings-<서비스>.json` | 서비스 `GET /timings` | 7-1절 + 칸 넷: `transport`(`"http"`·`"grpc"` — 이 요청이 **들어온** 전송. 이 분석에서는 필수), `deadlineUs`(정수 또는 `null` — gRPC로 들어왔을 때 받은 기한의 절대 시각 μs = 입구의 시각 + 남은 기한), `cancelledUs`(정수 또는 `null` — gRPC로 들어온 호출의 문맥이 취소된 것을 서비스가 처음 안 시각. 위가 끊었거나 받은 기한이 지났다. 처리 코드가 끝나기 전에 안 것만 — 끝난 뒤의 취소는 남기지 않는다), `stopped`(`null` · `"deadline-before-start"` · `"cancelled-in-delay"` · `"deadline-before-work"` — G3에서 처리 코드가 멈춘 자리. 멈춘 기록의 `status`는 0). HTTP로 들어온 기록은 뒤의 셋이 `null` |
+
+### 11-2. gRPC 경로의 `callOutcome`
+
+부른 쪽이 gRPC 호출의 끝을 읽는 규칙(설계 2절, 정본 `chain-link/…/GrpcRules.kt`의 `GrpcOutcomes.read`): 트레일러 `chain-status`가 있으면 HTTP와 같은 규칙으로 `Completed` · `Unknown:CHAIN_504` · `Failed:CHAIN_<n>`, 없고 OK면 `Completed`, 없고 OK가 아니면 `Unknown:<gRPC 코드 이름>`(`DEADLINE_EXCEEDED`, `CANCELLED`, `UNAVAILABLE`, …). 7절의 "포기한 결과"는 `Unknown:REQUEST_TIMEOUT`·`Unknown:DEADLINE_EXCEEDED`·`Unknown:CANCELLED`.
+
+### 11-3. 지표와 늘 견주는 것
+
+`T` = 주문의 `transport.chosen`, `O` = 다른 전송. 늘 견주는 것은 이 차례로(차이 줄 하나 = 어긴 규칙 하나):
+
+| # | 규칙 | 차이 줄 |
+|---|---|---|
+| ① | 세 서비스의 `transport.chosen`이 같다 | `transport.chosen: 세 서비스가 같아야 한다, 실제 {order=…, inventory=…, payment=…}` |
+| ② | `O`로 센 수가 0: 주문의 나간 것, 재고의 들어온 것·나간 것, 결제의 들어온 것(이 차례). 주문의 들어온 gRPC는 늘 0(부하 도구와 주문 사이는 HTTP). 결제의 나간 것(둘의 합)은 늘 0 | `counts.<서비스>.<inbound/outbound>.<O>: 늘 0(고른 전송 <T>), 실제 <n>` · `counts.order.inbound.grpc: 늘 0(부하 도구와 주문 사이는 HTTP), 실제 <n>` · `counts.payment.outbound: 늘 0(맨 아래 층), 실제 {http=…, grpc=…}` |
+| ③ | 시각 기록의 `transport`: 주문은 모두 `http`, 재고·결제는 모두 `T` | `records.<서비스>.wrongTransport: 늘 0, 실제 <n>`(order → inventory → payment) |
+| ④ | 들어온 수 = 시각 기록 수 + (gRPC로 받는 서비스면) `grpcCancelledBeforeHandler`(주문은 `http`, 재고·결제는 `T`). gRPC로 받지 않는 서비스의 `grpcCancelledBeforeHandler`는 0. 나간 수(`T`) = 시각 기록 가운데 `callOutcome`이 있는 수(주문, 재고) | `counts.<서비스>.inbound.<t>: 시각 기록 수 <m> + 처리 코드에 닿기 전에 취소된 수 <d> 와 같아야 한다, 실제 <n>` · `counts.<서비스>.cancelledBeforeHandler.grpc: gRPC로 받지 않는 서비스에서 늘 0, 실제 <n>` · `counts.<서비스>.outbound.<T>: 기록의 call 수 <m>와 같아야 한다, 실제 <n>` |
+| ⑤ | gRPC로 받지 않은 기록(주문 전부, `T`가 `http`면 셋 모두)에 `deadlineUs`·`cancelledUs`·`stopped`가 없다. `T`가 `grpc`면 재고·결제의 모든 기록에 `deadlineUs`가 있다(위 층은 늘 기한을 건다) | `records.<서비스>.grpcFieldsOnHttp: 늘 0, 실제 <n>` · `deadline.<inventory/payment>.missing: 늘 0(gRPC), 실제 <n>` |
+| ⑥ | 재고의 `grpc.deadlinePropagation`이 `true`면, 같은 requestId의 결제 기록과 재고 기록이 모두 `deadlineUs`를 가질 때 `(결제 − 재고) / 1000 > 50`(ms)인 것이 0 | `deadline.paymentAfterInventoryOverSlack: 기한 전파를 켰으면 늘 0, 실제 <n>` |
+| ⑦ | `grpc.observeCancellation`이 `false`인 서비스의 기록에 `stopped`가 없다 | `records.<서비스>.stopped: 취소를 보지 않는 조건에서 늘 0, 실제 <n>` |
+
+- 50ms(`DEADLINE_SLACK_MS`)의 까닭: 받은 기한은 "보낸 때의 남은 시간"이 헤더로 가서 받은 쪽이 "받은 때 + 그 시간"으로 다시 세우므로, 전파된 기한도 전달 시간만큼 늦다(같은 컴퓨터 안에서 1ms 안팎). 전파하지 않은 기한과의 차는 이 task의 배치에서 1000ms다(P2 — 설계 7절).
+- 보고(`report-transport.json`)의 키: `chosen`, `settings.<서비스>.deadlinePropagation/observeCancellation`, `counts.<서비스>.<inbound/outbound>.<http/grpc>`, `counts.<서비스>.cancelledBeforeHandler.grpc`, `records.<서비스>.count/calls/wrongTransport/grpcFieldsOnHttp/stopped/cancelled`, `deadline.inventoryMissing/paymentMissing/paymentAfterInventoryMs`(분위수 — 7-3절의 꼴)`/paymentAfterInventoryOverSlack`. `metrics-transport.tsv`는 그것을 편 것(수와 `null`만 — 7-4절과 같다).
+- 입력 오류(종료 코드 1, 두 출력 파일을 쓰지 않고 있던 것은 지운다): 설정에 `transport`나 `grpc`가 객체가 아님, `transport.chosen`이 둘 밖, 불이 아님, `transport-counts.json`의 꼴(세 서비스·두 방향·두 전송의 0 이상 정수), 시각 기록의 꼴(7-2절 + `transport`가 없음, `transport`가 둘 밖, `stopped`가 세 값 밖, 정수 칸이 정수가 아님, `cancelledUs` 음수). 인자: `transport` 뒤에 `--run`(필수), `--expect`(7-4절과 같은 꼴의 기대 파일).
+- 종료 코드: 0 · 1 · 2. `scripts/run.sh`의 종료 코드는 모든 분석 가운데 큰 것(대조 분석이 1이면 이 분석을 돌리지 않는다).
+- **이 대조가 잡는 것**: 고른 전송과 다른 전송으로 불린 호출(설정은 gRPC인데 HTTP 입구에 호출이 들어옴 등), 센 수와 기록의 어긋남, 기한 전파를 켰다는 설정과 기록의 어긋남(P2처럼 위의 기한이 더 이른 배치에서만 — P1에서는 두 조건의 기록이 같다), 취소를 보지 않는다는 설정과 멈춘 기록의 어긋남. **잡지 못하는 것**: 400으로 거절한 호출은 센 수에는 들고 기록에는 없어 ④가 어긋난다(이 task의 시나리오에는 없다 — 어긋나면 멈추는 쪽이다). 전파를 켜지 않았는데 전파된 것(G1에서 P1 배치는 기록이 같아 가를 수 없다 — P2의 `paymentAfterInventoryOverSlack`이 그 몫을 낸다: G1이면 결제 호출 수와 같아야 한다).
+
+### 11-4. 실행 폴더에 더해지는 것과 실행 차례
+
+- 실행 차례(`scripts/run.sh`, 모든 시나리오): 6절의 차례에 더해 — 설정 기록 뒤 세 서비스의 `transport.chosen`·`deadlinePropagation`·`observeCancellation`을 조건(`CHAIN_TRANSPORT`·`GRPC_DEADLINE_PROPAGATION`·`GRPC_OBSERVE_CANCELLATION`)과, 주문·재고의 `transport.nextLayerCall`을 그 전송의 구현(`GrpcNextLayerCall`/`HttpNextLayerCall`)과, 재고·결제의 `transport.grpcServerRunning`을 견줌(다르면 실패) → 상태 초기화에서 `DELETE /transport-counts` → … → 내보내기에서 `transport-counts.json` → 대조 분석 → **전송 대조** → 시각·재시도·멱등 키·한도 분석.
+- 더해지는 파일: `transport-counts.json`, `expect.transport.json`(`TRANSPORT_EXPECT`를 줬으면), `report-transport.json`, `metrics-transport.tsv`. `config.env`에 `chain_transport`·`grpc_deadline_propagation`·`grpc_observe_cancellation`·`transport_expect`.
+- 처리 중인 요청 수(`GET /inflight`, 0절·6절의 가라앉기): gRPC 서버를 띄운 서비스는 처리 코드 안의 수 + 받았지만 아직 닫히지 않은 gRPC 호출 수(실행기 큐에서 기다리는 것 포함)를 낸다 — 처리 중인 호출이 두 번 세지므로 **0인지만 뜻이 있다**(가라앉기는 0인지만 본다). HTTP 전송에서는 지금까지와 같다. 표본의 `inflight`는 처리 코드 안의 수 그대로다.
+- 표본(`samples-<서비스>.json`): gRPC 서버를 띄운 서비스(gRPC 전송의 재고·결제)는 업무 요청이 Tomcat이 아니라 gRPC 서버 실행기에서 돈다 — 그 서비스의 표본의 `active`·`poolSize`·`maxThreads`·`queue`는 **gRPC 서버 실행기**의 값이고 `connections`는 `null`이다. 주문(부하 도구와 HTTP)은 Tomcat 그대로.
+- 조건 하나는 `INDEX=runs/task-05-index.tsv scripts/task04.sh`, 모두는 `scripts/task05-all.sh`, 묶기는 `scripts/task04-pack.sh`.
+
+### 11-5. 테스트 입구 — Spring 없이 부르는 것
+
+서비스 쪽 규칙의 입구는 설계 9절(`chain-link`, `GrpcRules.kt`). 분석기: `runAnalyzer(arrayOf("transport", "--run", …))` = `analyzer transport --run …`, `transportReport(run: Path): Pair<Map<String, Any?>, List<String>>`(보고와 늘 견주는 것의 차이 줄), 읽기 `readTransportSetting(path)`·`readTransportCounts(path)`, 상수 `DEADLINE_SLACK_MS`(50.0), `TRANSPORTS`, 시각 지표의 `GIVE_UP_OUTCOMES`·`STOP_REASONS`.
+
+### 11-6. 알려진 한계
+
+- `deadlineUs`는 서버가 받은 남은 기한을 자기 시계로 다시 세운 값이다 — 같은 컴퓨터의 같은 시계에 기댄다(7-5절).
+- `cancelledUs`는 서비스가 그 호출의 문맥이 취소된 것을 안 시각이다. 위가 끊은 신호(RST_STREAM)가 닿은 때와 받은 기한이 지난 때 가운데 이른 것이고, 둘을 가르지 않는다.
+- 들어온 HTTP를 세는 자리는 시각 기록을 남기는 입구 필터와 같은 클래스의 맨 앞이다(같은 필터의 다른 자리 — 순서가 정해진 다른 필터로 두면 Spring의 다른 필터와의 차례가 바뀐다). gRPC는 서버 인터셉터라 클래스도 다르다.
