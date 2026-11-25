@@ -336,7 +336,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | (task 05) `waste.<L>.cancelBeforeDeadline` | 그 가운데 `cancelledUs − deadlineUs < −500`μs인 것(`CANCEL_BEFORE_DEADLINE_MARGIN_US` = 500)의 수 — **L이 받은 기한보다 먼저 안 취소**(부른 쪽이 끊은 신호 RST_STREAM이 기한 전에 닿았다). 둘 가운데 하나라도 없는 기록은 세지 않는다. 이 신호가 위의 위에서 전파된 취소인지, 바로 위가 같은 기한에 끊은 것인지는 가르지 못한다 — 받은 쪽은 기한을 "받은 때 + 남은 시간"으로 다시 세워 전달 시간만큼 늦으므로, 바로 위가 같은 기한에 끊은 신호도 L의 타이머보다 먼저 닿을 수 있다(11-3절 ⑥의 50ms의 까닭과 같다). 테스트 입구: `timingReport(run, null)["waste"][L]["cancelBeforeDeadline"]`, `cancelMinusDeadlineUs(t: Timing): Long?`, 상수 `CANCEL_BEFORE_DEADLINE_MARGIN_US` |
 | (task 05) `layers.<L>.stopped.<자리>` | L의 시각 기록 가운데 `stopped`가 그 자리인 것의 수(자리 셋 모두 — 없으면 0) |
 | `samples.<서비스>.maxGapMs` | 이웃한 표본의 `atMs` 차의 최대. **표본이 하나면 `null`**(간격이 없다 — 7-4의 검사가 차이 줄을 낸다) |
-| `samples.<서비스>.maxInflight`·`maxActive`·`maxThreads`·`maxQueue`·`maxConnections` | 표본의 최대(그 칸이 모두 `null`이면 `null`) |
+| `samples.<서비스>.maxInflight`·`maxActive`·`maxThreads`·`maxQueue`·`maxConnections` | 표본의 최대(그 칸이 모두 `null`이면 `null`). **Tomcat 표본의 `queue`가 0보다 크다고 스레드를 기다린 요청이 있었던 것은 아니다**(7-5절) — 스레드를 기다렸는지는 `saturatedMs`로 본다 |
 | `samples.<서비스>.saturatedMs` | `active ≥ maxThreads`인 표본 수 × `intervalMs`(`maxThreads`가 없으면 `null`) |
 | `samples.<서비스>.meanLoadDuringSend` | `atMs`가 [첫 `sentAtMs`, 마지막 `sentAtMs`](양끝 포함)인 표본의 `inflight + queue`(queue가 `null`이면 0) 평균. **그 창 안에 표본이 없으면 `null`**(7-4의 검사가 차이 줄을 낸다 — 보내는 시간이 표본 간격보다 짧은 실행) |
 | `slow.startMs`·`endMs` | `--slow-label`과 `fault`가 같은 정답의 `sentAtMs` 최소·최대(느린 구간) |
@@ -365,6 +365,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 - 시계: 세 서비스(컨테이너)와 k6가 한 컴퓨터의 같은 커널 시계를 쓴다는 것에 기댄다. 서버 여러 대로 나누면(task 06) 시계가 어긋난 만큼 `giveUp`과 `end`의 차가 틀린다 — 그때 다시 본다.
 - `end`는 입구 필터를 나간 때다. 처리 코드가 예외로 끝나면 `status`는 필터를 나갈 때의 값이라 실제 응답(오류 페이지)과 다를 수 있다.
 - 헛일은 "위가 포기한 뒤 아래가 쓴 시간"이다. HTTP 경로에서는 아래가 위의 포기를 알 길이 없으므로(취소가 전해지지 않는다) 아래 층은 늘 끝까지 일한다. task 05의 gRPC 경로에서는 아래 층이 받은 기한이 지난 것이나 취소를 알 수 있다(`cancelledUs` — 11절. 둘을 가르지 않는다) — 알고도 계속하는지는 조건(처리 코드가 보는가 — G3·G1o)이 정한다.
+- **Tomcat 표본의 `queue`에는 빈 스레드에 넘겨주는 중인 일이 든다**(2026-11-25 확인 — `docs/calibration.md` "cal-sampler의 큐 1"). Tomcat 11.0.27의 `TaskQueue.offer`는 풀이 상한에 닿았을 때와 함께 **빈 스레드가 있을 때**(`submittedCount ≤ poolSize`)도 일을 큐에 넣고, 빈 스레드가 그것을 꺼내 간다. 빈 스레드가 없고 풀이 상한보다 작을 때만 큐를 거치지 않고 스레드를 새로 만든다. 그래서 풀이 상한보다 작은 동안 표본에 잡히는 `queue` 1은 꺼내 가기 직전의 순간이고 스레드를 기다린 요청이 아니다. 기다림은 풀이 상한에 닿은 뒤에만 생긴다(`saturatedMs`). `inflight + queue`를 쓰는 지표(`meanLoadDuringSend`, `slow.baselineOrderLoad`, `slow.recoveredBySamples`·`recoveryBySamplesMs`)는 이 몫으로 1쯤 흔들릴 수 있다 — 상한에 닿은 동안(task 02 실험 나의 느린 구간)의 큐 수백과 견주면 작지만, 기준값(`baselineOrderLoad`)에 1이 더해지거나 빠지면 회복 판정의 문턱이 1 움직인다.
 - 헛일의 건수(`wasted`)는 `end > giveUp`인 것을 센다 — 취소로 곧 멈춘 일도 `giveUp`보다 조금이라도 늦게 끝나면 한 건이다. 취소의 효과는 건수보다 시간(`wastedMsSum`)과 처리 행(`wastedProcessed`)에 나온다.
 - 표본 간격 100ms보다 짧게 차고 빠지는 것은 보이지 않는다.
 
