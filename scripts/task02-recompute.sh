@@ -7,6 +7,7 @@
 # 분석기 이미지는 지금의 코드로 짓는다(docker compose build analyzer).
 # WRITE=yes 를 주면 견주지 않고, 다시 돈 보고로 실행 폴더의 보고(report.json·report.md·report-timing.json·metrics.tsv)를 바꾼다 —
 # 분석기의 지표를 고친 뒤 커밋한 실행들을 지금의 분석기로 다시 분석할 때(그 뒤 WRITE 없이 다시 돌려 같음을 확인한다).
+# WRITE=yes에서 분석기의 종료 코드가 하나라도 0이 아닌 실행은 보고를 쓰지 않고 실패로 센다(종료 코드 1 — R06-4, task04-recompute.sh와 같다).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib.sh
@@ -38,6 +39,11 @@ for run in "$@"; do
   trc=$?
   set -e
   if [[ ${WRITE:-no} == yes ]]; then
+    if ((rc != 0 || trc != 0)); then
+      echo "$name: 대조 분석 $rc, 시각 분석 $trc — 0이 아닌 분석이 있어 보고를 쓰지 않음(실패)"
+      bad=1
+      continue
+    fi
     for f in report.json report.md report-timing.json metrics.tsv; do
       [[ -f $tmp/$f ]] || die "$name: 다시 돈 분석이 $f 를 쓰지 않았다(대조 분석 $rc, 시각 분석 $trc)"
       sed "s#/runs/.recompute/${name}#/runs/${name}#g" "$tmp/$f" > "$run/$f"

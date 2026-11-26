@@ -12,12 +12,14 @@
 # 기록: runs/<시나리오>-<시각>-r<번호>/ (형식은 docs/measurement.md)
 # 서비스는 먼저 scripts/up.sh 로 띄워 둔다. 종료 코드: 0 통과, 1 실행 실패, 2 분석 결과가 기대와 다름.
 # (task 06) 서버에서 잴 때: SERVICES_SSH(서비스 서버 — scripts/lib.sh 머리)를 주고 이 스크립트를 부하 서버에서 돌린다. 그때만 더 하는 것:
-#   두 서버의 코드가 같은 커밋인지(scripts/servers-sync.sh가 보낸 .deployed-commit·.deployed-sha256), 두 서버가 조용한지
-#   (1분 load average ≤ 코어 수 × LOADAVG_MAX_PER_CORE — 아니면 10초마다 보며 LOADAVG_WAIT_SECONDS까지 기다리고, 그래도 높으면 실패),
-#   두 서버 시계의 어긋남(실행 앞·뒤 두 번 — 앞뒤의 차가 CLOCK_DRIFT_MAX_MS(기본 5)ms보다 크면 분석기가 입력 오류로 낸다),
+#   두 서버의 코드가 같은 커밋인지(scripts/servers-sync.sh가 보낸 .deployed-commit·.deployed-sha256 — 두 서버의 목록 자체의 sha256도 견준다),
+#   두 서버가 조용한지(1분 load average ≤ 코어 수 × LOADAVG_MAX_PER_CORE — 아니면 10초마다 보며 LOADAVG_WAIT_SECONDS까지 기다리고, 그래도 높으면 실패),
+#   두 서버 시계의 어긋남(부하 구간에 붙여 두 번 — k6를 띄우기 직전과 k6가 끝난 직후. 앞뒤의 차가 CLOCK_DRIFT_MAX_MS(기본 5)ms보다 크면
+#   분석기가 입력 오류로 낸다),
 #   서비스 서버의 이름·코어·메모리·load average(앞·뒤)를 config.env에 남긴다. 규칙과 까닭: docs/experiments/task-06-design.md 2절,
 #   어긋남을 분석에 쓰는 규칙: docs/measurement.md 12절. 앞의 어긋남은 k6에도 넘겨(CLOCK_OFFSET_MS) 구간 장애의 시각을 서비스의 시계로 옮긴다.
-# K6 = k6 실행 파일(기본 PATH의 k6). 판이 K6_REQUIRED_VERSION이 아니면 실패한다(노트북과 서버가 같은 판 — docs/dependencies.md "task 06").
+# K6 = k6 실행 파일(기본 PATH의 k6). `k6 version`의 줄 전체가 K6_REQUIRED_VERSION_LINE이 아니거나 바이너리의 sha256이 K6_SHA256(scripts/lib.sh)이
+#   아니면 실패한다(노트북과 서버가 같은 판·같은 바이너리 — docs/dependencies.md "task 06").
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib.sh
@@ -144,9 +146,11 @@ PLANNED=$((RATE * DURATION_SECONDS + SPIKE_RATE * SPIKE_SECONDS)) # task 04-b: �
 PLANNED_ANSWERS=$((PLANNED * ANSWERS_PER_8_ITERATIONS / 8))
 BASE_URL=http://${SERVICES_HOST}:8081
 K6=${K6:-k6}
-K6_REQUIRED_VERSION=v2.4.0
+k6_path=$(command -v "$K6") || die "k6($K6)를 찾지 못했다"
+k6_sha256=$(sha256sum "$(readlink -f "$k6_path")" | cut -d' ' -f1) || die "k6($k6_path)의 sha256을 읽지 못했다"
+[[ $k6_sha256 == "$K6_SHA256" ]] || die "k6 바이너리가 정한 것이 아니다($k6_path: sha256 $k6_sha256, 정한 것 $K6_SHA256)"
 k6_version=$("$K6" version 2>&1 | head -1) || die "k6($K6)를 부르지 못했다: $k6_version"
-[[ $k6_version == "k6 $K6_REQUIRED_VERSION "* ]] || die "k6 판이 $K6_REQUIRED_VERSION 이 아니다($K6: $k6_version)"
+[[ $k6_version == "$K6_REQUIRED_VERSION_LINE" ]] || die "k6 판이 정한 것이 아니다($K6: '$k6_version', 정한 것 '$K6_REQUIRED_VERSION_LINE')"
 LOADAVG_MAX_PER_CORE=${LOADAVG_MAX_PER_CORE:-0.25}
 LOADAVG_WAIT_SECONDS=${LOADAVG_WAIT_SECONDS:-600}
 CLOCK_DRIFT_MAX_MS=${CLOCK_DRIFT_MAX_MS:-5}
@@ -161,10 +165,16 @@ log "실행 $NAME"
 require_running
 wait_ready
 # 1-0. (task 06) 두 서버의 코드가 scripts/servers-sync.sh가 보낸 같은 커밋이고, 보낸 뒤 바뀐 파일이 없는가.
+#      각 서버의 파일을 자기 목록(.deployed-sha256 — .deployed-commit도 든다)으로 보고, 두 목록 자체의 sha256을 견준다(R06-2 —
+#      목록이 서로 다르면 각자 맞아도 다른 코드다).
 if [[ -n $SERVICES_SSH ]]; then
-  [[ -f .deployed-commit ]] || die "이 컴퓨터의 사본에 .deployed-commit이 없다 — scripts/servers-sync.sh로 보낸다"
+  [[ -f .deployed-commit && -f .deployed-sha256 ]] || die "이 컴퓨터의 사본에 .deployed-commit·.deployed-sha256이 없다 — scripts/servers-sync.sh로 보낸다"
+  grep -q '  \.deployed-commit$' .deployed-sha256 || die "이 컴퓨터의 .deployed-sha256에 .deployed-commit이 없다 — 지금의 scripts/servers-sync.sh로 다시 보낸다"
   services_commit=$(on_services cat .deployed-commit) || die "서비스 서버의 .deployed-commit을 읽지 못했다"
   [[ $services_commit == "$(cat .deployed-commit)" ]] || die "두 서버의 코드가 다른 커밋이다(이 컴퓨터 $(cat .deployed-commit), 서비스 서버 $services_commit)"
+  manifest_here=$(sha256sum < .deployed-sha256 | cut -d' ' -f1)
+  manifest_services=$(on_services sha256sum .deployed-sha256 | cut -d' ' -f1) || die "서비스 서버의 .deployed-sha256을 읽지 못했다"
+  [[ $manifest_here == "$manifest_services" ]] || die "두 서버의 .deployed-sha256이 다르다(이 컴퓨터 $manifest_here, 서비스 서버 $manifest_services)"
   sha256sum --quiet -c .deployed-sha256 > /dev/null 2>&1 || die "이 컴퓨터의 사본이 보낸 커밋과 다르다(sha256sum -c .deployed-sha256)"
   on_services sha256sum --quiet -c .deployed-sha256 > /dev/null 2>&1 || die "서비스 서버의 사본이 보낸 커밋과 다르다"
 fi
@@ -179,23 +189,26 @@ for svc in order inventory payment; do
   [[ $running_image == "$built_image" ]] || die "$svc 가 지금의 코드로 지은 이미지로 떠 있지 않다 — scripts/up.sh 를 다시 돌린다"
 done
 
-# 1-2. (task 06) 두 서버가 조용해질 때까지 기다리고(못 미치면 실패), 시계의 어긋남을 잰다.
+# 1-2. (task 06) 두 서버가 조용해질 때까지 기다린다(못 미치면 실패). 시계는 부하 구간에 붙여 잰다(5절 바로 앞과 바로 뒤 — R06-5).
 if [[ -n $SERVICES_SSH ]]; then
   log "두 서버의 load average 확인(코어당 ${LOADAVG_MAX_PER_CORE} 이하, 최대 ${LOADAVG_WAIT_SECONDS}s 기다림)"
   quiet=$(wait_quiet "$LOADAVG_MAX_PER_CORE" "$LOADAVG_WAIT_SECONDS")
-  clock=$(clock_offset)
 fi
 
-# 2. 설정 기록 — 바꾼 것과 같게 둔 것. git을 읽지 못하면(사본으로 옮긴 경우 등) "모름"으로 적는다.
-git_commit=$(git rev-parse HEAD 2>/dev/null) || git_commit=모름
-if git_status=$(git status --porcelain 2>/dev/null); then
-  [[ -z $git_status ]] && git_dirty=no || git_dirty=yes
-elif [[ -f .deployed-commit && -f .deployed-sha256 ]]; then
-  # (task 06) scripts/servers-sync.sh가 보낸 사본: 보낸 커밋, 깨끗한지는 보낸 파일의 sha256으로 본다(보낸 뒤 더한 파일은 보지 못한다).
+# 2. 설정 기록 — 바꾼 것과 같게 둔 것.
+# 커밋: 서버에서 잴 때(SERVICES_SSH)는 scripts/servers-sync.sh가 보낸 커밋 표지를 쓰고 깨끗한지는 보낸 파일의 sha256으로 본다
+#   (보낸 뒤 더한 파일은 보지 못한다) — 부하 서버의 홈이 다른 git 저장소 아래여도 그 저장소의 커밋을 적지 않게(R06-9).
+#   노트북에서는 git(task 01~05 그대로). git을 읽지 못하면 "모름".
+if [[ -n $SERVICES_SSH ]]; then
   git_commit=$(cat .deployed-commit)
   if git_status=$(sha256sum --quiet -c .deployed-sha256 2>/dev/null); then git_dirty=no; else git_dirty=yes; git_status=$(sed -n 's/: FAILED.*$//p' <<< "$git_status"); fi
 else
-  git_dirty=모름; git_status=""
+  git_commit=$(git rev-parse HEAD 2>/dev/null) || git_commit=모름
+  if git_status=$(git status --porcelain 2>/dev/null); then
+    [[ -z $git_status ]] && git_dirty=no || git_dirty=yes
+  else
+    git_dirty=모름; git_status=""
+  fi
 fi
 {
   echo "scenario=$SCENARIO"
@@ -243,6 +256,7 @@ fi
   echo "settle_timeout_seconds=$SETTLE_TIMEOUT_SECONDS"
   echo "warmup=${WARMUP_RATE}/s x ${WARMUP_SECONDS}s"
   echo "k6_version=$k6_version"
+  echo "k6_sha256=$k6_sha256"
   echo "host_nproc=$(nproc)"
   echo "host_mem_total_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
   echo "host_loadavg_start=$(cat /proc/loadavg)" # 이 컴퓨터의 다른 부하(task 04-b — 실행 끝의 값은 host_loadavg_end)
@@ -250,7 +264,6 @@ fi
 # (task 06) 서버에서 잴 때만: 두 서버와 조용함·시계(규칙: docs/experiments/task-06-design.md 2절). 주소는 끝 마디만 남긴다.
 if [[ -n $SERVICES_SSH ]]; then
   read -r quiet_waited quiet_load_here quiet_load_services <<< "$quiet"
-  read -r clock_ms clock_err_ms <<< "$clock"
   s_host=$(on_services hostname) && s_nproc=$(on_services nproc) && s_mem=$(on_services awk '/MemTotal/ {print $2}' /proc/meminfo) \
     && s_load=$(on_services cat /proc/loadavg) || die "서비스 서버의 정보를 읽지 못했다"
   {
@@ -265,8 +278,6 @@ if [[ -n $SERVICES_SSH ]]; then
     echo "quiet_waited_seconds=$quiet_waited"
     echo "quiet_loadavg_load_host=$quiet_load_here"
     echo "quiet_loadavg_services_host=$quiet_load_services"
-    echo "clock_offset_services_minus_load_ms_start=$clock_ms"
-    echo "clock_offset_error_ms_start=$clock_err_ms"
     echo "clock_offset_drift_max_ms=$CLOCK_DRIFT_MAX_MS"
   } >> "$OUT/config.env"
 fi
@@ -397,6 +408,13 @@ echo "order_retry_budget_start_tokens=$(budget_tokens "$b_order")" >> "$OUT/conf
 echo "inventory_retry_budget_start_tokens=$(budget_tokens "$b_inventory")" >> "$OUT/config.env"
 
 # 5. 부하. k6가 실패로 끝나면(스크립트 오류 등) 실행도 실패다.
+# 5-0. (task 06) 시계의 어긋남을 k6를 띄우기 바로 앞에 잰다(워밍업·상태 초기화 뒤) — 이 값을 k6에 넘겨 구간 장애의 시각을 옮긴다(CLOCK_OFFSET_MS).
+if [[ -n $SERVICES_SSH ]]; then
+  clock=$(clock_offset) || die "k6 앞의 시계 어긋남을 재지 못했다"
+  read -r clock_ms clock_err_ms <<< "$clock"
+  echo "clock_offset_services_minus_load_ms_start=$clock_ms" >> "$OUT/config.env"
+  echo "clock_offset_error_ms_start=$clock_err_ms" >> "$OUT/config.env"
+fi
 log "부하 ${RATE}/s × ${DURATION_SECONDS}s = ${PLANNED}건"
 k6_flags=()
 [[ $K6_NO_CONNECTION_REUSE == true ]] && k6_flags+=(--no-connection-reuse)
@@ -407,6 +425,15 @@ k6_flags=()
   --log-output=file="$OUT/k6-log.txt" --log-format=raw \
   --summary-export="$OUT/k6-summary.json" load/chain.js > "$OUT/k6-stdout.txt" 2>&1 \
   || die "k6가 실패했다 — $OUT/k6-stdout.txt"
+# 5-1. (task 06) k6가 끝난 바로 뒤(가라앉기·내보내기 앞)에 한 번 더 잰다. 분석기가 앞·뒤의 평균을 쓰고,
+#      차가 clock_offset_drift_max_ms보다 크면 입력 오류로 낸다(docs/measurement.md 12절).
+if [[ -n $SERVICES_SSH ]]; then
+  clock_end=$(clock_offset) || die "k6 뒤의 시계 어긋남을 재지 못했다"
+  read -r clock_end_ms clock_end_err_ms <<< "$clock_end"
+  echo "clock_offset_services_minus_load_ms_end=$clock_end_ms" >> "$OUT/config.env"
+  echo "clock_offset_error_ms_end=$clock_end_err_ms" >> "$OUT/config.env"
+  log "시계 어긋남: k6 앞 ${clock_ms}ms, 뒤 ${clock_end_ms}ms"
+fi
 grep '^{"type":"answer"' "$OUT/k6-log.txt" > "$OUT/answers.jsonl" || die "정답 줄이 하나도 없다 — $OUT/k6-log.txt"
 if ((LOOKUP_RATE > 0)); then
   grep '^{"type":"lookup"' "$OUT/k6-log.txt" > "$OUT/lookups.jsonl" || die "조회 줄이 하나도 없다 — $OUT/k6-log.txt"
@@ -504,16 +531,6 @@ if [[ $RETRY == yes ]]; then
   a_order=$(curl -sf ${SERVICES_HOST}:8081/attempt-faults) && a_inventory=$(curl -sf ${SERVICES_HOST}:8082/attempt-faults) && a_payment=$(curl -sf ${SERVICES_HOST}:8083/attempt-faults) \
     || die "/attempt-faults를 받지 못했다"
   printf '{"order":%s,"inventory":%s,"payment":%s}\n' "$a_order" "$a_inventory" "$a_payment" > "$OUT/attempt-faults.json"
-fi
-
-# 7-1. (task 06) 시계의 어긋남을 실행 뒤에 한 번 더 잰다(부하·가라앉기·내보내기 뒤, 분석 앞). 분석기가 앞·뒤의 평균을 쓰고,
-#      차가 clock_offset_drift_max_ms보다 크면 입력 오류로 낸다(docs/measurement.md 12절).
-if [[ -n $SERVICES_SSH ]]; then
-  clock_end=$(clock_offset)
-  read -r clock_end_ms clock_end_err_ms <<< "$clock_end"
-  echo "clock_offset_services_minus_load_ms_end=$clock_end_ms" >> "$OUT/config.env"
-  echo "clock_offset_error_ms_end=$clock_end_err_ms" >> "$OUT/config.env"
-  log "시계 어긋남: 앞 ${clock_ms}ms, 뒤 ${clock_end_ms}ms"
 fi
 
 # 8. 분석(컨테이너 안). 기대 파일이 있으면 실행 기록에 함께 넣고 견준다.

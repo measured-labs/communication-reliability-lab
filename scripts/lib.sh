@@ -2,6 +2,11 @@
 SERVICE_PORTS=(order:8081 inventory:8082 payment:8083)
 
 log() { echo "[$(date +%H:%M:%S)] $*" >&2; }
+
+# k6: 노트북과 서버가 같은 판·같은 바이너리(docs/dependencies.md "task 06"). run.sh가 실행마다 `k6 version`의 줄 전체와
+# 바이너리의 sha256을 이 값과 견준다(다르면 실패). sha256 = 공식 k6-v2.4.0-linux-amd64.tar.gz 안의 k6(노트북의 /usr/bin/k6와 같다 — 2026-11-26).
+K6_REQUIRED_VERSION_LINE="k6 v2.4.0 (commit/dd9395906d, go1.26.11, linux/amd64)"
+K6_SHA256=e24c0e749aa5f72ef9bcbf59d137188bb30e0ccd15d7aa4aeac35bda17ce603e
 die() { echo "실패: $*" >&2; exit 1; }
 
 # (task 06) 서비스(세 서비스 + PostgreSQL)가 도는 곳. 주지 않으면 이 컴퓨터 — task 01~05의 동작 그대로.
@@ -11,6 +16,9 @@ die() { echo "실패: $*" >&2; exit 1; }
 #   SERVICES_HOST  서비스의 HTTP 주소. 줄 필요는 없다 — 주면 SERVICES_SSH의 주소와 같아야 하고(다르면 한 서버의 서비스를 HTTP로 재며
 #                  다른 서버의 Docker를 보는 것이라 멈춘다), SERVICES_SSH 없이 localhost가 아닌 값을 주면 멈춘다.
 # 분석기는 늘 이 컴퓨터의 Docker에서 돈다(실행 기록 runs/가 여기에 있다) — COMPOSE_LOCAL.
+#   SERVICES_SSH_CONTROL  (선택) 이미 열어 둔 ssh 마스터 연결의 소켓 경로. 주면 서비스 서버로의 ssh가 모두 그 연결을 다시 쓴다
+#                  (ControlMaster=no — 새로 맺지 않는다. 마스터가 없으면 실패). 노트북의 세션이 끊겨도 부하 서버에서 실행기가
+#                  이어 돌게 하려고(전달된 agent는 세션과 함께 사라진다) — 여는 법: docs/experiments/task-06-design.md 1절.
 SERVICES_SSH=${SERVICES_SSH:-}
 SERVICES_DIR=communication-reliability-lab # 서비스 서버의 작업 폴더(홈 아래) — scripts/servers-sync.sh가 코드를 보내는 곳
 if [[ -n $SERVICES_SSH ]]; then
@@ -18,8 +26,13 @@ if [[ -n $SERVICES_SSH ]]; then
   [[ -z ${SERVICES_HOST:-} || $SERVICES_HOST == "${SERVICES_SSH#*@}" ]] \
     || die "SERVICES_HOST($SERVICES_HOST)가 SERVICES_SSH의 주소(${SERVICES_SSH#*@})와 다르다 — 서비스의 HTTP와 Docker가 한 서버여야 한다"
   SERVICES_HOST=${SERVICES_SSH#*@}
+  SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=10)
+  if [[ -n ${SERVICES_SSH_CONTROL:-} ]]; then
+    [[ -S $SERVICES_SSH_CONTROL ]] || die "SERVICES_SSH_CONTROL '$SERVICES_SSH_CONTROL' 에 ssh 마스터 연결의 소켓이 없다"
+    SSH_OPTS+=(-o ControlMaster=no -o "ControlPath=$SERVICES_SSH_CONTROL")
+  fi
   # 서비스 서버에서 명령 하나. 인자마다 %q로 감싸 원격 셸이 다시 나누지 않게 한다(psql의 SQL 등). 표준 입력은 넘기지 않는다(-n).
-  on_services() { ssh -n -o BatchMode=yes -o ConnectTimeout=10 "$SERVICES_SSH" "cd ~/$SERVICES_DIR && $(printf '%q ' "$@")"; }
+  on_services() { ssh -n "${SSH_OPTS[@]}" "$SERVICES_SSH" "cd ~/$SERVICES_DIR && $(printf '%q ' "$@")"; }
   ON_SERVICES=(on_services)
   # 조건은 compose.yaml이 환경 변수(${VAR:-기본})로 읽는다. ssh는 환경을 넘기지 않으므로 이 컴퓨터에서 내보낸(export) 그 변수들만 골라
   # 서비스 서버의 docker compose에 그대로 준다 — 이 컴퓨터에서 compose를 부를 때와 같은 값이 걸린다(어긋나면 run.sh의 /settings 대조가 잡는다).
@@ -82,7 +95,8 @@ wait_ready() {
 # 네 컨테이너(postgres + 세 서비스)가 모두 running인지. 하나라도 죽었으면 실패.
 require_running() {
   local running
-  running=$("${COMPOSE[@]}" ps --status running --services | sort | tr '\n' ' ')
+  running=$("${COMPOSE[@]}" ps --status running --services) || die "컨테이너의 상태를 읽지 못했다(docker compose ps)"
+  running=$(sort <<< "$running" | sed '/^$/d' | tr '\n' ' ')
   [[ $running == "inventory order payment postgres " ]] || {
     "${COMPOSE[@]}" ps -a >&2
     die "떠 있어야 할 컨테이너가 없다 (running: ${running:-없음})"
@@ -137,7 +151,7 @@ wait_quiet() { # <코어당 문턱> <최대 기다림 초>
 # 왕복이 가장 짧은 한 번을 쓴다. 표준 출력에 "<어긋남 ms> <오차 ms>"(소수 셋째 자리).
 clock_offset() {
   local t0 t1 r i best_rtt=-1 best_off=0 rtt
-  coproc CLOCK { ssh -o BatchMode=yes -o ConnectTimeout=10 "$SERVICES_SSH" 'while read -r _; do date +%s%N; done'; }
+  coproc CLOCK { ssh "${SSH_OPTS[@]}" "$SERVICES_SSH" 'while read -r _; do date +%s%N; done'; }
   for i in $(seq 1 20); do
     t0=${EPOCHREALTIME/[.,]/}
     echo >&"${CLOCK[1]}"

@@ -19,7 +19,8 @@ send() {
 }
 count() { psql_lab "$1" "$2"; }
 {
-  echo "git_commit=$(git rev-parse HEAD 2>/dev/null || cat .deployed-commit 2>/dev/null || echo 모름)" # (task 06) 서버의 사본은 보낸 커밋
+  # (task 06) 서버에서 잴 때는 보낸 커밋 표지를 git보다 먼저(scripts/run.sh 2절과 같다 — R06-9)
+  echo "git_commit=$({ [[ -n $SERVICES_SSH ]] && cat .deployed-commit; } || git rev-parse HEAD 2>/dev/null || echo 모름)"
   echo "started_at=$(date -Iseconds)"
   echo "key=$KEY"
   send first

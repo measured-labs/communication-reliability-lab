@@ -4,7 +4,8 @@
 # 대상: 다섯 색인(runs/task-02·03·04·04b·05-index.tsv)의 실험 줄 — 반복 0(버리는 실행)과 비고가 "대체됨"으로 시작하는 줄은 뺀다.
 #   실험 이름: task 02 ga·na·da, task 03 ga·na·da·ra, task 04 ga·na·da·ra, task 04-b ga·na·pl, task 05 exp-P1·exp-P2·exp2-P1·exp2-P2
 #   (보정 cal·base·cal2, keylinks, chk, diag, smoke는 넣지 않는다). 모두 돌리면 조건 75개(키 71 — task 05의 exp와 exp2의 P1-G1·P1-G3·P2-G1·P2-G3은
-#   같은 키), 실행 241개다(docs/experiments/task-06-prep.md 머리) — 그 수를 출력한다.
+#   같은 키), 실행 241개다(docs/experiments/task-06-prep.md 머리) — 그 수를 출력한다. 색인 하나라도 읽지 못하거나 색인의 실험 줄이
+#   241개가 아니면(고른 것과 상관없이) 분석을 돌리지 않고 실패한다(R06-3 — 색인이 빠진 채 나머지만 통과하지 않게).
 # 키: task 02·03·04 = t0N-<조건>, task 04-b = t04b-<조건>-<시나리오에서 overload- 를 뗀 것>, task 05 = t05-<조건>.
 # 실행마다 raw.tar.gz를 runs/.recompute/<실행 이름>-expect/에 풀고, 그 실행이 원래 돌린 분석(실행 폴더에 보고가 있는 것 — 대조 분석은 늘,
 #   report-transport·retry·timing·idem·overload.json이 있으면 그 하위 명령)을 scripts/task04-recompute.sh와 같은 인자로 돌린다.
@@ -17,10 +18,12 @@ cd "$(dirname "$0")/.."
 source scripts/lib.sh
 
 X=load/expectations
-# 색인 → "키<TAB>실행 폴더" 줄
+EXPECTED_RUNS=241
+# 색인 → "키<TAB>실행 폴더" 줄. 색인을 읽지 못하면 실패(awk의 종료 코드 — 아래에서 명령 치환의 종료 코드로 받는다).
 list_runs() {
   local t exps
   for t in 02 03 04 04b 05; do
+    [[ -r runs/task-$t-index.tsv ]] || { echo "실패: 색인 runs/task-$t-index.tsv 를 읽지 못했다" >&2; return 1; }
     case $t in
       02) exps="ga na da" ;; 03|04) exps="ga na da ra" ;; 04b) exps="ga na pl" ;; 05) exps="exp-P1 exp-P2 exp2-P1 exp2-P2" ;;
     esac
@@ -28,7 +31,7 @@ list_runs() {
       NR > 1 && ($1 in ok) && $4 != 0 && $8 !~ /^대체됨/ {
         key = "t" t "-" $2
         if (t == "04b") { sc = $3; sub(/^overload-/, "", sc); key = key "-" sc }
-        print key "\t" $5 }' "runs/task-$t-index.tsv"
+        print key "\t" $5 }' "runs/task-$t-index.tsv" || return 1
   done
 }
 picked() { # <키> — 인자가 없거나, 인자 가운데 하나가 키와 같거나 키의 "<인자>-" 앞 조각이면
@@ -38,9 +41,12 @@ picked() { # <키> — 인자가 없거나, 인자 가운데 하나가 키와 �
   return 1
 }
 SELECT=("$@")
-mapfile -t ROWS < <(list_runs)
+rows=$(list_runs) || die "색인을 읽지 못했다"
+mapfile -t ROWS <<< "$rows"
+[[ -n $rows ]] || ROWS=()
 all_keys=$(printf '%s\n' "${ROWS[@]}" | cut -f1 | sort -u | wc -l)
-log "색인의 실험 줄: 키 ${all_keys}개, 실행 ${#ROWS[@]}개(모두 돌리면 실행 241이어야 한다)"
+log "색인의 실험 줄: 키 ${all_keys}개, 실행 ${#ROWS[@]}개(${EXPECTED_RUNS}이어야 한다)"
+((${#ROWS[@]} == EXPECTED_RUNS)) || die "색인의 실험 줄이 ${#ROWS[@]}개다 — ${EXPECTED_RUNS}개여야 한다(색인이 빠졌거나 바뀌었다)"
 sel=()
 for row in "${ROWS[@]}"; do picked "${row%%$'\t'*}" && sel+=("$row"); done
 ((${#sel[@]} > 0)) || die "고른 실행이 없다: ${SELECT[*]}"

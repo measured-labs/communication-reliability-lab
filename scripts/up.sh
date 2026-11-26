@@ -5,12 +5,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib.sh
 
-if [[ -z $("${COMPOSE[@]}" ps -q) ]]; then
+# 명령(원격이면 ssh)이 실패하면 멈춘다 — 빈 출력을 "떠 있는 것이 없다"·"포트가 비어 있다"로 읽지 않게(R06-6).
+ours=$("${COMPOSE[@]}" ps -q) || die "이 프로젝트의 컨테이너 목록을 읽지 못했다(docker compose ps)"
+if [[ -z $ours ]]; then
   for entry in "${SERVICE_PORTS[@]}"; do
     port=${entry#*:}
-    if "${ON_SERVICES[@]}" ss -ltnH "sport = :${port}" | grep -q .; then
-      die "호스트 포트 ${port}를 이미 누가 쓴다 — 다른 프로젝트의 것을 건드리지 않으려고 멈춘다"
-    fi
+    listening=$("${ON_SERVICES[@]}" ss -ltnH "sport = :${port}") || die "포트 ${port}를 확인하지 못했다(ss)"
+    [[ -z $listening ]] || die "호스트 포트 ${port}를 이미 누가 쓴다 — 다른 프로젝트의 것을 건드리지 않으려고 멈춘다"
   done
 fi
 
