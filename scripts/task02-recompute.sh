@@ -12,7 +12,7 @@ cd "$(dirname "$0")/.."
 source scripts/lib.sh
 
 (($# > 0)) || die "실행 폴더를 하나 이상 준다"
-"${COMPOSE[@]}" --profile tools build analyzer > /dev/null
+"${COMPOSE_LOCAL[@]}" --profile tools build analyzer > /dev/null
 bad=0
 for run in "$@"; do
   run=${run%/}
@@ -31,9 +31,9 @@ for run in "$@"; do
   [[ -n $slow ]] && targs+=(--slow-label "$slow")
   [[ -f $tmp/expect.timing.json ]] && targs+=(--expect "/runs/.recompute/${name}/expect.timing.json")
   set +e
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${args[@]}" > /dev/null 2>&1
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${args[@]}" > /dev/null 2>&1
   rc=$?
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}" > /dev/null 2>&1
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}" > /dev/null 2>&1
   trc=$?
   set -e
   if [[ ${WRITE:-no} == yes ]]; then

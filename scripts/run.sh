@@ -11,6 +11,11 @@
 #   떠 있는 서비스의 /settings(실제 값)가 이 값과 다르면 실행 실패.
 # 기록: runs/<시나리오>-<시각>-r<번호>/ (형식은 docs/measurement.md)
 # 서비스는 먼저 scripts/up.sh 로 띄워 둔다. 종료 코드: 0 통과, 1 실행 실패, 2 분석 결과가 기대와 다름.
+# (task 06) 서버에서 잴 때: SERVICES_SSH(서비스 서버 — scripts/lib.sh 머리)를 주고 이 스크립트를 부하 서버에서 돌린다. 그때만 더 하는 것:
+#   두 서버의 코드가 같은 커밋인지(scripts/servers-sync.sh가 보낸 .deployed-commit·.deployed-sha256), 두 서버가 조용한지
+#   (1분 load average ≤ 코어 수 × LOADAVG_MAX_PER_CORE — 아니면 10초마다 보며 LOADAVG_WAIT_SECONDS까지 기다리고, 그래도 높으면 실패),
+#   두 서버 시계의 어긋남, 서비스 서버의 이름·코어·메모리·load average(앞·뒤)를 config.env에 남긴다. 규칙과 까닭: docs/experiments/task-06-design.md 2절.
+# K6 = k6 실행 파일(기본 PATH의 k6). 판이 K6_REQUIRED_VERSION이 아니면 실패한다(노트북과 서버가 같은 판 — docs/dependencies.md "task 06").
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib.sh
@@ -135,7 +140,13 @@ PLANNED=$((RATE * DURATION_SECONDS + SPIKE_RATE * SPIKE_SECONDS)) # task 04-b: �
 # 정답 줄 수의 계획(분석기의 --planned). 같은 요청을 두 번 보내는 시나리오는 반복 수보다 많다(task 04).
 ((PLANNED % 8 == 0)) || ((ANSWERS_PER_8_ITERATIONS == 8)) || die "반복 수 $PLANNED 가 8의 배수가 아니다"
 PLANNED_ANSWERS=$((PLANNED * ANSWERS_PER_8_ITERATIONS / 8))
-BASE_URL=http://localhost:8081
+BASE_URL=http://${SERVICES_HOST}:8081
+K6=${K6:-k6}
+K6_REQUIRED_VERSION=v2.4.0
+k6_version=$("$K6" version 2>&1 | head -1) || die "k6($K6)를 부르지 못했다: $k6_version"
+[[ $k6_version == "k6 $K6_REQUIRED_VERSION "* ]] || die "k6 판이 $K6_REQUIRED_VERSION 이 아니다($K6: $k6_version)"
+LOADAVG_MAX_PER_CORE=${LOADAVG_MAX_PER_CORE:-0.25}
+LOADAVG_WAIT_SECONDS=${LOADAVG_WAIT_SECONDS:-600}
 
 NAME="${SCENARIO}-$(date +%Y%m%dT%H%M%S)-r${REP}"
 OUT="runs/${NAME}"
@@ -145,21 +156,40 @@ log "실행 $NAME"
 # 1. 확인: 네 컨테이너가 떠 있고 세 서비스가 UP
 require_running
 wait_ready
+# 1-0. (task 06) 두 서버의 코드가 scripts/servers-sync.sh가 보낸 같은 커밋이고, 보낸 뒤 바뀐 파일이 없는가.
+if [[ -n $SERVICES_SSH ]]; then
+  [[ -f .deployed-commit ]] || die "이 컴퓨터의 사본에 .deployed-commit이 없다 — scripts/servers-sync.sh로 보낸다"
+  services_commit=$(on_services cat .deployed-commit) || die "서비스 서버의 .deployed-commit을 읽지 못했다"
+  [[ $services_commit == "$(cat .deployed-commit)" ]] || die "두 서버의 코드가 다른 커밋이다(이 컴퓨터 $(cat .deployed-commit), 서비스 서버 $services_commit)"
+  sha256sum --quiet -c .deployed-sha256 > /dev/null 2>&1 || die "이 컴퓨터의 사본이 보낸 커밋과 다르다(sha256sum -c .deployed-sha256)"
+  on_services sha256sum --quiet -c .deployed-sha256 > /dev/null 2>&1 || die "서비스 서버의 사본이 보낸 커밋과 다르다"
+fi
 
 # 1-1. 이미지가 지금의 코드로 지어졌나: 짓고(바뀐 것이 없으면 층 캐시로 금방 끝난다),
 #      떠 있는 세 서비스가 방금 지은 이미지로 떠 있는지 본다. 분석기는 이 실행의 끝에 방금 지은 이미지로 돈다.
 log "이미지 짓기(분석기 포함) — 바뀐 것이 없으면 캐시"
-"${COMPOSE[@]}" --profile tools build > "$OUT/image-build.txt" 2>&1 || die "이미지 짓기가 실패했다 — $OUT/image-build.txt"
+build_images > "$OUT/image-build.txt" 2>&1 || die "이미지 짓기가 실패했다 — $OUT/image-build.txt"
 for svc in order inventory payment; do
-  running_image=$(docker inspect --format '{{.Image}}' "$("${COMPOSE[@]}" ps -q "$svc")")
-  built_image=$(docker image inspect --format '{{.Id}}' "communication-reliability-lab-${svc}")
+  running_image=$("${DOCKER[@]}" inspect --format '{{.Image}}' "$("${COMPOSE[@]}" ps -q "$svc")")
+  built_image=$("${DOCKER[@]}" image inspect --format '{{.Id}}' "communication-reliability-lab-${svc}")
   [[ $running_image == "$built_image" ]] || die "$svc 가 지금의 코드로 지은 이미지로 떠 있지 않다 — scripts/up.sh 를 다시 돌린다"
 done
+
+# 1-2. (task 06) 두 서버가 조용해질 때까지 기다리고(못 미치면 실패), 시계의 어긋남을 잰다.
+if [[ -n $SERVICES_SSH ]]; then
+  log "두 서버의 load average 확인(코어당 ${LOADAVG_MAX_PER_CORE} 이하, 최대 ${LOADAVG_WAIT_SECONDS}s 기다림)"
+  quiet=$(wait_quiet "$LOADAVG_MAX_PER_CORE" "$LOADAVG_WAIT_SECONDS")
+  clock=$(clock_offset)
+fi
 
 # 2. 설정 기록 — 바꾼 것과 같게 둔 것. git을 읽지 못하면(사본으로 옮긴 경우 등) "모름"으로 적는다.
 git_commit=$(git rev-parse HEAD 2>/dev/null) || git_commit=모름
 if git_status=$(git status --porcelain 2>/dev/null); then
   [[ -z $git_status ]] && git_dirty=no || git_dirty=yes
+elif [[ -f .deployed-commit && -f .deployed-sha256 ]]; then
+  # (task 06) scripts/servers-sync.sh가 보낸 사본: 보낸 커밋, 깨끗한지는 보낸 파일의 sha256으로 본다(보낸 뒤 더한 파일은 보지 못한다).
+  git_commit=$(cat .deployed-commit)
+  if git_status=$(sha256sum --quiet -c .deployed-sha256 2>/dev/null); then git_dirty=no; else git_dirty=yes; git_status=$(sed -n 's/: FAILED.*$//p' <<< "$git_status"); fi
 else
   git_dirty=모름; git_status=""
 fi
@@ -208,17 +238,39 @@ fi
   [[ $REP == 0 ]] && echo "discard_run=yes" || echo "discard_run=no"
   echo "settle_timeout_seconds=$SETTLE_TIMEOUT_SECONDS"
   echo "warmup=${WARMUP_RATE}/s x ${WARMUP_SECONDS}s"
-  echo "k6_version=$(k6 version | head -1)"
+  echo "k6_version=$k6_version"
   echo "host_nproc=$(nproc)"
   echo "host_mem_total_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
   echo "host_loadavg_start=$(cat /proc/loadavg)" # 이 컴퓨터의 다른 부하(task 04-b — 실행 끝의 값은 host_loadavg_end)
 } > "$OUT/config.env"
+# (task 06) 서버에서 잴 때만: 두 서버와 조용함·시계(규칙: docs/experiments/task-06-design.md 2절). 주소는 끝 마디만 남긴다.
+if [[ -n $SERVICES_SSH ]]; then
+  read -r quiet_waited quiet_load_here quiet_load_services <<< "$quiet"
+  read -r clock_ms clock_err_ms <<< "$clock"
+  s_host=$(on_services hostname) && s_nproc=$(on_services nproc) && s_mem=$(on_services awk '/MemTotal/ {print $2}' /proc/meminfo) \
+    && s_load=$(on_services cat /proc/loadavg) || die "서비스 서버의 정보를 읽지 못했다"
+  {
+    echo "load_host_hostname=$(hostname)"
+    echo "services_host=.${SERVICES_HOST##*.}"
+    echo "services_hostname=$s_host"
+    echo "services_nproc=$s_nproc"
+    echo "services_mem_total_kb=$s_mem"
+    echo "services_loadavg_start=$s_load"
+    echo "loadavg_max_per_core=$LOADAVG_MAX_PER_CORE"
+    echo "loadavg_wait_seconds=$LOADAVG_WAIT_SECONDS"
+    echo "quiet_waited_seconds=$quiet_waited"
+    echo "quiet_loadavg_load_host=$quiet_load_here"
+    echo "quiet_loadavg_services_host=$quiet_load_services"
+    echo "clock_offset_services_minus_load_ms=$clock_ms"
+    echo "clock_offset_error_ms=$clock_err_ms"
+  } >> "$OUT/config.env"
+fi
 "${COMPOSE[@]}" config > "$OUT/compose.resolved.yaml"
 "${COMPOSE[@]}" images > "$OUT/images.txt"
-docker image inspect --format '{{index .RepoDigests 0}}' postgres:18.7 >> "$OUT/images.txt"
+"${DOCKER[@]}" image inspect --format '{{index .RepoDigests 0}}' postgres:18.7 >> "$OUT/images.txt"
 for entry in "${SERVICE_PORTS[@]}"; do
   svc=${entry%%:*}; port=${entry#*:}
-  curl -sf "localhost:${port}/settings" > "$OUT/settings-${svc}.json"
+  curl -sf "${SERVICES_HOST}:${port}/settings" > "$OUT/settings-${svc}.json"
 done
 
 # 2-1. 조건이 실제로 걸렸나 — 떠 있는 객체에서 읽은 값(/settings)과 이 실행의 조건을 견준다.
@@ -299,7 +351,7 @@ fi
 warmed=no
 for round in 1 2 3; do
   log "워밍업 ${round}회차 ${WARMUP_RATE}/s × ${WARMUP_SECONDS}s"
-  k6 run -q -e SCENARIO=warmup -e BASE_URL="$BASE_URL" -e RATE="$WARMUP_RATE" -e DURATION_SECONDS="$WARMUP_SECONDS" \
+  "$K6" run -q -e SCENARIO=warmup -e BASE_URL="$BASE_URL" -e RATE="$WARMUP_RATE" -e DURATION_SECONDS="$WARMUP_SECONDS" \
     -e REQUEST_TIMEOUT="$WARMUP_REQUEST_TIMEOUT" -e MAX_VUS=300 -e RUN_ID="warmup${round}-${NAME}" -e WARMUP_KEYS="$IDEMPOTENCY_ENABLED" \
     --log-output=file="$OUT/warmup${round}-k6-log.txt" --log-format=raw load/chain.js > "$OUT/warmup${round}-k6-stdout.txt" 2>&1 \
     || die "워밍업 k6가 실패했다 — $OUT/warmup${round}-k6-stdout.txt"
@@ -318,22 +370,22 @@ psql_lab inventory_db "truncate reservations restart identity"
 psql_lab payment_db "truncate payments restart identity"
 for db in order_db inventory_db payment_db; do psql_lab "$db" "truncate idempotency_keys"; done # task 04(꺼져 있으면 늘 비어 있다)
 for entry in "${SERVICE_PORTS[@]}"; do
-  curl -sf -X DELETE "localhost:${entry#*:}/faults" > /dev/null
-  curl -sf -X DELETE "localhost:${entry#*:}/timings" > /dev/null
-  curl -sf -X DELETE "localhost:${entry#*:}/samples" > /dev/null
-  curl -sf -X DELETE "localhost:${entry#*:}/attempt-faults" > /dev/null
-  curl -sf -X DELETE "localhost:${entry#*:}/attempts" > /dev/null
-  curl -sf -X DELETE "localhost:${entry#*:}/drop-faults" > /dev/null
-  curl -sf -X DELETE "localhost:${entry#*:}/idempotency-counts" > /dev/null
-  curl -sf -X DELETE "localhost:${entry#*:}/overload" > /dev/null # task 04-b(꺼져 있으면 늘 0)
-  curl -sf -X DELETE "localhost:${entry#*:}/transport-counts" > /dev/null # task 05
+  curl -sf -X DELETE "${SERVICES_HOST}:${entry#*:}/faults" > /dev/null
+  curl -sf -X DELETE "${SERVICES_HOST}:${entry#*:}/timings" > /dev/null
+  curl -sf -X DELETE "${SERVICES_HOST}:${entry#*:}/samples" > /dev/null
+  curl -sf -X DELETE "${SERVICES_HOST}:${entry#*:}/attempt-faults" > /dev/null
+  curl -sf -X DELETE "${SERVICES_HOST}:${entry#*:}/attempts" > /dev/null
+  curl -sf -X DELETE "${SERVICES_HOST}:${entry#*:}/drop-faults" > /dev/null
+  curl -sf -X DELETE "${SERVICES_HOST}:${entry#*:}/idempotency-counts" > /dev/null
+  curl -sf -X DELETE "${SERVICES_HOST}:${entry#*:}/overload" > /dev/null # task 04-b(꺼져 있으면 늘 0)
+  curl -sf -X DELETE "${SERVICES_HOST}:${entry#*:}/transport-counts" > /dev/null # task 05
 done
 left_o=$(psql_lab order_db "select count(*) from orders")
 left_i=$(psql_lab inventory_db "select count(*) from reservations")
 left_p=$(psql_lab payment_db "select count(*) from payments")
 [[ "$left_o $left_i $left_p" == "0 0 0" ]] || die "초기화 뒤에도 행이 남았다 ($left_o $left_i $left_p)"
 # R03-7: 재시도 예산의 시작 토큰 — 예산은 실행 사이에 비우지 않으므로 부하 직전의 값을 남긴다(꺼져 있으면 {"enabled":false})
-b_order=$(curl -sf localhost:8081/retry-budget) && b_inventory=$(curl -sf localhost:8082/retry-budget) || die "/retry-budget을 받지 못했다"
+b_order=$(curl -sf ${SERVICES_HOST}:8081/retry-budget) && b_inventory=$(curl -sf ${SERVICES_HOST}:8082/retry-budget) || die "/retry-budget을 받지 못했다"
 printf '{"order":%s,"inventory":%s}\n' "$b_order" "$b_inventory" > "$OUT/retry-budget-start.json"
 budget_tokens() { sed -n 's/.*"tokens":"\([^"]*\)".*/\1/p' <<< "$1"; }
 echo "order_retry_budget_start_tokens=$(budget_tokens "$b_order")" >> "$OUT/config.env"
@@ -343,7 +395,7 @@ echo "inventory_retry_budget_start_tokens=$(budget_tokens "$b_inventory")" >> "$
 log "부하 ${RATE}/s × ${DURATION_SECONDS}s = ${PLANNED}건"
 k6_flags=()
 [[ $K6_NO_CONNECTION_REUSE == true ]] && k6_flags+=(--no-connection-reuse)
-k6 run "${k6_flags[@]}" -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" \
+"$K6" run "${k6_flags[@]}" -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" \
   -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e MAX_VUS="$MAX_VUS" -e LOOKUP_RATE="$LOOKUP_RATE" -e RUN_ID="$NAME" \
   -e SPIKE_RATE="$SPIKE_RATE" -e SPIKE_FROM_SECONDS="$SPIKE_FROM_SECONDS" -e SPIKE_SECONDS="$SPIKE_SECONDS" \
   --log-output=file="$OUT/k6-log.txt" --log-format=raw \
@@ -373,7 +425,7 @@ if [[ $RESEND == yes ]]; then
   : > "$OUT/resends.jsonl"
   if ((n_resend > 0)); then
     log "맞추기 단계: 결과 모름 ${n_resend}건을 같은 키로 다시 보낸다(20/s)"
-    k6 run "${k6_flags[@]}" -e PHASE=resend -e ANSWERS_FILE="$PWD/$OUT/answers.jsonl" -e RESEND_RATE=20 -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" \
+    "$K6" run "${k6_flags[@]}" -e PHASE=resend -e ANSWERS_FILE="$PWD/$OUT/answers.jsonl" -e RESEND_RATE=20 -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" \
       -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e MAX_VUS="$MAX_VUS" -e LOOKUP_RATE=0 -e RUN_ID="$NAME" \
       --log-output=file="$OUT/resend-k6-log.txt" --log-format=raw --summary-export="$OUT/resend-k6-summary.json" load/chain.js > "$OUT/resend-k6-stdout.txt" 2>&1 \
       || die "맞추기 단계의 k6가 실패했다 — $OUT/resend-k6-stdout.txt"
@@ -390,14 +442,14 @@ psql_csv() { "${COMPOSE[@]}" exec -T postgres psql -U lab -d "$1" -v ON_ERROR_ST
 psql_csv order_db "select request_id, amount, status from orders order by id" > "$OUT/db/orders.csv"
 psql_csv inventory_db "select request_id, status from reservations order by id" > "$OUT/db/reservations.csv"
 psql_csv payment_db "select request_id, amount, status from payments order by id" > "$OUT/db/payments.csv"
-f_order=$(curl -sf localhost:8081/faults)
-f_inventory=$(curl -sf localhost:8082/faults)
-f_payment=$(curl -sf localhost:8083/faults)
+f_order=$(curl -sf ${SERVICES_HOST}:8081/faults)
+f_inventory=$(curl -sf ${SERVICES_HOST}:8082/faults)
+f_payment=$(curl -sf ${SERVICES_HOST}:8083/faults)
 printf '{"order":%s,"inventory":%s,"payment":%s}\n' "$f_order" "$f_inventory" "$f_payment" > "$OUT/fault-counts.json"
 # task 05: 서비스가 전송마다 센 호출 수(GET /transport-counts). 받지 못하면 실패.
 t=()
 for entry in "${SERVICE_PORTS[@]}"; do
-  t+=("$(curl -sf "localhost:${entry#*:}/transport-counts")") || die "/transport-counts를 받지 못했다"
+  t+=("$(curl -sf "${SERVICES_HOST}:${entry#*:}/transport-counts")") || die "/transport-counts를 받지 못했다"
 done
 printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${t[@]}" > "$OUT/transport-counts.json"
 # task 04: 키 표, 서비스가 센 키 수와 끊은 수, 시도마다 넣은 실패(재시도 분석을 하지 않는 실행도 대조하려고). 받지 못하면 실패.
@@ -414,9 +466,9 @@ if [[ $IDEM == yes ]]; then
   c=(); d=(); a=()
   for entry in "${SERVICE_PORTS[@]}"; do
     port=${entry#*:}
-    c+=("$(curl -sf "localhost:${port}/idempotency-counts")") || die "/idempotency-counts를 받지 못했다"
-    d+=("$(curl -sf "localhost:${port}/drop-faults")") || die "/drop-faults를 받지 못했다"
-    a+=("$(curl -sf "localhost:${port}/attempt-faults")") || die "/attempt-faults를 받지 못했다"
+    c+=("$(curl -sf "${SERVICES_HOST}:${port}/idempotency-counts")") || die "/idempotency-counts를 받지 못했다"
+    d+=("$(curl -sf "${SERVICES_HOST}:${port}/drop-faults")") || die "/drop-faults를 받지 못했다"
+    a+=("$(curl -sf "${SERVICES_HOST}:${port}/attempt-faults")") || die "/attempt-faults를 받지 못했다"
   done
   printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${c[@]}" > "$OUT/idempotency-counts.json"
   printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${d[@]}" > "$OUT/drop-faults.json"
@@ -426,7 +478,7 @@ fi
 if [[ $OVERLOAD == yes ]]; then
   o=()
   for entry in "${SERVICE_PORTS[@]}"; do
-    o+=("$(curl -sf "localhost:${entry#*:}/overload")") || die "/overload를 받지 못했다"
+    o+=("$(curl -sf "${SERVICES_HOST}:${entry#*:}/overload")") || die "/overload를 받지 못했다"
   done
   printf '{"order":%s,"inventory":%s,"payment":%s}\n' "${o[@]}" > "$OUT/overload-counts.json"
 fi
@@ -434,16 +486,16 @@ fi
 mkdir -p "$OUT/timing"
 for entry in "${SERVICE_PORTS[@]}"; do
   svc=${entry%%:*}; port=${entry#*:}
-  curl -sf "localhost:${port}/timings" > "$OUT/timing/timings-${svc}.json" || die "$svc 의 /timings를 받지 못했다"
-  curl -sf "localhost:${port}/samples" > "$OUT/timing/samples-${svc}.json" || die "$svc 의 /samples를 받지 못했다"
+  curl -sf "${SERVICES_HOST}:${port}/timings" > "$OUT/timing/timings-${svc}.json" || die "$svc 의 /timings를 받지 못했다"
+  curl -sf "${SERVICES_HOST}:${port}/samples" > "$OUT/timing/samples-${svc}.json" || die "$svc 의 /samples를 받지 못했다"
 done
 # task 03: 시도 기록(재시도 감싸개)과 서비스가 센 넣은 실패(X-Attempt-Fault). 받지 못하면 실패.
 if [[ $RETRY == yes ]]; then
   for entry in "${SERVICE_PORTS[@]}"; do
     svc=${entry%%:*}; port=${entry#*:}
-    curl -sf "localhost:${port}/attempts" > "$OUT/timing/attempts-${svc}.json" || die "$svc 의 /attempts를 받지 못했다"
+    curl -sf "${SERVICES_HOST}:${port}/attempts" > "$OUT/timing/attempts-${svc}.json" || die "$svc 의 /attempts를 받지 못했다"
   done
-  a_order=$(curl -sf localhost:8081/attempt-faults) && a_inventory=$(curl -sf localhost:8082/attempt-faults) && a_payment=$(curl -sf localhost:8083/attempt-faults) \
+  a_order=$(curl -sf ${SERVICES_HOST}:8081/attempt-faults) && a_inventory=$(curl -sf ${SERVICES_HOST}:8082/attempt-faults) && a_payment=$(curl -sf ${SERVICES_HOST}:8083/attempt-faults) \
     || die "/attempt-faults를 받지 못했다"
   printf '{"order":%s,"inventory":%s,"payment":%s}\n' "$a_order" "$a_inventory" "$a_payment" > "$OUT/attempt-faults.json"
 fi
@@ -458,7 +510,7 @@ elif [[ -f "load/expectations/${SCENARIO}.json" ]]; then
   args+=(--expect "/runs/${NAME}/expect.json")
 fi
 set +e
-"${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${args[@]}"
+"${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${args[@]}"
 rc=$?
 set -e
 log "대조 분석 종료 코드 $rc"
@@ -470,7 +522,7 @@ if [[ $rc != 1 ]]; then
     xargs_+=(--expect "/runs/${NAME}/expect.transport.json")
   fi
   set +e
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${xargs_[@]}"
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${xargs_[@]}"
   xrc=$?
   set -e
   log "전송 대조 종료 코드 $xrc"
@@ -485,7 +537,7 @@ if [[ $TIMING == yes && $rc != 1 ]]; then
     targs+=(--expect "/runs/${NAME}/expect.timing.json")
   fi
   set +e
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}"
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}"
   trc=$?
   set -e
   log "시각 분석 종료 코드 $trc"
@@ -499,7 +551,7 @@ if [[ $RETRY == yes && $rc != 1 ]]; then
     rargs+=(--expect "/runs/${NAME}/expect.retry.json")
   fi
   set +e
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${rargs[@]}"
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${rargs[@]}"
   rrc=$?
   set -e
   log "재시도 분석 종료 코드 $rrc"
@@ -513,7 +565,7 @@ if [[ $IDEM == yes && $rc != 1 ]]; then
     iargs+=(--expect "/runs/${NAME}/expect.idem.json")
   fi
   set +e
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${iargs[@]}"
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${iargs[@]}"
   irc=$?
   set -e
   log "멱등 키 분석 종료 코드 $irc"
@@ -527,12 +579,16 @@ if [[ $OVERLOAD == yes && $rc != 1 ]]; then
     oargs+=(--expect "/runs/${NAME}/expect.overload.json")
   fi
   set +e
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${oargs[@]}"
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${oargs[@]}"
   orc=$?
   set -e
   log "한도 분석 종료 코드 $orc"
   ((orc > rc)) && rc=$orc
 fi
 echo "host_loadavg_end=$(cat /proc/loadavg)" >> "$OUT/config.env"
+if [[ -n $SERVICES_SSH ]]; then
+  s_load=$(on_services cat /proc/loadavg) || die "서비스 서버의 load average를 읽지 못했다"
+  echo "services_loadavg_end=$s_load" >> "$OUT/config.env"
+fi
 log "기록: $OUT (종료 코드 $rc)"
 exit "$rc"

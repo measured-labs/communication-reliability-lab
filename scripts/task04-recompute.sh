@@ -21,9 +21,9 @@ source scripts/lib.sh
 (($# > 0)) || die "실행 폴더를 하나 이상 준다"
 WRITE=${WRITE:-no}
 [[ $WRITE == yes || $WRITE == no ]] || die "WRITE '$WRITE' 는 yes|no"
-"${COMPOSE[@]}" --profile tools build analyzer > /dev/null
+"${COMPOSE_LOCAL[@]}" --profile tools build analyzer > /dev/null
 bad=0
-analyze() { set +e; "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "$@" > /dev/null 2>&1; local rc=$?; set -e; echo "$rc"; }
+analyze() { set +e; "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "$@" > /dev/null 2>&1; local rc=$?; set -e; echo "$rc"; }
 # 분석 하나를 돌려 codes에 "<이름> <종료 코드>"를 붙이고, 0이 아니면 analyzeFailed=yes
 analyze_into() { # <이름> <인자>...
   local label=$1 rc; shift
