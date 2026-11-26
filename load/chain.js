@@ -16,6 +16,7 @@
 //   MAX_VUS          사슬 시나리오의 최대 VU(도착률 × 가장 긴 응답 시간보다 크게 — 모자라면 dropped_iterations로 실행 실패)
 //   LOOKUP_RATE      slow-layer에서만: 가벼운 조회(GET /orders/{id})의 초당 수
 //   SPIKE_RATE, SPIKE_FROM_SECONDS, SPIKE_SECONDS  (task 04-b만) 평소 도착률(RATE) 위에 SPIKE_FROM_SECONDS부터 SPIKE_SECONDS 동안 더하는 초당 수
+//   CLOCK_OFFSET_MS  (구간 장애 시나리오만 — task 06) 서비스 서버의 시계 − 이 컴퓨터의 시계(ms, 10진 수 — 실행 앞에 잰 값, 같은 컴퓨터면 0)
 import http from 'k6/http';
 import exec from 'k6/execution';
 import { sleep } from 'k6';
@@ -111,6 +112,14 @@ export function mixAttemptFault(i) {
 }
 // 구간 장애: 시나리오 시작(exec.scenario.startTime, 벽시계 ms)에서 [from, to) ms. 결제 서비스가 입구에 든 시각으로 판정한다.
 const OUTAGES = { 'cal-retry-outage': [5000, 10000], 'retry-outage-burst': [10000, 20000], 'retry-budget': [10000, 30000] };
+// (task 06) 결제는 그 시각을 **자기 시계로** 판정하므로, 헤더의 from·to를 시계의 어긋남(ms 정수로 반올림 — .5는 0에서 먼 쪽)만큼 옮겨
+// 서비스의 시계로 적는다 — 구간이 이 컴퓨터의 시계로 [시작 + from, 시작 + to)에 놓이게. 규칙: docs/measurement.md 12절.
+const OUTAGE_CLOCK_SHIFT_MS = OUTAGES[SCENARIO] ? (() => {
+  const v = required('CLOCK_OFFSET_MS');
+  if (!/^-?[0-9]+(\.[0-9]+)?$/.test(v)) throw new Error(`CLOCK_OFFSET_MS '${v}' 는 10진 수(ms)가 아니다`);
+  const x = Number(v);
+  return Math.sign(x) * Math.round(Math.abs(x));
+})() : 0;
 // 무리 지은 도착: BURST_PERIOD_MS마다 BURST_SIZE건을 같은 순간에 보낸다(RATE = BURST_SIZE × 1000 / BURST_PERIOD_MS여야 한다).
 // 요청 i는 무리 floor(i / BURST_SIZE)에 들고, 시나리오 시작 + (무리 + 1) × 주기까지 기다렸다 보낸다(k6가 반복을 고르게 시작하므로 기다림은 한 주기 이하).
 const BURSTS = ['cal-retry-burst', 'retry-outage-burst'];
@@ -126,7 +135,7 @@ function attemptFault(i) {
   const o = OUTAGES[SCENARIO];
   if (o) {
     const st = exec.scenario.startTime;
-    return `payment:outage=${st + o[0]}-${st + o[1]}`;
+    return `payment:outage=${st + o[0] + OUTAGE_CLOCK_SHIFT_MS}-${st + o[1] + OUTAGE_CLOCK_SHIFT_MS}`;
   }
   return '';
 }

@@ -14,7 +14,9 @@
 # (task 06) 서버에서 잴 때: SERVICES_SSH(서비스 서버 — scripts/lib.sh 머리)를 주고 이 스크립트를 부하 서버에서 돌린다. 그때만 더 하는 것:
 #   두 서버의 코드가 같은 커밋인지(scripts/servers-sync.sh가 보낸 .deployed-commit·.deployed-sha256), 두 서버가 조용한지
 #   (1분 load average ≤ 코어 수 × LOADAVG_MAX_PER_CORE — 아니면 10초마다 보며 LOADAVG_WAIT_SECONDS까지 기다리고, 그래도 높으면 실패),
-#   두 서버 시계의 어긋남, 서비스 서버의 이름·코어·메모리·load average(앞·뒤)를 config.env에 남긴다. 규칙과 까닭: docs/experiments/task-06-design.md 2절.
+#   두 서버 시계의 어긋남(실행 앞·뒤 두 번 — 앞뒤의 차가 CLOCK_DRIFT_MAX_MS(기본 5)ms보다 크면 분석기가 입력 오류로 낸다),
+#   서비스 서버의 이름·코어·메모리·load average(앞·뒤)를 config.env에 남긴다. 규칙과 까닭: docs/experiments/task-06-design.md 2절,
+#   어긋남을 분석에 쓰는 규칙: docs/measurement.md 12절. 앞의 어긋남은 k6에도 넘겨(CLOCK_OFFSET_MS) 구간 장애의 시각을 서비스의 시계로 옮긴다.
 # K6 = k6 실행 파일(기본 PATH의 k6). 판이 K6_REQUIRED_VERSION이 아니면 실패한다(노트북과 서버가 같은 판 — docs/dependencies.md "task 06").
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -147,6 +149,8 @@ k6_version=$("$K6" version 2>&1 | head -1) || die "k6($K6)를 부르지 못했�
 [[ $k6_version == "k6 $K6_REQUIRED_VERSION "* ]] || die "k6 판이 $K6_REQUIRED_VERSION 이 아니다($K6: $k6_version)"
 LOADAVG_MAX_PER_CORE=${LOADAVG_MAX_PER_CORE:-0.25}
 LOADAVG_WAIT_SECONDS=${LOADAVG_WAIT_SECONDS:-600}
+CLOCK_DRIFT_MAX_MS=${CLOCK_DRIFT_MAX_MS:-5}
+[[ $CLOCK_DRIFT_MAX_MS =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "CLOCK_DRIFT_MAX_MS '$CLOCK_DRIFT_MAX_MS' 는 0 이상의 10진 수(ms)"
 
 NAME="${SCENARIO}-$(date +%Y%m%dT%H%M%S)-r${REP}"
 OUT="runs/${NAME}"
@@ -261,8 +265,9 @@ if [[ -n $SERVICES_SSH ]]; then
     echo "quiet_waited_seconds=$quiet_waited"
     echo "quiet_loadavg_load_host=$quiet_load_here"
     echo "quiet_loadavg_services_host=$quiet_load_services"
-    echo "clock_offset_services_minus_load_ms=$clock_ms"
-    echo "clock_offset_error_ms=$clock_err_ms"
+    echo "clock_offset_services_minus_load_ms_start=$clock_ms"
+    echo "clock_offset_error_ms_start=$clock_err_ms"
+    echo "clock_offset_drift_max_ms=$CLOCK_DRIFT_MAX_MS"
   } >> "$OUT/config.env"
 fi
 "${COMPOSE[@]}" config > "$OUT/compose.resolved.yaml"
@@ -398,6 +403,7 @@ k6_flags=()
 "$K6" run "${k6_flags[@]}" -e SCENARIO="$SCENARIO" -e BASE_URL="$BASE_URL" -e RATE="$RATE" -e DURATION_SECONDS="$DURATION_SECONDS" \
   -e REQUEST_TIMEOUT="$REQUEST_TIMEOUT" -e MAX_VUS="$MAX_VUS" -e LOOKUP_RATE="$LOOKUP_RATE" -e RUN_ID="$NAME" \
   -e SPIKE_RATE="$SPIKE_RATE" -e SPIKE_FROM_SECONDS="$SPIKE_FROM_SECONDS" -e SPIKE_SECONDS="$SPIKE_SECONDS" \
+  -e CLOCK_OFFSET_MS="${clock_ms:-0}" \
   --log-output=file="$OUT/k6-log.txt" --log-format=raw \
   --summary-export="$OUT/k6-summary.json" load/chain.js > "$OUT/k6-stdout.txt" 2>&1 \
   || die "k6가 실패했다 — $OUT/k6-stdout.txt"
@@ -498,6 +504,16 @@ if [[ $RETRY == yes ]]; then
   a_order=$(curl -sf ${SERVICES_HOST}:8081/attempt-faults) && a_inventory=$(curl -sf ${SERVICES_HOST}:8082/attempt-faults) && a_payment=$(curl -sf ${SERVICES_HOST}:8083/attempt-faults) \
     || die "/attempt-faults를 받지 못했다"
   printf '{"order":%s,"inventory":%s,"payment":%s}\n' "$a_order" "$a_inventory" "$a_payment" > "$OUT/attempt-faults.json"
+fi
+
+# 7-1. (task 06) 시계의 어긋남을 실행 뒤에 한 번 더 잰다(부하·가라앉기·내보내기 뒤, 분석 앞). 분석기가 앞·뒤의 평균을 쓰고,
+#      차가 clock_offset_drift_max_ms보다 크면 입력 오류로 낸다(docs/measurement.md 12절).
+if [[ -n $SERVICES_SSH ]]; then
+  clock_end=$(clock_offset)
+  read -r clock_end_ms clock_end_err_ms <<< "$clock_end"
+  echo "clock_offset_services_minus_load_ms_end=$clock_end_ms" >> "$OUT/config.env"
+  echo "clock_offset_error_ms_end=$clock_end_err_ms" >> "$OUT/config.env"
+  log "시계 어긋남: 앞 ${clock_ms}ms, 뒤 ${clock_end_ms}ms"
 fi
 
 # 8. 분석(컨테이너 안). 기대 파일이 있으면 실행 기록에 함께 넣고 견준다.

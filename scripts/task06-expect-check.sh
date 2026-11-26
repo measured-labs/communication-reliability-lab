@@ -59,6 +59,7 @@ for row in "${sel[@]}"; do
   tmp=runs/.recompute/$name-expect
   rm -rf "$tmp"; mkdir -p "$tmp"
   tar -xzf "$run/raw.tar.gz" -C "$tmp"
+  cp "$run/config.env" "$tmp/config.env" # (task 06) 분석기가 시계 어긋남을 읽는다(docs/measurement.md 12절 — 노트북의 실행에는 그 칸이 없다)
   in=/runs/.recompute/$name-expect
   conf() { sed -n "s/^$1=//p" "$run/config.env"; }
   planned=$(conf planned_answers); [[ -n $planned ]] || planned=$(conf planned_requests)
