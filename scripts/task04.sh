@@ -10,7 +10,9 @@
 # 환경 변수 REPS(기본 3), DISCARD(기본 yes — no면 r0을 돌리지 않는다: 보정), REP_LIST(주면 REPS 대신 이 반복 번호들 — 예 "2 3":
 #   조건을 번갈아 돌 때 같은 조건의 반복 번호를 이어 가려고. 다시 띄운 뒤의 r0은 DISCARD대로 앞에 붙는다),
 #   UP(기본 yes — no면 다시 띄우지 않고 떠 있는 서비스로 잰다: task 04-b 설계 10절처럼 같은 서비스 조건에서 시나리오만 바꿔 이어 잴 때.
-#   떠 있는 서비스의 값이 조건과 다르면 run.sh의 /settings 대조가 실패시킨다).
+#   떠 있는 서비스의 값이 조건과 다르면 run.sh의 /settings 대조가 실패시킨다),
+#   DISCARD_FAIL_STOPS(기본 no — yes면 버리는 실행 r0이 0이 아닐 때 이 블록의 잰 반복을 돌지 않고 종료 1:
+#   task 06-b의 실행기 scripts/task06-all.sh가 건다. 노트북의 task0*-all.sh는 걸지 않아 옛 동작 그대로 — r0이 실패해도 잰 반복으로 간다).
 # 실행마다 색인(환경 변수 INDEX, 기본 runs/task-04-index.tsv — task 04-b는 runs/task-04b-index.tsv)에 한 줄(실험, 조건, 시나리오, 반복, 실행 폴더, 종료 코드, 조건 값, 비고). 실패한 실행도 적고 다음 반복으로 간다.
 # 종료 코드: 모든 실행이 0이면 0, 아니면 1.
 set -euo pipefail
@@ -27,6 +29,8 @@ for kv in "$@"; do
 done
 REPS=${REPS:-3}
 DISCARD=${DISCARD:-yes}
+DISCARD_FAIL_STOPS=${DISCARD_FAIL_STOPS:-no}
+[[ $DISCARD_FAIL_STOPS == yes || $DISCARD_FAIL_STOPS == no ]] || die "DISCARD_FAIL_STOPS '$DISCARD_FAIL_STOPS' 는 yes|no"
 INDEX=${INDEX:-runs/task-04-index.tsv}
 [[ -f $INDEX ]] || printf 'experiment\tcondition\tscenario\trep\trun\texit\tconditions\tnote\n' > "$INDEX"
 
@@ -45,5 +49,9 @@ for rep in $reps; do
   run=$(comm -13 <(echo "$before") <(ls -d runs/"${SCENARIO}"-*-r"${rep}" 2>/dev/null | sort) | tail -1)
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t\n' "$EXPERIMENT" "$CONDITION" "$SCENARIO" "$rep" "${run:-없음}" "$rc" "$*" >> "$INDEX"
   ((rc == 0)) || { failed=1; log "실패: $CONDITION r$rep 종료 코드 $rc (${run:-폴더 없음})"; }
+  if [[ $rep == 0 && $rc != 0 && $DISCARD_FAIL_STOPS == yes ]]; then
+    log "버리는 실행이 실패했다 — 이 블록의 잰 반복(${reps#0 })을 돌지 않는다"
+    exit 1
+  fi
 done
 exit "$failed"

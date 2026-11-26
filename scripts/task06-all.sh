@@ -16,12 +16,23 @@
 # 색인(INDEX로 바꿀 수 있다): cal·restart → runs/task-06a-final-index.tsv, 06-b → runs/task-06b-index.tsv,
 #   SMOKE=yes(묶음마다 첫 블록 하나만 — 실행기의 경로를 끝까지 보는 것, 잰 실행으로 세지 않는다) → runs/task-06b-smoke-index.tsv.
 #   두 서버의 `uptime`은 블록마다 runs/task-06-uptime.txt(실행마다의 값은 config.env의 host_loadavg_*·services_loadavg_*).
-# 이어 돌기: 색인에 이미 종료 0으로 있는(비고가 "대체됨"이 아닌) (실험, 조건, 시나리오, 반복)은 건너뛴다 — 끊긴 뒤 같은 명령을 다시 부르면 이어 돈다.
-#   전에 실패한 (…, 반복)을 다시 돌면 옛 줄의 비고에 "대체됨: 이어 돌기에서 다시 잼(앞 종료 <코드>)"을 단다.
-# 실패: 실행이 실패해도 색인에 종료 코드를 남기고 다음으로 간다. 잇달아 CONSECUTIVE_FAIL_MAX(기본 5)번 실패하면 멈춘다(종료 1).
-#   시계의 앞·뒤 차가 문턱(config.env의 clock_offset_drift_max_ms)을 넘어 실패한 잰 실행은 같은 서비스로 한 번만 다시 돈다
-#   (옛 줄 비고 "대체됨: 시계 앞·뒤 차 <ms>ms > 문턱 <ms>ms"). 다시 돈 것도 같은 까닭으로 실패하면 멈춘다(종료 1 — 사람이 본다).
-#   끝에 실패가 있으면 종료 코드 1(06-a: 06-b로 넘어가지 않는다).
+# 셈에 드는 줄: 비고가 "대체됨"으로 시작하지 않고, 종료 0이고, 그 실행의 버리는 실행이 종료 0인 잰 반복의 줄
+#   (그 실행의 버리는 실행 = 색인의 차례로 같은 (실험, 조건)이 잇닿은 줄 가운데 가장 가까운 앞의 r0 — 없으면 버리지 않은 블록.
+#   시나리오를 보지 않는 것은 t04-b 세 자리처럼 같은 서비스로 시나리오만 바꿔 이어 재는 블록이 앞 블록의 r0을 보게 하려고).
+# 이어 돌기: 색인에 셈에 드는 줄이 있는 (실험, 조건, 시나리오, 반복)은 건너뛴다 — 끊긴 뒤 같은 명령을 다시 부르면 이어 돈다.
+#   다시 돈 블록이 그 반복의 새 줄을 색인에 쓴 **뒤에** 옛 줄(비고가 빈, 셈에 들지 않는 것)에 "대체됨: 이어 돌기에서 다시 잼(앞 종료 <코드>)"
+#   (버리는 실행이 실패했던 옛 줄은 "(앞 버리는 실행 종료 <코드>)")을 단다. 새 줄이 쓰이지 않았으면 옛 줄을 그대로 둔다(실패를 가리지 않는다).
+#   버리는 실행의 줄에는 비고를 달지 않는다 — 잰 줄마다 제 실행의 r0을 보므로.
+# 실패: 실행이 실패해도 색인에 종료 코드를 남기고 다음으로 간다. 버리는 실행 r0이 0이 아니면 그 블록의 잰 반복을 돌지 않는다
+#   (scripts/task04.sh의 DISCARD_FAIL_STOPS=yes — 이어 돌기가 그 블록을 r0부터 다시 돈다). 잇달아 CONSECUTIVE_FAIL_MAX(기본 5)번 실패하면
+#   멈춘다(종료 1) — 세는 것은 잰 실행의 실패와 잰 실행에 닿지 못한 블록(띄우기 실패·r0 실패)이고, 0으로 돌리는 것은 잰 실행의 통과뿐이다.
+#   시계의 앞·뒤 차가 문턱(config.env의 clock_offset_drift_max_ms)을 넘어 실패한 잰 실행은 같은 서비스로 한 번만 다시 돌고, 새 줄이 쓰인
+#   뒤에 옛 줄 비고 "대체됨: 시계 앞·뒤 차 <ms>ms > 문턱 <ms>ms"를 단다. 다시 돈 것도 같은 까닭으로 실패하면 멈춘다(종료 1 — 사람이 본다).
+#   묶음마다 끝에 마감 검사(아래)를 돌고, 실패가 있거나 마감 검사가 맞지 않으면 종료 코드 1(06-a: 06-b로 넘어가지 않는다).
+# 마감 검사(CHECK=yes면 실행 없이 색인만 본다 — 서비스 서버도 필요 없다: CHECK=yes [INDEX=<색인>] scripts/task06-all.sh t02):
+#   그 묶음의 차례(색인 없이 센 드라이런의 차례)의 (실험, 조건, 시나리오, 반복)마다 비고가 "대체됨"이 아닌 줄이 정확히 하나이고 종료 0인지,
+#   그 실행의 버리는 실행이 종료 0인지(차례에서 r0을 버리는 블록이면 r0이 있어야 하고, 이어 재는 블록도 잇닿은 r0이 있으면 그것이 0이어야), 차례에 없는 반복의 줄이 없는지, 색인의 종료 0인 버리는 실행이
+#   차례의 수보다 적지 않은지(이어 돌기에서 블록을 다시 띄우면 r0이 차례보다 많아진다 — 그것은 맞다). 어긋난 것을 찍고 종료 1.
 # DRY_RUN=yes: 실행하지 않고 돌 차례(블록마다 실험·조건·시나리오·r0·잰 반복·띄우기·조건 값과 기대 파일)와 묶음마다의 블록·잰 실행·버리는 실행 수를
 #   찍는다(서버 없이 돈다. 이어 돌기의 건너뜀도 색인대로 보인다).
 set -euo pipefail
@@ -32,10 +43,12 @@ parts=("$@")
 ((${#parts[@]} > 0)) || parts=(cal restart)
 DRY_RUN=${DRY_RUN:-no}
 SMOKE=${SMOKE:-no}
+CHECK=${CHECK:-no}
 CONSECUTIVE_FAIL_MAX=${CONSECUTIVE_FAIL_MAX:-5}
 [[ $DRY_RUN == yes || $DRY_RUN == no ]] || die "DRY_RUN '$DRY_RUN' 는 yes|no"
 [[ $SMOKE == yes || $SMOKE == no ]] || die "SMOKE '$SMOKE' 는 yes|no"
-[[ $DRY_RUN == yes || -n $SERVICES_SSH ]] || die "SERVICES_SSH(서비스 서버)를 준다 — 노트북의 보정은 scripts/task04b-all.sh base 등으로 돌린다"
+[[ $CHECK == yes || $CHECK == no ]] || die "CHECK '$CHECK' 는 yes|no"
+[[ $DRY_RUN == yes || $CHECK == yes || -n $SERVICES_SSH ]] || die "SERVICES_SSH(서비스 서버)를 준다 — 노트북의 보정은 scripts/task04b-all.sh base 등으로 돌린다"
 INDEX_OVERRIDE=${INDEX:-}
 UPTIME_LOG=runs/task-06-uptime.txt
 X=load/expectations
@@ -46,6 +59,7 @@ SERVICE_STATE="" # 지금 떠 있는 서비스의 조건(블록의 "조건 이�
 declare -A RETRIED=()
 declare -A SMOKE_DONE=()
 n_blocks=0; n_measured=0; n_discard=0; n_skipped=0
+SCHED="" # 마감 검사가 차례를 모으는 파일(비어 있지 않으면 block은 색인을 보지 않고 차례만 적는다)
 
 index_of() { # <묶음> → 그 묶음의 색인
   if [[ -n $INDEX_OVERRIDE ]]; then echo "$INDEX_OVERRIDE"
@@ -61,23 +75,73 @@ stamp() { # 원격 uptime이 실패하면 멈춘다(빈 값을 남기지 않는�
   printf '%s\t%s\t%s\t%s\n' "$(date -Iseconds)" "$1" "load: $here" "services: $there" >> "$UPTIME_LOG"
 }
 
-# 색인에 이 (실험, 조건, 시나리오, 반복)이 종료 0으로 있나(비고가 "대체됨"으로 시작하는 줄은 빼고)
+# awk 조각: 색인의 줄마다 r0x = 그 실행의 버리는 실행의 종료 코드 — 파일의 차례로 같은 (실험, 조건)이 잇닿은 줄 가운데
+# 가장 가까운 앞의 r0("" = 잇닿은 r0 없음. r0 줄 자신도 ""). scripts/task04.sh가 블록의 줄을 잇달아 쓰고, 시계로 다시 돈 줄과 이어 재는
+# 블록(UP=no)은 그 블록에 바로 붙는다. 다시 띄우는 블록은 r0으로 시작하므로(DISCARD=no인 보정은 조건마다 한 블록) 가장 가까운 앞의 r0이
+# 그 서비스의 r0이다(바퀴가 바뀌며 같은 조건의 블록이 잇닿아도).
+# 머리줄은 파일마다 FNR 1.
+R0X='FNR > 1 { k = $1 FS $2; if (k != pk) z = ""; pk = k; if ($4 == 0) z = $6 ""; r0x = ($4 == 0 ? "" : z) }'
+
+# 색인에 이 (실험, 조건, 시나리오, 반복)의 셈에 드는 줄(머리 주석)이 있나
 ok_in_index() {
   [[ -f $INDEX ]] || return 1
-  awk -F'\t' -v e="$1" -v c="$2" -v s="$3" -v r="$4" \
-    'NR > 1 && $1 == e && $2 == c && $3 == s && $4 == r && $6 == 0 && $8 !~ /^대체됨/ { f = 1 } END { exit !f }' "$INDEX"
+  awk -F'\t' -v e="$1" -v c="$2" -v s="$3" -v r="$4" "$R0X"'
+    FNR > 1 && $1 == e && $2 == c && $3 == s && $4 == r && $6 == 0 && $8 !~ /^대체됨/ && (r0x == "" || r0x == "0") { f = 1 }
+    END { exit !f }' "$INDEX"
 }
-# 비고를 단다: 그 (실험, 조건, 시나리오, 반복)의 비고가 빈 줄 가운데 실행 폴더가 <run>인 줄(<run>이 "-"면 종료 0이 아닌 줄 모두)
-note_rows() { # <실험> <조건> <시나리오> <반복> <run 또는 -> <비고>
+# 비고를 단다: 그 (실험, 조건, 시나리오, 반복)의 비고가 빈 줄 가운데 실행 폴더가 <run>인 줄
+note_rows() { # <실험> <조건> <시나리오> <반복> <run> <비고>
   local tmp
   tmp=$(mktemp "$INDEX.XXXXXX")
   awk -F'\t' -v OFS='\t' -v e="$1" -v c="$2" -v s="$3" -v r="$4" -v run="$5" -v note="$6" \
-    'NR > 1 && $1 == e && $2 == c && $3 == s && $4 == r && $8 == "" && (run == "-" ? $6 != 0 : $5 == run) { $8 = note } { print }' "$INDEX" > "$tmp"
+    'NR > 1 && $1 == e && $2 == c && $3 == s && $4 == r && $8 == "" && $5 == run { $8 = note } { print }' "$INDEX" > "$tmp"
   mv "$tmp" "$INDEX"
 }
-prior_failed_codes() { # <실험> <조건> <시나리오> <반복> → 비고가 빈, 종료 0이 아닌 줄의 종료 코드들
-  [[ -f $INDEX ]] || return 0
-  awk -F'\t' -v e="$1" -v c="$2" -v s="$3" -v r="$4" 'NR > 1 && $1 == e && $2 == c && $3 == s && $4 == r && $6 != 0 && $8 == "" { printf "%s ", $6 }' "$INDEX"
+# 블록이 색인의 <앞 줄 수> 뒤에 잰 반복 <반복>의 줄을 썼나
+wrote_rep() { # <앞 줄 수> <반복>
+  tail -n +"$(($1 + 1))" "$INDEX" | awk -F'\t' -v r="$2" '$4 == r { f = 1 } END { exit !f }'
+}
+# 이어 돌기의 대체: 이 블록이 <앞 줄 수> 뒤에 새 줄을 쓴 잰 반복마다, 그 앞의 줄 가운데 비고가 비고 셈에 들지 않는 것에 "대체됨"을 단다.
+# 새 줄을 쓰지 못한 반복(띄우기·버리는 실행의 실패)의 옛 줄은 그대로 둔다 — 실패를 가리지 않는다(R06-14).
+supersede() { # <앞 줄 수> <실험> <조건> <시나리오>
+  local tmp
+  tmp=$(mktemp "$INDEX.XXXXXX")
+  awk -F'\t' -v OFS='\t' -v before="$1" -v e="$2" -v c="$3" -v s="$4" '
+    FNR == NR { if (FNR > before && $1 == e && $2 == c && $3 == s && $4 != 0) fresh[$4] = 1; next }
+    '"$R0X"'
+    FNR > 1 && FNR <= before && $1 == e && $2 == c && $3 == s && $4 != 0 && $8 == "" && ($4 in fresh) {
+      if ($6 != 0) $8 = "대체됨: 이어 돌기에서 다시 잼(앞 종료 " $6 ")"
+      else if (r0x != "" && r0x != "0") $8 = "대체됨: 이어 돌기에서 다시 잼(앞 버리는 실행 종료 " r0x ")"
+    }
+    { print }' "$INDEX" "$INDEX" > "$tmp"
+  mv "$tmp" "$INDEX"
+}
+
+# 마감 검사: 차례 파일(<실험 조건 시나리오 반복 r0버림(yes|no) 블록의첫반복(1|0)>)과 색인을 견준다. 맞으면 0.
+check_index() { # <차례 파일>
+  [[ -f $INDEX ]] || { echo "마감 검사 실패 — 색인 $INDEX 이 없다"; return 1; }
+  awk -F'\t' '
+    FNR == NR { k = $1 FS $2 FS $3; key = k FS $4; want[key] = 1; disc[key] = $5; keyset[k] = 1; nm++; if ($5 == "yes" && $6 == 1) nd++; next }
+    '"$R0X"'
+    FNR == 1 { next }
+    { k = $1 FS $2 FS $3 }
+    !(k in keyset) { next }
+    { live_row = ($8 !~ /^대체됨/) }
+    $4 == 0 { if (live_row) { if ($6 == 0) vr0++; else fr0++ } next }
+    { key = k FS $4; where = "색인 " FNR "줄(" $1 " " $2 " " $3 " r" $4 " " $5 ")" }
+    !(key in want) { if (live_row) { bad++; print "차례에 없는 반복: " where } next }
+    !live_row { next }
+    { live[key]++ }
+    $6 != 0 { bad++; print "대체되지 않은 실패(종료 " $6 "): " where; next }
+    (disc[key] == "yes" && r0x != "0") || (r0x != "" && r0x != "0") { bad++; print "버리는 실행이 " (r0x == "" ? "없다" : "실패했다(종료 " r0x ")") ": " where; next }
+    { good++ }
+    END {
+      for (key in want) if (live[key] != 1) { split(key, a, FS); bad++; print "(" a[1] " " a[2] " " a[3] " r" a[4] "): 대체되지 않은 줄 " (live[key] + 0) "개" }
+      printf "마감 검사\t잰 실행: 차례 %d · 셈에 든 줄 %d\t버리는 실행: 차례 %d · 색인의 종료 0 %d · 종료 0이 아닌 것 %d\n", nm, good, nd, vr0, fr0
+      if (vr0 < nd) { bad++; print "버리는 실행(종료 0)이 차례보다 적다" }
+      if (bad) { printf "마감 검사 실패 — %d건\n", bad; exit 1 }
+      print "마감 검사 통과"
+    }' "$1" "$INDEX"
 }
 # 실행 폴더의 config.env에서 시계의 앞·뒤 차가 문턱을 넘었나(분석기의 규칙과 같다 — docs/measurement.md 12-1). 넘었으면 "<차> <문턱>"을 내고 0.
 clock_over() {
@@ -101,13 +165,21 @@ expect_vars() {
 }
 
 # 블록의 실행이 색인에 남긴 줄을 센다: 실패를 세고, 시계 문턱으로 실패한 잰 반복을 RETRY_REPS에 모은다.
+# 잇단 실패의 수는 잰 실행으로 센다 — 버리는 실행의 통과는 0으로 돌리지 않고, 버리는 실행의 실패(그 블록은 잰 실행에 닿지 못함)는
+# 실행 없음과 같이 하나 센다. 잰 실행에 닿지 못한 블록은 BLOCK_BROKEN=yes(그 서비스를 다음 블록이 이어 쓰지 않게).
 tally() { # <이 블록 앞의 색인 줄 수>
   local before=$1 e c s rep run rc rest d
-  RETRY_REPS=()
+  RETRY_REPS=(); BLOCK_BROKEN=no
   if (($(wc -l < "$INDEX") == before)); then # 띄우기에서 실패 등 — 실행이 하나도 남지 않았다
-    failed+=("${BLOCK_DESC}(실행 없음)"); fails_in_row=$((fails_in_row + 1))
+    failed+=("${BLOCK_DESC}(실행 없음)"); fails_in_row=$((fails_in_row + 1)); BLOCK_BROKEN=yes
   else
     while IFS=$'\t' read -r e c s rep run rc rest; do
+      if [[ $rep == 0 ]]; then
+        if [[ $rc != 0 ]]; then
+          failed+=("$c r0(버리는 실행 종료 $rc — 잰 반복을 돌지 않음)"); fails_in_row=$((fails_in_row + 1)); BLOCK_BROKEN=yes
+        fi
+        continue
+      fi
       if [[ $rc == 0 ]]; then fails_in_row=0; continue; fi
       failed+=("$c r$rep(종료 $rc)"); fails_in_row=$((fails_in_row + 1))
       if [[ $rep != 0 && $rc == 1 && -d $run ]] && d=$(clock_over "$run"); then
@@ -128,6 +200,13 @@ block() {
     [[ -z ${SMOKE_DONE[$PART]:-} ]] || return 0
     SMOKE_DONE[$PART]=yes
   fi
+  if [[ -n $SCHED ]]; then # 마감 검사의 차례: 색인을 보지 않는다(처음부터 도는 차례)
+    if [[ $up == no && $SERVICE_STATE != "$state" ]]; then discard=yes; fi
+    item=1
+    for rep in $REP_LIST; do printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$exp" "$cond" "$sc" "$rep" "$discard" "$item" >> "$SCHED"; item=0; done
+    SERVICE_STATE=$state
+    return 0
+  fi
   for rep in $REP_LIST; do ok_in_index "$exp" "$cond" "$sc" "$rep" || want+=("$rep"); done
   if ((${#want[@]} == 0)); then
     n_skipped=$((n_skipped + 1))
@@ -143,16 +222,13 @@ block() {
     SERVICE_STATE=$state
     return 0
   fi
-  for rep in "${want[@]}"; do
-    codes=$(prior_failed_codes "$exp" "$cond" "$sc" "$rep")
-    if [[ -n $codes ]]; then note_rows "$exp" "$cond" "$sc" "$rep" - "대체됨: 이어 돌기에서 다시 잼(앞 종료 ${codes% })"; fi
-  done
   BLOCK_DESC="$exp $cond"
   stamp "$exp $cond ${want[*]}"
   before=$(wc -l < "$INDEX")
-  INDEX=$INDEX UP=$up DISCARD=$discard REP_LIST="${want[*]}" scripts/task04.sh "$exp" "$cond" "$sc" "${vars[@]}" || true
-  SERVICE_STATE=$state
+  INDEX=$INDEX UP=$up DISCARD=$discard DISCARD_FAIL_STOPS=yes REP_LIST="${want[*]}" scripts/task04.sh "$exp" "$cond" "$sc" "${vars[@]}" || true
+  supersede "$before" "$exp" "$cond" "$sc" # 새 줄이 쓰인 뒤에 옛 줄을 대체
   tally "$before"
+  if [[ $BLOCK_BROKEN == yes ]]; then SERVICE_STATE=""; else SERVICE_STATE=$state; fi
   # 시계 문턱으로 실패한 잰 반복: 같은 서비스로 한 번만 다시
   for item in "${RETRY_REPS[@]}"; do
     IFS='|' read -r r run d <<< "$item"
@@ -160,10 +236,11 @@ block() {
       die "$cond r$r 가 다시 돈 뒤에도 시계의 앞·뒤 차 문턱을 넘었다(${d% *}ms > ${d#* }ms — $run) — 멈춘다"
     fi
     RETRIED[$exp|$cond|$sc|$r]=yes
-    note_rows "$exp" "$cond" "$sc" "$r" "$run" "대체됨: 시계 앞·뒤 차 ${d% *}ms > 문턱 ${d#* }ms"
     log "$cond r$r: 시계의 앞·뒤 차가 문턱을 넘었다(${d% *}ms) — 같은 서비스로 한 번 다시 돈다"
     before=$(wc -l < "$INDEX")
     INDEX=$INDEX UP=no DISCARD=no REP_LIST="$r" scripts/task04.sh "$exp" "$cond" "$sc" "${vars[@]}" || true
+    # 새 줄이 쓰인 뒤에만 옛 줄을 대체(쓰이지 않았으면 옛 실패가 그대로 남아 이어 돌기와 마감 검사가 본다)
+    if wrote_rep "$before" "$r"; then note_rows "$exp" "$cond" "$sc" "$r" "$run" "대체됨: 시계 앞·뒤 차 ${d% *}ms > 문턱 ${d#* }ms"; fi
     tally "$before"
     if ((${#RETRY_REPS[@]} > 0)); then
       IFS='|' read -r _ run d <<< "${RETRY_REPS[0]}"
@@ -296,12 +373,10 @@ summary() { # <묶음>
   n_blocks=0; n_measured=0; n_discard=0; n_skipped=0
 }
 
-for PART in "${parts[@]}"; do
-  INDEX=$(index_of "$PART")
-  if [[ $DRY_RUN == no && ! -f $INDEX ]]; then echo "$HEADER" > "$INDEX"; fi
-  if [[ $DRY_RUN == yes ]]; then printf '묶음\t%s\t색인 %s\n' "$PART" "$INDEX"; fi
+# 묶음 하나의 차례를 돈다(SCHED가 있으면 차례만 적는다)
+run_part() { # <묶음>
   SERVICE_STATE=""; LAST_PL=""
-  case "$PART" in
+  case "$1" in
     cal)
       # task 01~04 (scripts/task04b-all.sh base와 같은 줄)
       DISCARD=yes REP_LIST="1 2 3" block "" cal base-calibration calibration
@@ -333,7 +408,9 @@ for PART in "${parts[@]}"; do
       unset DISCARD REP_LIST
       ;;
     restart)
-      if ok_in_index cal restart-check restart-check 1; then
+      if [[ -n $SCHED ]]; then
+        printf 'cal\trestart-check\trestart-check\t1\tno\t1\n' >> "$SCHED"
+      elif ok_in_index cal restart-check restart-check 1; then
         n_skipped=$((n_skipped + 1)); if [[ $DRY_RUN == yes ]]; then printf '건너뜀\tcal\trestart-check\n'; fi
       elif [[ $DRY_RUN == yes ]]; then
         n_blocks=$((n_blocks + 1)); printf '블록\tcal\trestart-check\t(scripts/task04-restart-check.sh)\n'
@@ -391,10 +468,37 @@ for PART in "${parts[@]}"; do
         done
       done
       ;;
-    *) die "모르는 묶음 '$PART'" ;;
+    *) die "모르는 묶음 '$1'" ;;
   esac
-  if [[ $DRY_RUN == yes ]]; then summary "$PART"; fi
+}
+
+# 마감 검사: 그 묶음의 처음부터의 차례를 모아(색인을 보지 않고) 색인 $INDEX와 견준다
+check_part() { # <묶음>
+  local sched rc=0
+  sched=$(mktemp)
+  SCHED=$sched; SMOKE_DONE=()
+  run_part "$1"
+  SCHED=""
+  check_index "$sched" || rc=1
+  rm -f "$sched"
+  return "$rc"
+}
+
+check_failed=0
+for PART in "${parts[@]}"; do
+  INDEX=$(index_of "$PART")
+  if [[ $CHECK == yes ]]; then
+    printf '묶음\t%s\t색인 %s\n' "$PART" "$INDEX"
+    check_part "$PART" || check_failed=1
+    continue
+  fi
+  if [[ $DRY_RUN == no && ! -f $INDEX ]]; then echo "$HEADER" > "$INDEX"; fi
+  if [[ $DRY_RUN == yes ]]; then printf '묶음\t%s\t색인 %s\n' "$PART" "$INDEX"; fi
+  run_part "$PART"
+  if [[ $DRY_RUN == yes ]]; then summary "$PART"
+  else check_part "$PART" || failed+=("마감 검사 $PART"); fi
 done
+if [[ $CHECK == yes ]]; then exit "$check_failed"; fi
 if [[ $DRY_RUN == yes ]]; then exit 0; fi
 stamp "끝"
 ((${#failed[@]} == 0)) || { log "실패한 실행: ${failed[*]} — 색인 $INDEX"; exit 1; }
