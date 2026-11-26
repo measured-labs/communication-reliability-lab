@@ -1,0 +1,24 @@
+{
+  "answers": 600,
+  "lostTotal": 0,
+  "doubledTotal": 0,
+  "layerMismatch": 100,
+  "orphanRows": 0,
+  "pendingRows": 0,
+  "amountMismatch": 0,
+  "faultCountsMatch": true,
+  "labels": {
+    "": {"completed | COMPLETED | RESERVED | APPROVED": 50},
+    "order:error": {"failed | - | - | -": 50},
+    "inventory:error": {"failed | FAILED | - | -": 50},
+    "payment:error": {"failed | FAILED | FAILED | -": 50},
+    "inventory:delay=300": {"completed | COMPLETED | RESERVED | APPROVED": 50},
+    "payment:delay=300": {"completed | COMPLETED | RESERVED | APPROVED": 50},
+    "order:delay=6000": {"unknown | COMPLETED | RESERVED | APPROVED": 50},
+    "inventory:delay=2500": {"unknown | UNKNOWN | - | -": 50},
+    "payment:delay=1500": {"unknown | UNKNOWN | UNKNOWN | -": 50},
+    "order:fail-after-commit": {"failed | COMPLETED | RESERVED | APPROVED": 50},
+    "inventory:fail-after-commit": {"failed | FAILED | RESERVED | APPROVED": 50},
+    "payment:fail-after-commit": {"failed | FAILED | FAILED | APPROVED": 50}
+  }
+}
