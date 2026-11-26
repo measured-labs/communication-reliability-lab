@@ -109,8 +109,8 @@ private fun parseRetryArgs(args: Array<String>): Map<String, String> {
 // ───────────── 읽기 ─────────────
 
 /**
- * [shiftMs]: (task 06) 구간 장애(`outage`)의 from·to는 서비스가 **자기 시계로** 판정하는 시각이다 — 시각 기록과 같은 양을 빼
- * 부하 서버의 시계로 옮긴다(docs/measurement.md 12절). 라벨(`attemptFault` 문자열)은 그대로 둔다.
+ * [shiftMs]: (task 06) 구간 장애(`outage`)의 from·to는 서비스가 **자기 시계로** 판정하는 시각이다 — 이 양을 빼 부하 서버의 시계로
+ * 옮긴다([retryReport]는 [ClockOffset.outageShiftMs]를 준다 — docs/measurement.md 12-4). 라벨(`attemptFault` 문자열)은 그대로 둔다.
  */
 fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer> {
     val timed = readTimedAnswers(path)
@@ -224,7 +224,10 @@ private fun series(times: List<Long>, origin: Long, last: Long): List<Int> {
 fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
     val clock = readClockOffset(run) // (task 06) 서비스의 시각을 부하 서버의 시계로 — 12절
     val shift = clock?.shiftMs ?: 0L
-    val answers = readRetryAnswers(run.resolve("answers.jsonl"), shift)
+    // 구간 장애의 from·to는 k6가 헤더에 더한 양만큼 되옮긴다 — k6가 뜻한 구간(부하 서버의 시계, 12-4). 옮긴 서비스의 시각과 견줄 때는
+    // svcMs로 서비스와 같은 양만 옮긴 값을 쓴다(= 헤더 그대로의 from·to와 기록 그대로의 시각을 견준 것 — 서비스가 판정한 그대로).
+    val answers = readRetryAnswers(run.resolve("answers.jsonl"), clock?.outageShiftMs ?: 0L)
+    val svcMs: (Long) -> Long = { it + (clock?.outageShiftMs ?: 0L) - shift }
     val dup = answers.groupBy { it.requestId }.filterValues { it.size > 1 }.keys
     if (dup.isNotEmpty()) throw InputException("같은 requestId를 두 번 보낸 정답이 있다(${dup.take(3)}) — 재시도 지표는 requestId마다 한 번 보낸 실행에서만 정의된다")
     val byId = answers.associateBy { it.requestId }
@@ -345,7 +348,7 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
         val outageOf = answers.associate { a -> a.requestId to a.directives.filterIsInstance<AttemptFault.Outage>().firstOrNull { it.service == svc } }
         expected["outage"] = timings.getValue(layer).count { t ->
             val o = outageOf[t.requestId] ?: return@count false
-            t.startUs >= o.fromMs * 1000 && t.startUs < o.toMs * 1000
+            t.startUs >= svcMs(o.fromMs) * 1000 && t.startUs < svcMs(o.toMs) * 1000
         }.toLong()
         svc to AttemptFault.KINDS.associateWith { kind ->
             val c = counted.getValue(svc).getValue(kind)
@@ -403,7 +406,7 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
             "endMs" to o.toMs - t0,
             "requestsSentDuring" to during.size,
             "completedSentDuring" to during.count { it.completed },
-            "calleeArrivalsDuring" to timings.getValue(layer).count { it.startUs >= o.fromMs * 1000 && it.startUs < o.toMs * 1000 },
+            "calleeArrivalsDuring" to timings.getValue(layer).count { it.startUs >= svcMs(o.fromMs) * 1000 && it.startUs < svcMs(o.toMs) * 1000 },
             "calleePeakPer50msBefore" to peak(times, BIN_MS, t0) { it + BIN_MS <= o.fromMs },
             "calleePeakPer50msDuring" to peak(times, BIN_MS, t0) { it >= o.fromMs && it + BIN_MS <= o.toMs },
             "calleePeakPer50msAfter" to peak(times, BIN_MS, t0) { it >= o.toMs },
@@ -411,7 +414,7 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
             // 재시도만의 칸 분포(구간 안, 재시도가 하나 이상 든 칸만): 칸의 수(count)와 칸마다의 수의 분위수
             "retryBinsDuring" to quantiles(retryBins.map { it.toDouble() }),
             "retriesInCrowdedBinsDuring" to retryBins.sum().takeIf { it > 0 }?.let { total -> retryBins.filter { it >= CROWDED_BIN }.sum().toDouble() / total },
-            "retryTailMs" to retryStarts.maxOrNull()?.let { it - o.toMs },
+            "retryTailMs" to retryStarts.maxOrNull()?.let { it - svcMs(o.toMs) },
             "clientRecoveryMs" to answers.filter { !it.completed }.maxOfOrNull { it.sentAtMs }?.let { it - o.toMs },
         )
     }

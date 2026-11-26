@@ -182,12 +182,21 @@ private val UNSIGNED_DECIMAL = Regex("[0-9]+(\\.[0-9]+)?")
 /**
  * 실행 기록에 남은 시계 어긋남(서비스 서버의 시계 − 부하 서버의 시계, ms). [offsetMs] = 앞·뒤의 평균(뒤가 없으면 앞),
  * [shiftMs] = 그것을 ms 정수로 반올림한 것(.5는 0에서 먼 쪽) — 분석기가 서비스의 시각을 부하 서버의 시계로 옮기는 양(`t − shiftMs`).
+ * [headerShifted] = k6가 구간 장애 헤더의 from·to를 앞의 값만큼 옮겨 보낸 실행인가(`_start` 칸이 있는 실행 — 옛 이름의 실행은 옮기지 않았다).
  */
-class ClockOffset(val startMs: BigDecimal, val endMs: BigDecimal?) {
+class ClockOffset(val startMs: BigDecimal, val endMs: BigDecimal?, val headerShifted: Boolean = true) {
     val offsetMs: BigDecimal = if (endMs == null) startMs else (startMs + endMs).divide(BigDecimal(2))
     // 단순화: 옮기는 양을 ms 정수로 반올림한다 — 남는 오차 ≤ 0.5ms(재는 법의 오차 상한 0.45~1.67ms보다 작다). μs 기록과 ms 기록(표본, 구간 장애)을
     // 같은 정수 양으로 옮겨 서비스끼리 견주는 값이 한 글자도 바뀌지 않게 하려는 것. 0.5ms보다 작은 몫을 따지는 지표가 생기면 μs로 옮긴다.
     val shiftMs: Long = offsetMs.setScale(0, RoundingMode.HALF_UP).longValueExact()
+
+    /**
+     * 구간 장애 헤더의 from·to를 부하 서버의 시계로 옮기는 양(`from − outageShiftMs`) — k6의 시각과 견주는 `outage.*`에 쓴다(12-4).
+     * 헤더를 옮겨 보낸 실행: k6가 헤더에 더한 양 그대로 = 앞의 값을 ms 정수로 반올림(.5는 0에서 먼 쪽 — `load/chain.js`의
+     * `Math.sign(x) * Math.round(Math.abs(x))`와 같다) — 그래서 되옮긴 구간이 k6가 뜻한 구간과 정확히 같다.
+     * 옛 실행(헤더를 옮기지 않았다): [shiftMs] — 서비스가 판정한 구간을 부하 서버의 시계로 낸다(지금까지와 같다).
+     */
+    val outageShiftMs: Long = if (headerShifted) startMs.setScale(0, RoundingMode.HALF_UP).longValueExact() else shiftMs
 
     /** 보고의 `clock` 칸(어긋남이 기록된 실행에만 — 12절). */
     fun report(): Map<String, Any?> = linkedMapOf(
@@ -237,7 +246,7 @@ fun readClockOffset(run: Path): ClockOffset? {
             )
         }
     }
-    return ClockOffset(start, end)
+    return ClockOffset(start, end, headerShifted = CLOCK_OFFSET_START_KEY in values)
 }
 
 fun readFaultCounts(path: Path): Map<String, Map<String, Long>> {
