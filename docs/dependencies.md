@@ -245,3 +245,18 @@ keep-alive 두 설정의 출처(2026-11-24 확인):
 - `Context.fork()`는 값을 넘기되 취소할 수 있는 조상을 두지 않는 새 문맥을 만든다(grpc-api `Context.fork` → `new Context(keyValueEntries, generation + 1)`, `getDeadline()`은 그 조상이 없으면 null) — G1이 받은 기한·취소를 아래로 넘기지 않는 방법.
 - 단항(unary) 호출에서 서버가 끊긴 호출에 응답을 내도 예외가 나지 않는다(grpc-stub `ServerCalls.ServerCallStreamObserverImpl.onNext` — 스트리밍에서만 던진다). 그래도 `setOnCancelHandler`를 걸어 둔다.
 - **실행기 큐에서 기다리는 동안 취소된 호출은 처리 코드가 불리지 않는다**(grpc-core `ServerCallImpl.ServerStreamListenerImpl.halfClosed` — 문맥이 까닭과 함께 취소되면 `call.cancelled`가 서고, 뒤의 `halfClosed`가 돌아간다. unary의 처리 코드는 halfClose에서 불린다). 조사 문서에 없던 것 — 설계 앞의 스모크에서 전송 대조가 드러냈다(결과 문서 "스모크"). 서버가 그 수를 따로 센다(`/transport-counts`의 `grpcCancelledBeforeHandler`).
+
+## task 06에서 정한 것 — 새 의존성 없음
+
+### 서버 두 대를 부리는 법 — ssh와 rsync(이미 있는 것), 원격 Docker 문맥·오케스트레이터가 아니라
+
+- 정말 필요한가: 예. 배치(명세 task 06)가 서비스·DB는 .164, 부하 도구·실행 스크립트·분석기는 .158이다. 실행 스크립트는 한 실행 안에서 Compose 올리기·내리기, DB 내보내기, 컨테이너 확인(.164)과 k6·분석기(.158)를 차례로 섞어 부른다.
+- 선택지: (가) 실행 스크립트를 .158에서 돌리고 .164의 Docker·`ss`·`psql`을 ssh로 부른다(`scripts/lib.sh`의 `on_services` — 인자마다 `%q`로 감싸 원격 셸이 다시 나누지 않게). 장점: 새 도구 없음, 노트북의 경로는 한 글자도 안 바뀐다(주지 않으면 `localhost`·로컬 Docker). 단점: 명령마다 ssh 연결 하나(수백 ms — 측정 구간 밖의 준비·내보내기에만 든다), compose의 환경 변수를 ssh가 넘기지 않아 따로 넘겨야 한다(`services_compose` — `compose.yaml`이 읽는 변수 가운데 내보낸 것만). (나) `DOCKER_HOST=ssh://…`로 .158의 docker CLI가 .164의 데몬을 부른다 — 장점: 명령이 그대로다. 단점: Compose가 바인드 마운트(`./infra/postgres`)의 경로를 .158의 절대 경로로 풀어 .164의 데몬에 넘기므로 두 서버의 폴더가 같은 경로에 있어야 한다는 숨은 짝이 생기고, 빌드 문맥이 매번 .158에서 .164로 올라간다. 분석기는 .158의 데몬에서 돌아야 해서 문맥 둘을 오가야 한다. (다) 노트북이 두 서버를 각각 ssh로 부린다 — 실행 한 번의 단계가 두 서버에 번갈아 있어 실행 스크립트를 둘로 쪼개야 한다. (라) Ansible 등 — 새 도구.
+- 고른 것: (가). .158에서 .164로의 ssh는 노트북의 ssh agent를 전달(`ssh -A`)해 쓴다 — 키 파일을 서버로 옮기지 않는다(2026-11-26 확인: .158 → .164 접속 됨, 왕복 ≈ 0.4ms). 알아야 할 위험: 전달된 agent는 그 ssh 세션 동안 .158에서 root 권한을 가진 누구든 쓸 수 있다(키 자체는 나가지 않는다). 세션을 닫으면 끝난다.
+- 코드 보내기: `scripts/servers-sync.sh` — `git archive HEAD`(docs/·runs/ 뺌)를 `rsync --delete`로 두 서버의 `~/communication-reliability-lab`에 맞추고, 보낸 커밋(`.deployed-commit`)과 파일마다의 sha256(`.deployed-sha256`)을 함께 둔다. 서버에는 git 저장소를 만들지 않는다. `scripts/run.sh`는 실행 앞에 두 서버의 커밋이 같고 파일이 보낸 그대로인지 보고(아니면 실패), 실행 기록의 `git_commit`·`git_dirty`를 그것으로 적는다.
+
+### k6 — 부하 서버의 프로젝트 폴더에 공식 바이너리 v2.4.0(`.tools/k6-v2.4.0/k6`), 깔린 v1.4.2도 컨테이너도 아니라
+
+- 정말 필요한가: 같은 판은 필요하다(명세 2절 "버전은 같게"). .158에 깔린 k6는 v1.4.2다 — 쓰지 않는다. sudo를 쓸 수 없어 시스템에 깔지 않는다.
+- 선택지: (가) 공식 릴리스 묶음(`k6-v2.4.0-linux-amd64.tar.gz`)을 프로젝트 폴더에 풀어 쓴다 — 노트북처럼 호스트에서 바로 도는 프로세스다(네트워크는 호스트의 것, CPU 제한 없음). 받은 묶음의 sha256을 공식 `k6-v2.4.0-checksums.txt`의 값(`5a5ecf23…7abb87`, 스크립트에 적음)과 견준다. (나) 컨테이너(`grafana/k6:2.4.0`) — 단점: 기본 브리지 네트워크면 NAT(포워딩·conntrack)가 k6와 서비스 사이에 하나 더 놓여 노트북(호스트 프로세스 → 루프백)과 경로가 달라진다. `--network host`로 피할 수 있지만 그래도 cgroup 안에서 돈다(제한을 주지 않으면 같지만, 주면 k6가 보내는 시각이 흔들린다). 실행 스크립트가 k6에 넘기는 파일(`load/chain.js`, 로그·요약 출력, 맞추기 단계의 `ANSWERS_FILE` 절대 경로)을 마운트와 사용자 id로 맞춰야 한다. (다) 소스로 짓기 — Go 도구가 필요하다.
+- 고른 것: (가). `scripts/servers-sync.sh`가 없을 때만 받아 둔다. 실행 스크립트는 `K6`(기본 `k6`)를 부르고 `k6 version`의 첫 줄이 `k6 v2.4.0 `으로 시작하지 않으면 실패한다(노트북에도 같은 검사) — 쓰인 판의 줄 전체는 실행마다 `config.env`의 `k6_version`에 남는다(노트북 `k6 v2.4.0 (commit/dd9395906d, go1.26.11, linux/amd64)`).
