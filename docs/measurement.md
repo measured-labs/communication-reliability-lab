@@ -246,7 +246,7 @@ JSON 객체. 아래 키 가운데 **적은 것만** 견준다(하나 이상 적�
 
 | 파일 | 내용 |
 |---|---|
-| `config.env` | 시나리오, 반복 번호, 시각, git 커밋(`git_commit`)과 작업 트리가 깨끗했는지(`git_dirty` = `no`/`yes`, 깨끗하지 않으면 `git_dirty_paths`에 바뀐 경로) — git을 읽지 못하면 둘 다 `모름`, 도착률·시간·계획한 수, k6 요청 타임아웃, 가라앉기 최대 시간(`settle_timeout_seconds`)과 실제로 걸린 시간(`settled_after_ms`), 워밍업, k6 판, 호스트 CPU·메모리 |
+| `config.env` | 시나리오, 반복 번호, 시각, git 커밋(`git_commit`)과 작업 트리가 깨끗했는지(`git_dirty` = `no`/`yes`, 깨끗하지 않으면 `git_dirty_paths`에 바뀐 경로) — git을 읽지 못하면 둘 다 `모름`, 도착률·시간·계획한 수, k6 요청 타임아웃, 가라앉기 최대 시간(`settle_timeout_seconds`)과 실제로 걸린 시간(`settled_after_ms`), 워밍업, k6 판(`k6_version` — `k6 version`의 첫 줄 전체)과 (task 06부터) 바이너리의 sha256(`k6_sha256` — 실행 스크립트가 정한 값과 다르면 실행 실패), 호스트 CPU·메모리 |
 | `image-build.txt` | 실행 앞에 이미지를 지은 출력(바뀐 것이 없으면 캐시) |
 | `compose.resolved.yaml` | `docker compose config` — 자원 제한, JVM 옵션(`-Djdk.httpclient.disableRetryConnect=true` 등), 층 사이 타임아웃 |
 | `images.txt` | 쓴 이미지와 PostgreSQL 이미지의 다이제스트 |
@@ -261,7 +261,7 @@ JSON 객체. 아래 키 가운데 **적은 것만** 견준다(하나 이상 적�
 | (task 02) `config.env`에 더한 칸 | `k6_max_vus`, `k6_no_connection_reuse`(부하의 k6가 keep-alive를 껐나 — `true`면 요청마다 새 연결과 `Connection: close`. `slow-layer`만 `true`, 까닭은 `scripts/run.sh` 머리와 `docs/results/task-02-timeouts.md` 실험 나), `lookup_rate_per_second`, `slow_label`, 조건 `order_to_inventory_timeout`·`inventory_to_payment_timeout`·`virtual_threads`, `timing_expect`, `discard_run`(반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행 — `yes`) |
 | (task 02) `timing/timings-<서비스>.json`, `timing/samples-<서비스>.json`, `lookups.jsonl` | 7-1절 |
 | (task 02) `expect.timing.json`, `report-timing.json`, `metrics.tsv` | 7-4절 |
-| (task 06) `config.env`에 더한 칸 — 서버에서 잴 때만(`SERVICES_SSH`를 줬을 때) | `load_host_hostname`(부하 서버 — 이 실행 스크립트가 돈 곳. 그곳의 코어·메모리·load average는 원래의 `host_nproc`·`host_mem_total_kb`·`host_loadavg_*`), `services_host`(서비스 서버 주소의 끝 마디 — 예 `.164`. 주소 전체는 적지 않는다), `services_hostname`·`services_nproc`·`services_mem_total_kb`, `services_loadavg_start`·`services_loadavg_end`(`/proc/loadavg` 그대로), 조용함의 문턱 `loadavg_max_per_core`·`loadavg_wait_seconds`와 지난 값 `quiet_waited_seconds`·`quiet_loadavg_load_host`·`quiet_loadavg_services_host`(1분 값), 시계 — 실행 앞 `clock_offset_services_minus_load_ms_start`(서비스 서버의 시계 − 부하 서버의 시계)·`clock_offset_error_ms_start`(그 값의 오차 상한 ±), 실행 뒤 `…_end` 둘, 앞·뒤의 차의 문턱 `clock_offset_drift_max_ms`(06-a의 실행 27개는 앞의 값만 접미사 없는 이름 `clock_offset_services_minus_load_ms`·`clock_offset_error_ms`로 남겼다). 재는 법과 문턱의 까닭: `docs/experiments/task-06-design.md` 2절, 분석에 쓰는 규칙: 12절. `git_commit`·`git_dirty`는 서버의 사본에서 `scripts/servers-sync.sh`가 보낸 커밋과 파일 sha256으로 적는다. 노트북에서 돌리면(기본) 이 칸들은 없다 |
+| (task 06) `config.env`에 더한 칸 — 서버에서 잴 때만(`SERVICES_SSH`를 줬을 때) | `load_host_hostname`(부하 서버 — 이 실행 스크립트가 돈 곳. 그곳의 코어·메모리·load average는 원래의 `host_nproc`·`host_mem_total_kb`·`host_loadavg_*`), `services_host`(서비스 서버 주소의 끝 마디 — 예 `.164`. 주소 전체는 적지 않는다), `services_hostname`·`services_nproc`·`services_mem_total_kb`, `services_loadavg_start`·`services_loadavg_end`(`/proc/loadavg` 그대로), 조용함의 문턱 `loadavg_max_per_core`·`loadavg_wait_seconds`와 지난 값 `quiet_waited_seconds`·`quiet_loadavg_load_host`·`quiet_loadavg_services_host`(1분 값), 시계 — k6를 띄우기 바로 앞(워밍업·상태 초기화 뒤) `clock_offset_services_minus_load_ms_start`(서비스 서버의 시계 − 부하 서버의 시계)·`clock_offset_error_ms_start`(잰 순간의 오차 상한 ±), k6가 끝난 바로 뒤(가라앉기 앞) `…_end` 둘, 앞·뒤의 차의 문턱 `clock_offset_drift_max_ms`(06-a의 실행 27개는 앞의 값만 접미사 없는 이름 `clock_offset_services_minus_load_ms`·`clock_offset_error_ms`로 남겼다). 재는 법과 문턱의 까닭: `docs/experiments/task-06-design.md` 2절, 분석에 쓰는 규칙: 12절. `git_commit`·`git_dirty`는 서버에서 잴 때 git이 아니라 `scripts/servers-sync.sh`가 보낸 커밋 표지와 파일 sha256으로 적는다(실행 앞에 두 서버의 목록 `.deployed-sha256` 자체의 sha256도 견준다 — 다르면 실행 실패). 노트북에서 돌리면(기본) 이 칸들은 없다 |
 
 task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, `VIRTUAL_THREADS`)은 환경 변수로 주고, 서비스도 같은 값으로 띄워 둔다(`scripts/up.sh` — `compose.yaml`이 그 변수를 읽는다). 실행 스크립트는 설정 기록 뒤 `settings-<서비스>.json`(떠 있는 객체의 값)에서 주문·재고의 `nextLayer.requestTimeoutMs`와 세 서비스의 `tomcat.executorVirtualThreads`가 그 조건과 같은지 보고, 다르면 실패(종료 코드 1). 조건 하나를 버리는 실행과 반복으로 돌리는 것은 `scripts/task02.sh`, 모든 조건은 `scripts/task02-all.sh`, 결과 표는 `scripts/task02-table.sh`(`runs/task-02-index.tsv`와 `metrics.tsv`에서 다시 계산).
 
@@ -767,11 +767,11 @@ class OverloadLimit(val enabled: Boolean, val limit: Int, val windowMs: Long, cl
 
 | 칸 | 꼴 | 뜻 |
 |---|---|---|
-| `clock_offset_services_minus_load_ms_start` | 10진 수 `-?[0-9]+(\.[0-9]+)?`(ms, 실행 스크립트는 소수 셋째 자리) | 실행 앞(이미지 확인 뒤, 설정 기록·워밍업 앞)에 잰 어긋남 = 서비스 서버의 시계 − 부하 서버의 시계. 음수 = 서비스 서버가 늦다 |
+| `clock_offset_services_minus_load_ms_start` | 10진 수 `-?[0-9]+(\.[0-9]+)?`(ms, 실행 스크립트는 소수 셋째 자리) | 실행 앞에 잰 어긋남 = 서비스 서버의 시계 − 부하 서버의 시계. 음수 = 서비스 서버가 늦다. 실행 스크립트는 k6를 띄우기 바로 앞(워밍업·상태 초기화 뒤)에 잰다(06-a 재보정 앞의 실행은 이미지 확인 뒤·워밍업 앞) |
 | `clock_offset_services_minus_load_ms` | 같다 | **옛 이름**(06-a의 실행 27개 — 앞의 값만 있다). `_start`와 함께 있으면 입력 오류 |
-| `clock_offset_services_minus_load_ms_end` | 같다 | 실행 뒤(부하·가라앉기·내보내기 뒤, 분석 앞)에 잰 어긋남 |
+| `clock_offset_services_minus_load_ms_end` | 같다 | 실행 뒤에 잰 어긋남. 실행 스크립트는 k6가 끝난 바로 뒤(가라앉기·내보내기 앞)에 잰다(06-a 재보정 앞의 실행은 내보내기 뒤·분석 앞) |
 | `clock_offset_drift_max_ms` | 0 이상의 10진 수 `[0-9]+(\.[0-9]+)?` | 앞·뒤의 차의 문턱(실행 스크립트가 `CLOCK_DRIFT_MAX_MS`(기본 `5`)를 적는다). 없으면 5 |
-| `clock_offset_error_ms_start`·`_end`(옛 이름 `clock_offset_error_ms`) | | 재는 법의 오차 상한(±ms). **분석기는 읽지 않는다**(기록용) |
+| `clock_offset_error_ms_start`·`_end`(옛 이름 `clock_offset_error_ms`) | | 그 값을 **잰 순간**의 오차 상한(±ms — 가장 짧은 왕복의 반). 잰 때와 다른 때의 어긋남에는 그 사이에 시계가 움직인 몫이 더해진다(12-5). **분석기는 읽지 않는다**(기록용) |
 
 - 칸은 `<이름>=<값>` 한 줄(첫 `=`에서 나눈다). 다른 줄은 보지 않는다. 파일이 없으면 = 기록 없음.
 - **기록 없음**(파일이 없거나, 앞의 값이 두 이름 모두 없음) → 어긋남 0: 옮기지 않고, 보고에 `clock` 칸이 없고, 문턱도 보지 않는다.
@@ -805,7 +805,7 @@ fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer>   // 구�
 - **부호**: 서비스의 시각 t(서비스 서버의 시계) → 부하 서버의 시계로 `t − shiftMs`(μs 칸은 `t − shiftMs × 1000`). 예: 어긋남 −16.397 → `shiftMs` −16 → 서비스의 시각에 16ms를 더한다. k6의 시각(`sentAtMs`·`elapsedMs`, 조회의 시각)은 옮기지 않는다.
 - **옮기는 것**(읽는 자리에서, 검사는 기록 그대로의 값으로 한 뒤): 시각 기록의 `startUs`·`endUs`·`callStartUs`·`callEndUs`·`deadlineUs`·`cancelledUs`, 표본의 `atMs`, 시도 기록의 `startUs`·`endUs`, 그리고 정답의 `attemptFault`에 든 **구간 장애의 from·to**(결제가 자기 시계로 판정하는 시각이라 서비스의 시각이다 — 12-4). 라벨로 쓰는 `attemptFault` 문자열(`mix.<라벨>`)은 그대로다.
 - **같은 정수 양을 모두 옮긴다** — 서비스의 시각끼리의 차, 같은 μs의 묶음, 정렬 차례, `startUs ÷ 1000`의 차는 한 글자도 바뀌지 않는다. 그래서 서비스끼리 견주는 지표(12-3의 "해당 없음")는 옮겨도 같은 값이다.
-- **옮기는 양이 ms 정수인 까닭**: μs 기록과 ms 기록(표본의 `atMs`, 구간 장애의 from·to)을 같은 양으로 옮겨야 구간 장애의 `attemptFaults.<서비스>.outage.expected`(시각 기록 `startUs`와 from·to를 견준다)가 서비스가 센 수와 계속 같다. 반올림으로 남는 오차 ≤ 0.5ms는 재는 법의 오차 상한(06-a 실측 0.45~1.67ms)보다 작다.
+- **옮기는 양이 ms 정수인 까닭**: μs 기록과 ms 기록(표본의 `atMs`, 구간 장애의 from·to)을 같은 양으로 옮겨야 구간 장애의 `attemptFaults.<서비스>.outage.expected`(시각 기록 `startUs`와 from·to를 견준다)가 서비스가 센 수와 계속 같다. 반올림으로 남는 오차 ≤ 0.5ms는 잰 순간의 오차 상한(06-a 실측 0.45~1.67ms)보다 작다.
 - **보고**: 어긋남이 기록된 실행에만 `report-timing.json`·`report-retry.json`·`report-overload.json`의 맨 끝(`series` 앞)에 `"clock": {"offsetStartMs": 수, "offsetEndMs": 수 또는 null, "offsetMs": 수, "shiftMs": 정수}`가 붙고, 같은 이름으로 `metrics.tsv`·`metrics-retry.tsv`·`metrics-overload.tsv`에 네 줄(`offsetEndMs`가 null이면 빈 값)이 붙는다. 대조 분석·`idem`·`transport`의 보고에는 없다(옮긴 시각이 없다). 기대 파일은 이 칸을 견줄 수 있다(7-4절과 같은 꼴).
 
 ### 12-3. 두 시계를 견주는 지표 — 전수
@@ -847,12 +847,13 @@ fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer>   // 구�
 
 ### 12-5. 앞·뒤 두 번, 평균, 문턱
 
-- 실행 스크립트가 실행 앞(6절의 차례 — 이미지 확인 뒤)과 뒤(내보내기 뒤, 분석 앞)에 한 번씩 잰다(`scripts/lib.sh`의 `clock_offset` — `docs/experiments/task-06-design.md` 2-2). 분석은 둘의 평균을 쓴다 — 실행 동안 어긋남이 고르게 움직였다면 부하 구간의 가운데쯤의 값이다.
-- **문턱 5ms의 까닭**: ① 06-a에서 본 가장 빠른 움직임이 ≈ 1.7ms/분이었고(설계 6절 — NTP가 천천히 당긴 15분), 앞·뒤 사이(워밍업 최대 3 × 15s + 부하 15~50s + 가라앉기·내보내기)는 1~2.5분이라 그 속도로도 차는 2~4ms다 — 평소의 실행이 문턱에 걸리지 않을 만큼. ② 평균을 쓰면 실행 안의 어느 때든 남는 오차는 차의 반(≤ 2.5ms) + 재는 법의 오차(≤ 1.7ms) ≈ 4ms다. 기대 파일 가운데 두 시계를 견주는 지표의 가장 작은 여유는 c7(`cal-retry-burst`)의 1초 칸 경계 — 보낸 때부터 결제에 들기까지 12ms 이상(서버의 06-a 실측 12~39ms)이다 — 보다 작다. 차가 그보다 크면(어긋남이 실행 동안 크게 움직였거나 한 번의 측정이 틀렸다) 평균을 믿을 근거가 없어 그 실행을 버린다(입력 오류 — 다시 잰다). `CLOCK_DRIFT_MAX_MS`로 바꿀 수 있고 실행마다 `config.env`에 남는다.
+- 실행 스크립트가 부하 구간에 붙여 두 번 잰다 — k6를 띄우기 바로 앞(워밍업·상태 초기화 뒤)과 k6가 끝난 바로 뒤(가라앉기·내보내기 앞)(`scripts/lib.sh`의 `clock_offset` — `docs/experiments/task-06-design.md` 2-2). 분석은 둘의 평균을 쓴다 — 실행 동안 어긋남이 고르게 움직였다면 부하 구간의 가운데쯤의 값이다. 견주는 지표의 시각(12-3)은 거의 모두 부하 구간 안에 있다(가라앉기 동안 끝나는 처리의 `endUs`, 맞추기 단계는 밖이다).
+- **문턱 5ms의 까닭**: ① 06-a에서 본 가장 빠른 움직임이 ≈ 1.7~2ms/분이었고(설계 6절 — NTP가 천천히 당긴 15분), 앞·뒤 사이(k6가 도는 시간 — 부하 15~50s와 k6가 뜨고 내리는 몫)는 1분 안팎이라 그 속도로 차는 ≈ 2ms 이하다 — 평소의 실행이 문턱에 걸리지 않을 만큼. ② 평균을 쓰면 부하 구간의 어느 때든 남는 오차는 차의 반(≤ 2.5ms) + 잰 순간의 상한(≤ 1.7ms) ≈ 4ms다(가라앉기 동안의 시각은 그 몫이 조금 더 는다). 기대 파일 가운데 두 시계를 견주는 지표의 가장 작은 여유는 c7(`cal-retry-burst`)의 1초 칸 경계 — 보낸 때부터 결제에 들기까지 12ms 이상(서버의 06-a 실측 12~39ms)이다 — 보다 작다. 차가 그보다 크면(어긋남이 실행 동안 크게 움직였거나 한 번의 측정이 틀렸다) 평균을 믿을 근거가 없어 그 실행을 버린다(입력 오류 — 다시 잰다). `CLOCK_DRIFT_MAX_MS`로 바꿀 수 있고 실행마다 `config.env`에 남는다.
 - **옛 실행**(06-a의 27개): 앞의 값(옛 이름)만 있다 — 그 값으로 옮기고 문턱은 보지 않는다.
 
 ### 12-6. 남는 오차
 
-- 재는 법의 오차(ssh 왕복의 반 — 왕복이 대칭이라는 가정), 반올림 ≤ 0.5ms, 어긋남이 실행 동안 고르게 움직이지 않은 몫(평균이 맞지 않는다 — 차가 문턱 안이면 ≤ 문턱의 반).
-- 구간 장애의 헤더는 **앞의 값**으로 옮긴다(부하 전에는 뒤의 값이 없다) — 서비스가 판정한 구간은 부하 서버의 시계로 ±(차의 반 + 0.5ms)쯤 어긋날 수 있다. 분석기는 평균으로 옮기므로 `outage.startMs`가 정확히 from이 아닐 수 있다(그 실행의 실제 구간을 낸다).
+- 잰 순간의 오차(ssh 왕복의 반 — 왕복이 대칭이라는 가정), 반올림 ≤ 0.5ms, 어긋남이 실행 동안 고르게 움직이지 않은 몫(평균이 맞지 않는다 — 차가 문턱 안이면 ≤ 문턱의 반).
+- 구간 장애의 헤더는 **앞의 값**(k6 바로 앞)으로 옮긴다(부하 전에는 뒤의 값이 없다) — 서비스가 판정한 구간은 부하 서버의 시계로 잰 순간의 상한 + 0.5ms + 잰 때부터 그 시각까지 시계가 움직인 몫(구간 시작이 부하 10s 뒤면 2ms/분에서 ≈ 0.3ms)만큼 어긋날 수 있다. 분석기는 평균으로 옮기므로 `outage.startMs`가 정확히 from이 아닐 수 있고(그 실행의 실제 구간을 낸다 — 차이는 앞·뒤의 차의 반 이하), `outage.requestsSentDuring`처럼 k6의 `sentAtMs`를 from·to와 견주는 지표는 구간의 시작·끝에 딱 붙어 보낸 요청에서 흔들릴 수 있다 — 헤더는 앞의 값(정수로 반올림)으로, 분석기는 평균(정수로 반올림)으로 옮기므로 두 정수가 다르면(앞·뒤의 차가 1ms 안팎이어도 반올림 경계에 걸리면) 분석기가 보는 from·to가 1ms쯤 밀린다. t03 나는 무리 19·39를 구간의 시작·끝 시각에 정확히 보내므로(prep 3절) 이 경계에 걸릴 수 있다(분석기의 규칙 — 확인하지 않은 위험).
+- **여유가 가장 작은 곳**: 무리 지은 도착의 구간 장애(`retry-outage-burst` — 무리 19를 구간 시작 시각에 정확히 보낸다)에서 그 무리의 첫 시도가 구간 안에 드는 여유는 보낸 때부터 결제에 들기까지(서버 06-a 12~39ms)뿐이다 — 위의 남는 오차(≈ 2.5ms 이하)보다 크다. c7(`cal-retry-burst`)의 1초 칸 경계도 같은 크기의 여유다(12-5 ②).
 - 시각 기록의 `startUs`가 0에 가까운 기록을 옮기면 음수가 될 수 있다(검사는 옮기기 전의 값으로 한다 — 실제 벽시계의 기록에서는 생기지 않는다).

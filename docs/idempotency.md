@@ -135,7 +135,8 @@ class IdempotencyKeys(jdbc: JdbcClient) {         // SQL — DB가 있어야 시
 }
 data class IdempotencySettings(val enabled: Boolean, val inProgressAsUnknown: Boolean = false)  // enabled=false인데 inProgressAsUnknown=true면 IllegalArgumentException
 object HttpOutcomes { fun read(status: Int, inProgressAsUnknown: Boolean): LayerOutcome }      // 3-1절의 "응답 상태를 결과로 읽는 규칙 전체"
-class HttpNextLayerCall(settings: NextLayerSettings, inProgressAsUnknown: Boolean = false)       // 응답 상태는 HttpOutcomes.read로 읽는다
+class HttpNextLayerCall(settings: NextLayerSettings, inProgressAsUnknown: Boolean = false,
+                        counts: TransportCounts? = null)   // 응답 상태는 HttpOutcomes.read로 읽는다. counts: (task 05) 나간 호출을 센다 — 없으면 세지 않는다
 class Idempotency(val enabled: Boolean, keys: IdempotencyKeys, val counters: IdempotencyCounters,
                   val inProgressAsUnknown: Boolean = false) {
     fun json(body: Map<String, Any?>): String
