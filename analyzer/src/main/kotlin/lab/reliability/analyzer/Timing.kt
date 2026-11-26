@@ -222,7 +222,12 @@ fun readTimedAnswers(path: Path): List<TimedAnswer> {
     }
 }
 
-fun readTimings(path: Path, hasNextLayer: Boolean): List<Timing> {
+/**
+ * [shiftMs]: (task 06) 서비스의 시계를 부하 서버의 시계로 옮기는 양(ms — [ClockOffset.shiftMs]). 검사는 기록 그대로의 값으로 하고,
+ * 그 뒤 μs 칸 모두(`startUs`·`endUs`·`callStartUs`·`callEndUs`·`deadlineUs`·`cancelledUs`)에서 `shiftMs × 1000`을 뺀다(docs/measurement.md 12절).
+ */
+fun readTimings(path: Path, hasNextLayer: Boolean, shiftMs: Long = 0): List<Timing> {
+    val s = shiftMs * 1000
     val node = readJson(path)
     if (!node.isArray) throw InputException("$path: JSON 배열이 아니다")
     return node.mapIndexed { i, r ->
@@ -249,13 +254,17 @@ fun readTimings(path: Path, hasNextLayer: Boolean): List<Timing> {
             if (t.callStartUs < t.startUs || t.callEndUs!! < t.callStartUs || t.callEndUs > t.endUs) throw InputException("$where: call 시각이 start ≤ callStart ≤ callEnd ≤ end가 아니다")
             if (!Regex("Completed|(Failed|Unknown):\\S+").matches(t.callOutcome!!)) throw InputException("$where: callOutcome '${t.callOutcome}' 의 꼴이 틀렸다")
         }
-        t
+        if (s == 0L) t else t.copy(
+            startUs = t.startUs - s, endUs = t.endUs - s, callStartUs = t.callStartUs?.minus(s), callEndUs = t.callEndUs?.minus(s),
+            deadlineUs = t.deadlineUs?.minus(s), cancelledUs = t.cancelledUs?.minus(s),
+        )
     }
 }
 
 class SampleSeries(val intervalMs: Long, val samples: List<Sample>)
 
-fun readSamples(path: Path): SampleSeries {
+/** [shiftMs]: [readTimings]와 같다 — 검사 뒤 `atMs`에서 뺀다. */
+fun readSamples(path: Path, shiftMs: Long = 0): SampleSeries {
     val node = readJson(path)
     if (!node.isObject) throw InputException("$path: JSON 객체가 아니다")
     val interval = node.long("intervalMs", path.toString())
@@ -276,7 +285,7 @@ fun readSamples(path: Path): SampleSeries {
             s.longOrNull("queue", where)?.toInt(), s.longOrNull("connections", where))
     }
     samples.zipWithNext().forEachIndexed { i, (a, b) -> if (b.atMs < a.atMs) throw InputException("$path.samples[${i + 1}]: atMs가 앞보다 이르다") }
-    return SampleSeries(interval, samples)
+    return SampleSeries(interval, if (shiftMs == 0L) samples else samples.map { it.copy(atMs = it.atMs - shiftMs) })
 }
 
 fun readLookups(path: Path): List<Lookup> = readLines(path).mapIndexed { i, line ->
@@ -320,6 +329,8 @@ private fun ms(us: Long) = us / 1000.0
 private fun Double.round1() = Math.round(this * 10) / 10.0
 
 fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
+    val clock = readClockOffset(run) // (task 06) 서비스의 시각을 부하 서버의 시계로 — 12절
+    val shift = clock?.shiftMs ?: 0L
     val answers = readTimedAnswers(run.resolve("answers.jsonl"))
     val dup = answers.groupBy { it.requestId }.filterValues { it.size > 1 }.keys
     if (dup.isNotEmpty()) throw InputException("같은 requestId를 두 번 보낸 정답이 있다(${dup.take(3)}) — 시각 지표는 requestId마다 한 번 보낸 실행에서만 정의된다")
@@ -330,7 +341,7 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
     val rowIds = Layer.entries.associateWith { layer -> readLayer(run.resolve("db").resolve(layer.file), layer).map { it.requestId } }
     val timings = Layer.entries.associateWith { layer ->
         val path = run.resolve("timing").resolve("timings-${layer.label}.json")
-        val list = readTimings(path, layer != Layer.PAYMENT)
+        val list = readTimings(path, layer != Layer.PAYMENT, shift)
         val twice = list.groupBy { it.requestId }.filterValues { it.size > 1 }.keys
         if (twice.isNotEmpty()) throw InputException("$path: 한 requestId의 시각 기록이 둘 이상(${twice.take(3)})")
         val stray = list.map { it.requestId }.filter { it !in byId }
@@ -443,7 +454,7 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
     val firstSent = answers.minOf { it.sentAtMs }
     val lastSent = answers.maxOf { it.sentAtMs }
     val lastEnd = answers.maxOf { it.sentAtMs + it.elapsedMs.toLong() }
-    val series = Layer.entries.associate { layer -> layer.label to readSamples(run.resolve("timing").resolve("samples-${layer.label}.json")) }
+    val series = Layer.entries.associate { layer -> layer.label to readSamples(run.resolve("timing").resolve("samples-${layer.label}.json"), shift) }
     val samples = series.mapValues { (svc, s) ->
         val list = s.samples
         if (list.first().atMs > firstSent + 2 * s.intervalMs || list.last().atMs < lastEnd) {
@@ -486,6 +497,7 @@ fun timingReport(run: Path, slowLabel: String?): Map<String, Any?> {
         "samples" to samples,
     )
     if (slowLabel != null) report["slow"] = slowWindow(run, slowLabel, answers, series.getValue("order"))
+    clock?.let { report["clock"] = it.report() }
     return report
 }
 

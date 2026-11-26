@@ -45,6 +45,8 @@ fun runAnalyzer(args: Array<String>): Int {
     return try {
         val expectFile = options["--expect"]?.let(Path::of)
         val expect = expectFile?.let(::readExpectation)
+        // (task 06) 대조 분석은 두 시계를 견주지 않지만 실행의 첫 관문이라 시계 기록의 검사(앞·뒤의 차가 문턱 안인가)를 여기서도 한다 — 12절
+        readClockOffset(run)
         val rec = reconcile(readRun(run))
         val differences = mutableListOf<String>()
         options["--planned"]?.toInt()?.let { planned ->

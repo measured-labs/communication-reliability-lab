@@ -3,6 +3,8 @@ package lab.reliability.analyzer
 import lab.reliability.chain.FaultDirectives
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -161,6 +163,81 @@ fun readLayer(path: Path, layer: Layer): List<LayerRow> {
         }
         LayerRow(cols[0], status, amount)
     }
+}
+
+// ───────────── (task 06) 두 서버 시계의 어긋남 — docs/measurement.md 12절 ─────────────
+
+/** `config.env`의 칸 이름. 앞(`_start`)·뒤(`_end`) — 옛 실행(task 06-a)은 앞의 값을 접미사 없는 이름으로 남겼다. */
+const val CLOCK_OFFSET_START_KEY = "clock_offset_services_minus_load_ms_start"
+const val CLOCK_OFFSET_OLD_KEY = "clock_offset_services_minus_load_ms"
+const val CLOCK_OFFSET_END_KEY = "clock_offset_services_minus_load_ms_end"
+const val CLOCK_DRIFT_MAX_KEY = "clock_offset_drift_max_ms"
+
+/** 앞·뒤의 차가 이것(ms)보다 크면 그 실행은 입력 오류 — `config.env`에 [CLOCK_DRIFT_MAX_KEY]가 없을 때의 값. 까닭: 12절. */
+val CLOCK_DRIFT_MAX_MS_DEFAULT = BigDecimal("5")
+
+private val SIGNED_DECIMAL = Regex("-?[0-9]+(\\.[0-9]+)?")
+private val UNSIGNED_DECIMAL = Regex("[0-9]+(\\.[0-9]+)?")
+
+/**
+ * 실행 기록에 남은 시계 어긋남(서비스 서버의 시계 − 부하 서버의 시계, ms). [offsetMs] = 앞·뒤의 평균(뒤가 없으면 앞),
+ * [shiftMs] = 그것을 ms 정수로 반올림한 것(.5는 0에서 먼 쪽) — 분석기가 서비스의 시각을 부하 서버의 시계로 옮기는 양(`t − shiftMs`).
+ */
+class ClockOffset(val startMs: BigDecimal, val endMs: BigDecimal?) {
+    val offsetMs: BigDecimal = if (endMs == null) startMs else (startMs + endMs).divide(BigDecimal(2))
+    // 단순화: 옮기는 양을 ms 정수로 반올림한다 — 남는 오차 ≤ 0.5ms(재는 법의 오차 상한 0.45~1.67ms보다 작다). μs 기록과 ms 기록(표본, 구간 장애)을
+    // 같은 정수 양으로 옮겨 서비스끼리 견주는 값이 한 글자도 바뀌지 않게 하려는 것. 0.5ms보다 작은 몫을 따지는 지표가 생기면 μs로 옮긴다.
+    val shiftMs: Long = offsetMs.setScale(0, RoundingMode.HALF_UP).longValueExact()
+
+    /** 보고의 `clock` 칸(어긋남이 기록된 실행에만 — 12절). */
+    fun report(): Map<String, Any?> = linkedMapOf(
+        "offsetStartMs" to startMs.toDouble(),
+        "offsetEndMs" to endMs?.toDouble(),
+        "offsetMs" to offsetMs.toDouble(),
+        "shiftMs" to shiftMs,
+    )
+}
+
+/**
+ * `<실행 폴더>/config.env`에서 시계 어긋남을 읽는다. 파일이 없거나 앞의 값이 없으면 null(어긋남 0 — 노트북의 실행, 옛 실행).
+ * 입력 오류: 칸이 두 번, 앞의 값이 두 이름으로 다 있음, 뒤만 있음, 값이 10진 수(`-?[0-9]+(.[0-9]+)?`)가 아님, 문턱이 0 이상의 10진 수가 아님,
+ * 앞·뒤의 차가 문턱([CLOCK_DRIFT_MAX_KEY], 없으면 [CLOCK_DRIFT_MAX_MS_DEFAULT])보다 큼.
+ */
+fun readClockOffset(run: Path): ClockOffset? {
+    val path = run.resolve("config.env")
+    if (!Files.isRegularFile(path)) return null
+    val keys = setOf(CLOCK_OFFSET_START_KEY, CLOCK_OFFSET_OLD_KEY, CLOCK_OFFSET_END_KEY, CLOCK_DRIFT_MAX_KEY)
+    val values = linkedMapOf<String, String>()
+    Files.readString(path).lines().forEach { line ->
+        val key = line.substringBefore('=', "")
+        if (key !in keys) return@forEach
+        if (key in values) throw InputException("$path: '$key' 가 두 번 나온다")
+        values[key] = line.substringAfter('=')
+    }
+    fun decimal(key: String, re: Regex, what: String): BigDecimal? = values[key]?.let {
+        if (!re.matches(it)) throw InputException("$path: $key '$it' 가 $what 가 아니다")
+        BigDecimal(it)
+    }
+    if (CLOCK_OFFSET_START_KEY in values && CLOCK_OFFSET_OLD_KEY in values) {
+        throw InputException("$path: 실행 앞의 시계 어긋남이 두 이름($CLOCK_OFFSET_START_KEY, $CLOCK_OFFSET_OLD_KEY)으로 다 있다")
+    }
+    val start = decimal(CLOCK_OFFSET_START_KEY, SIGNED_DECIMAL, "10진 수(ms)") ?: decimal(CLOCK_OFFSET_OLD_KEY, SIGNED_DECIMAL, "10진 수(ms)")
+    val end = decimal(CLOCK_OFFSET_END_KEY, SIGNED_DECIMAL, "10진 수(ms)")
+    val driftMax = decimal(CLOCK_DRIFT_MAX_KEY, UNSIGNED_DECIMAL, "0 이상의 10진 수(ms)") ?: CLOCK_DRIFT_MAX_MS_DEFAULT
+    if (start == null) {
+        if (end != null) throw InputException("$path: 실행 뒤의 시계 어긋남($CLOCK_OFFSET_END_KEY)만 있고 앞의 값이 없다")
+        return null
+    }
+    if (end != null) {
+        val drift = (end - start).abs()
+        if (drift > driftMax) {
+            throw InputException(
+                "$path: 실행 앞·뒤의 시계 어긋남이 ${start.toPlainString()} → ${end.toPlainString()}ms, 차 ${drift.toPlainString()}ms가 " +
+                    "문턱 ${driftMax.toPlainString()}ms보다 크다 — 실행 동안 두 서버의 시계가 움직여 부하 도구의 시각과 서비스의 시각을 견줄 수 없다",
+            )
+        }
+    }
+    return ClockOffset(start, end)
 }
 
 fun readFaultCounts(path: Path): Map<String, Map<String, Long>> {
