@@ -27,7 +27,10 @@ if [[ -n $SERVICES_SSH ]]; then
   services_compose() {
     local v val env=()
     for v in "${COMPOSE_VARS[@]}"; do val=$(printenv "$v") && env+=("$v=$val"); done
-    on_services env "${env[@]}" docker compose -f compose.yaml -p communication-reliability-lab "$@"
+    # BUILDX_NO_DEFAULT_ATTESTATIONS: 서비스 서버의 Docker는 containerd 이미지 저장소라 이미지 id가 manifest list의 다이제스트이고,
+    # BuildKit이 기본으로 붙이는 출처 증명이 짓기마다 그 다이제스트를 바꾼다 — 캐시만으로 다시 지어도 run.sh의
+    # "떠 있는 이미지 = 방금 지은 이미지" 대조가 늘 실패한다(2026-11-26 확인). 증명을 붙이지 않으면 같은 입력에서 같은 id다.
+    on_services env BUILDX_NO_DEFAULT_ATTESTATIONS=1 "${env[@]}" docker compose -f compose.yaml -p communication-reliability-lab "$@"
   }
   COMPOSE=(services_compose)
 else
