@@ -786,26 +786,29 @@ class OverloadLimit(val enabled: Boolean, val limit: Int, val windowMs: Long, cl
 
 ```kotlin
 fun readClockOffset(run: Path): ClockOffset?              // 기록 없음 → null. 위의 입력 오류 → InputException
-class ClockOffset(val startMs: BigDecimal, val endMs: BigDecimal?) {
+class ClockOffset(val startMs: BigDecimal, val endMs: BigDecimal?, val headerShifted: Boolean = true) {
     val offsetMs: BigDecimal   // 뒤가 있으면 (앞 + 뒤) / 2, 없으면 앞
     val shiftMs: Long          // offsetMs를 ms 정수로 반올림(.5는 0에서 먼 쪽: −16.5 → −17, 16.5 → 17)
-    fun report(): Map<String, Any?>   // 보고의 clock 칸
+    val outageShiftMs: Long    // 구간 장애 헤더의 from·to를 부하 서버의 시계로 옮기는 양(12-4):
+                               //   headerShifted면 startMs를 ms 정수로 반올림(.5는 0에서 먼 쪽 — k6가 헤더에 더한 양과 같다), 아니면 shiftMs
+    fun report(): Map<String, Any?>   // 보고의 clock 칸(네 칸 그대로 — outageShiftMs는 싣지 않는다)
 }
+// readClockOffset은 headerShifted = (`_start` 칸이 있다)로 만든다 — 옛 이름의 실행은 false(그때의 k6는 헤더를 옮기지 않았다).
 const val CLOCK_OFFSET_START_KEY / CLOCK_OFFSET_OLD_KEY / CLOCK_OFFSET_END_KEY / CLOCK_DRIFT_MAX_KEY   // 위 칸의 이름
 val CLOCK_DRIFT_MAX_MS_DEFAULT: BigDecimal                // 5
 // 읽기에 옮기는 양을 주는 인자(기본 0 — 주지 않으면 지금까지와 같다):
 fun readTimings(path: Path, hasNextLayer: Boolean, shiftMs: Long = 0): List<Timing>
 fun readSamples(path: Path, shiftMs: Long = 0): SampleSeries
 fun readAttempts(path: Path, known: Set<String>, shiftMs: Long = 0): List<Attempt>
-fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer>   // 구간 장애의 from·to만 옮긴다
+fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer>   // 구간 장애의 from·to만 shiftMs만큼 옮긴다(retry 명령은 outageShiftMs를 준다)
 ```
 
 ### 12-2. 무엇을 어떻게 옮기나
 
 - **부호**: 서비스의 시각 t(서비스 서버의 시계) → 부하 서버의 시계로 `t − shiftMs`(μs 칸은 `t − shiftMs × 1000`). 예: 어긋남 −16.397 → `shiftMs` −16 → 서비스의 시각에 16ms를 더한다. k6의 시각(`sentAtMs`·`elapsedMs`, 조회의 시각)은 옮기지 않는다.
-- **옮기는 것**(읽는 자리에서, 검사는 기록 그대로의 값으로 한 뒤): 시각 기록의 `startUs`·`endUs`·`callStartUs`·`callEndUs`·`deadlineUs`·`cancelledUs`, 표본의 `atMs`, 시도 기록의 `startUs`·`endUs`, 그리고 정답의 `attemptFault`에 든 **구간 장애의 from·to**(결제가 자기 시계로 판정하는 시각이라 서비스의 시각이다 — 12-4). 라벨로 쓰는 `attemptFault` 문자열(`mix.<라벨>`)은 그대로다.
+- **옮기는 것**(읽는 자리에서, 검사는 기록 그대로의 값으로 한 뒤): 시각 기록의 `startUs`·`endUs`·`callStartUs`·`callEndUs`·`deadlineUs`·`cancelledUs`, 표본의 `atMs`, 시도 기록의 `startUs`·`endUs`. 정답의 `attemptFault`에 든 **구간 장애의 from·to**(결제가 자기 시계로 판정하는 시각이라 서비스의 시각이다)는 `shiftMs`가 아니라 `outageShiftMs`만큼 옮긴다 — 12-4. 라벨로 쓰는 `attemptFault` 문자열(`mix.<라벨>`)은 그대로다.
 - **같은 정수 양을 모두 옮긴다** — 서비스의 시각끼리의 차, 같은 μs의 묶음, 정렬 차례, `startUs ÷ 1000`의 차는 한 글자도 바뀌지 않는다. 그래서 서비스끼리 견주는 지표(12-3의 "해당 없음")는 옮겨도 같은 값이다.
-- **옮기는 양이 ms 정수인 까닭**: μs 기록과 ms 기록(표본의 `atMs`, 구간 장애의 from·to)을 같은 양으로 옮겨야 구간 장애의 `attemptFaults.<서비스>.outage.expected`(시각 기록 `startUs`와 from·to를 견준다)가 서비스가 센 수와 계속 같다. 반올림으로 남는 오차 ≤ 0.5ms는 잰 순간의 오차 상한(06-a 실측 0.45~1.67ms)보다 작다.
+- **옮기는 양이 ms 정수인 까닭**: μs 기록과 ms 기록(표본의 `atMs`, 구간 장애의 from·to)을 정수 ms로 옮겨야 구간 장애의 `attemptFaults.<서비스>.outage.expected`(시각 기록 `startUs`와 from·to를 견준다)를 기록 그대로의 값끼리 견준 것과 정확히 같게 다시 셀 수 있다(12-4). 반올림으로 남는 오차 ≤ 0.5ms는 잰 순간의 오차 상한(06-a 실측 0.45~1.67ms)보다 작다.
 - **보고**: 어긋남이 기록된 실행에만 `report-timing.json`·`report-retry.json`·`report-overload.json`의 맨 끝(`series` 앞)에 `"clock": {"offsetStartMs": 수, "offsetEndMs": 수 또는 null, "offsetMs": 수, "shiftMs": 정수}`가 붙고, 같은 이름으로 `metrics.tsv`·`metrics-retry.tsv`·`metrics-overload.tsv`에 네 줄(`offsetEndMs`가 null이면 빈 값)이 붙는다. 대조 분석·`idem`·`transport`의 보고에는 없다(옮긴 시각이 없다). 기대 파일은 이 칸을 견줄 수 있다(7-4절과 같은 꼴).
 
 ### 12-3. 두 시계를 견주는 지표 — 전수
@@ -820,7 +823,7 @@ fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer>   // 구�
 | `timing` | `slow.baselineOrderLoad`·`recoveredBySamples`·`recoveryBySamplesMs` | 주문 표본 `atMs` ↔ 느린 구간 `startMs`·`endMs`(`sentAtMs`) |
 | `retry` | `bins.<L>.peakPer50ms`·`peakPer1s` | L의 `startUs ÷ 1000` ↔ t0(가장 이른 `sentAtMs`)에 맞춘 칸 |
 | `retry` | `edges.<U>-><L>.retriesPeakPer50ms` | 시도 `startUs ÷ 1000` ↔ t0의 칸 |
-| `retry` | `outage.startMs`·`endMs` | 구간 장애 from·to(서비스) ↔ t0 |
+| `retry` | `outage.startMs`·`endMs` | 구간 장애 from·to(`outageShiftMs`로 옮긴 것 — 아래 `outage.*` 모두 같다, 12-4) ↔ t0 |
 | `retry` | `outage.requestsSentDuring`·`completedSentDuring` | `sentAtMs` ↔ from·to |
 | `retry` | `outage.calleePeakPer50msBefore`·`During`·`After` | S의 `startUs ÷ 1000`(t0의 칸) ↔ 칸 시작(t0 + 50·i)과 from·to |
 | `retry` | `outage.retriesPeakPer50msDuring`·`retryBinsDuring`·`retriesInCrowdedBinsDuring` | 시도 `startUs ÷ 1000`(t0의 칸) ↔ 칸 시작과 from·to |
@@ -833,7 +836,7 @@ fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer>   // 구�
 **해당 없음**(서비스끼리만, 또는 k6끼리만 견준다 — 같은 양을 옮기므로 값이 그대로다):
 
 - `timing`: `edges.*`(타임아웃·거짓 타임아웃·`callMs`·`belowDelay.*` — 위 층의 call 칸과 아래 층의 시각), `layers.*`, `samples.*`의 `maxGapMs`·최대·`saturatedMs`, `delays.*`, `clients.*`(시각을 견주지 않는다 — 주문의 시각 기록이 있는지만), `slow.lookups`·`normalChain`·`slowChain`·`badAfter`·`recoveredByClients`·`recoveryByClientsMs`(k6끼리), `waste.<L>.cancelMinusDeadlineMs`의 값(같은 기록의 두 칸 — 대상이 되는 헛일의 집합은 위 표).
-- `retry`: `outage.calleeArrivalsDuring`·`outage.retryTailMs`와 `attemptFaults.<서비스>.outage.expected`(서비스의 시각 ↔ 구간 장애 from·to — 둘 다 서비스의 시각이라 함께 옮긴다), `edges.*`의 시도 수·결정·`delayMs`·`gapMs`·`gapMinusDelayMs`, `layers.*`, `clients.*`, `mix.*`.
+- `retry`: `outage.calleeArrivalsDuring`·`outage.retryTailMs`와 `attemptFaults.<서비스>.outage.expected`(서비스의 시각 ↔ 구간 장애 from·to — 둘 다 서비스의 시각이라 같은 양 `shiftMs`로 옮긴 값끼리 견준다: from·to는 `outageShiftMs`로 옮긴 값에 `outageShiftMs − shiftMs`를 더해 쓴다. 그래서 기록 그대로의 값끼리 견준 것과 정확히 같다 — 12-4), `edges.*`의 시도 수·결정·`delayMs`·`gapMs`·`gapMinusDelayMs`, `layers.*`, `clients.*`, `mix.*`.
 - `overload`: 거절의 세 갈래 대조(`rejectedReplayed`·`tieGroups`·`tieGroupsMismatched`·`maxWindowCount` — 결제의 `startUs`끼리), `arrivals`, `otherStatus`, `inventory.callOutcomes`, `clients.*`·`spike.*`(k6끼리). 다만 10-4 ④의 차이 줄에 적는 `startUs`는 옮긴 값이다(어긋남이 있는 실행에서 원시 기록의 값과 `shiftMs × 1000`만큼 다르다).
 - `idem`(9절): 정답의 `sentAtMs`를 읽지만 쓰지 않는다 — 나중에 든 것·같은 μs·`arrivalGapMs`·`selfMs`는 주문의 시각 기록끼리다. 읽지도 옮기지도 않는다.
 - `transport`(11절): `deadline.paymentAfterInventoryMs`는 결제와 재고의 `deadlineUs`(둘 다 .164) — 읽지도 옮기지도 않는다.
@@ -843,7 +846,13 @@ fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer>   // 구�
 
 - 분석으로 고칠 수 없는 것은 **구간 장애(`outage`)뿐**이다: 결제가 입구에 든 시각(자기 시계)을 헤더의 from·to와 견준다(`chain-link/…/AttemptFaultInjection.kt`). 한도의 창(10절)·끊김·`fail-first`·`slow-first`·gRPC의 기한은 서비스 안의 시각끼리나 횟수로 판정한다.
 - 그래서 k6가 헤더를 만들 때 실행 앞의 어긋남만큼 옮긴다(`load/chain.js` — `CLOCK_OFFSET_MS`를 ms 정수로 반올림, .5는 0에서 먼 쪽): `payment:outage=<시작 + from + 옮김>-<시작 + to + 옮김>`. 구간이 부하 서버의 시계로 [시작 + from, 시작 + to)에 놓인다. 실행 스크립트가 `CLOCK_OFFSET_MS`(서버에서 잰 앞의 값, 같은 컴퓨터면 `0`)를 넘긴다. 구간 장애 시나리오(`cal-retry-outage`·`retry-outage-burst`·`retry-budget`)에서만 읽고, 없거나 10진 수가 아니면 k6가 멈춘다.
-- 분석기는 헤더의 from·to를 늘 **서비스의 시각**으로 읽어 12-2대로 옮긴다 — 그래서 옛 실행(헤더를 옮기지 않았다)에서는 `outage.startMs` 등이 서비스가 실제로 판정한 구간(부하 서버의 시계로 시작 + from − 어긋남)을 낸다.
+- 분석기는 헤더의 from·to를 두 가지로 쓴다(`Retry.kt`의 `retryReport`):
+  - **부하 서버의 시계로 본 구간** = 헤더의 from·to − `outageShiftMs`(12-1). k6의 시각이나 t0의 칸과 견주는 `outage.*` 모두(`startMs`·`endMs`·`requestsSentDuring`·`completedSentDuring`·`calleePeakPer50msBefore`·`During`·`After`·`retriesPeakPer50msDuring`·`retryBinsDuring`·`retriesInCrowdedBinsDuring`·`clientRecoveryMs`)가 이것을 쓴다.
+    - `_start` 칸이 있는 실행(k6가 헤더를 옮겨 보냈다): `outageShiftMs` = 앞의 값을 ms 정수로 반올림(.5는 0에서 먼 쪽) — `load/chain.js`가 헤더에 더한 양(`Math.sign(x) * Math.round(Math.abs(x))`)과 같다. 그래서 되옮긴 구간은 **k6가 뜻한 구간 [시작 + from, 시작 + to)와 정확히 같고**, 뒤의 값(평균)에 따라 움직이지 않는다. 평균으로 되옮기면 두 반올림이 1~3ms 다를 수 있어(차는 문턱 5ms까지 받는다) 구간의 시작·끝에 정확히 보낸 무리가 `requestsSentDuring`에서 빠지거나 더해진다(재현: 06-a의 `retry-outage-burst` 두 실행에서 뒤의 값만 바꿔 평균의 반올림을 1~2ms 옮기면 `requestsSentDuring` 399·408·413, `completedSentDuring` 11·13·20 — 종료 2).
+    - 두 반올림이 같은 규칙인 까닭: 실행 스크립트가 같은 문자열(소수 셋째 자리까지)을 `config.env`의 `_start`와 k6의 `CLOCK_OFFSET_MS`에 함께 넘긴다. 그런 값에서 `Number`로 읽은 수의 반올림과 10진 수(`BigDecimal` HALF_UP)의 반올림은 같다(.5는 2진수로 정확하다). 유효 숫자가 15자리를 넘는 값은 다를 수 있다(실행 스크립트는 쓰지 않는다).
+    - 옛 이름(`clock_offset_services_minus_load_ms`)의 실행(그때의 k6는 헤더를 옮기지 않았다): `outageShiftMs` = `shiftMs` — 서비스가 실제로 판정한 구간(부하 서버의 시계로 시작 + from − 어긋남)을 낸다(지금까지와 같다).
+    - 기록 없음: 0 — 헤더 그대로.
+  - **서비스가 판정한 것을 다시 세는 비교**(`attemptFaults.<서비스>.outage.expected`, `outage.calleeArrivalsDuring`, `outage.retryTailMs`) = `shiftMs`로 옮긴 서비스의 시각과 (헤더의 from·to − `shiftMs`)를 견준다. 같은 정수 양을 양쪽에서 뺐으므로 서비스가 판정한 식 `startUs ≥ from × 1000 && startUs < to × 1000`(`AttemptFaultInjection.kt`)을 기록 그대로의 값으로 계산한 것과 정확히 같다.
 
 ### 12-5. 앞·뒤 두 번, 평균, 문턱
 
@@ -854,6 +863,6 @@ fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer>   // 구�
 ### 12-6. 남는 오차
 
 - 잰 순간의 오차(ssh 왕복의 반 — 왕복이 대칭이라는 가정), 반올림 ≤ 0.5ms, 어긋남이 실행 동안 고르게 움직이지 않은 몫(평균이 맞지 않는다 — 차가 문턱 안이면 ≤ 문턱의 반).
-- 구간 장애의 헤더는 **앞의 값**(k6 바로 앞)으로 옮긴다(부하 전에는 뒤의 값이 없다) — 서비스가 판정한 구간은 부하 서버의 시계로 잰 순간의 상한 + 0.5ms + 잰 때부터 그 시각까지 시계가 움직인 몫(구간 시작이 부하 10s 뒤면 2ms/분에서 ≈ 0.3ms)만큼 어긋날 수 있다. 분석기는 평균으로 옮기므로 `outage.startMs`가 정확히 from이 아닐 수 있고(그 실행의 실제 구간을 낸다 — 차이는 앞·뒤의 차의 반 이하), `outage.requestsSentDuring`처럼 k6의 `sentAtMs`를 from·to와 견주는 지표는 구간의 시작·끝에 딱 붙어 보낸 요청에서 흔들릴 수 있다 — 헤더는 앞의 값(정수로 반올림)으로, 분석기는 평균(정수로 반올림)으로 옮기므로 두 정수가 다르면(앞·뒤의 차가 1ms 안팎이어도 반올림 경계에 걸리면) 분석기가 보는 from·to가 1ms쯤 밀린다. t03 나는 무리 19·39를 구간의 시작·끝 시각에 정확히 보내므로(prep 3절) 이 경계에 걸릴 수 있다(분석기의 규칙 — 확인하지 않은 위험).
+- 구간 장애의 헤더는 **앞의 값**(k6 바로 앞)으로 옮긴다(부하 전에는 뒤의 값이 없다) — 서비스가 판정한 구간은 부하 서버의 시계로 잰 순간의 상한 + 0.5ms + 잰 때부터 그 시각까지 시계가 움직인 몫(구간 시작이 부하 10s 뒤면 2ms/분에서 ≈ 0.3ms)만큼 어긋날 수 있다. 분석기는 k6와 견주는 `outage.*`에 k6가 뜻한 구간을 쓴다(12-4 — 헤더에 더한 양을 그대로 되돌린다). 그래서 `outage.requestsSentDuring`처럼 k6의 `sentAtMs`를 from·to와 견주는 지표는 구간의 시작·끝에 딱 붙어 보낸 요청(t03 나의 무리 19·39 — prep 3절)에서도 뒤의 값에 따라 흔들리지 않는다. 남는 것은 서비스가 실제로 판정한 구간이 그 구간과 위의 몫만큼 다를 수 있다는 것뿐이고, 그 몫은 무리가 보낸 때부터 결제에 들기까지의 여유(아래)보다 작다. 한편 서비스의 시각(평균으로 옮긴 것)을 그 구간의 50ms 칸에 넣는 지표(`calleePeakPer50ms*`·`retryBinsDuring` 등)는 평균에 따라 칸 경계에서 움직일 수 있다(서비스의 시각 자체를 옮기므로 — 12-3의 다른 지표와 같다).
 - **여유가 가장 작은 곳**: 무리 지은 도착의 구간 장애(`retry-outage-burst` — 무리 19를 구간 시작 시각에 정확히 보낸다)에서 그 무리의 첫 시도가 구간 안에 드는 여유는 보낸 때부터 결제에 들기까지(서버 06-a 12~39ms)뿐이다 — 위의 남는 오차(≈ 2.5ms 이하)보다 크다. c7(`cal-retry-burst`)의 1초 칸 경계도 같은 크기의 여유다(12-5 ②).
 - 시각 기록의 `startUs`가 0에 가까운 기록을 옮기면 음수가 될 수 있다(검사는 옮기기 전의 값으로 한다 — 실제 벽시계의 기록에서는 생기지 않는다).
