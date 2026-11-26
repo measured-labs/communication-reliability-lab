@@ -1,0 +1,12 @@
+{
+  "answers": {"min": 400, "max": 400},
+  "edges.inventory->payment.calls": {"min": 400, "max": 400},
+  "edges.inventory->payment.timeouts": {"min": 400, "max": 400},
+  "edges.inventory->payment.falseTimeouts": {"min": 400, "max": 400},
+  "edges.order->inventory.timeouts": {"min": 0, "max": 0},
+  "waste.payment.wasted": {"min": 400, "max": 400},
+  "waste.payment.wastedProcessed": {"min": 400, "max": 400},
+  "waste.payment.wastedMs.p50": {"min": 280, "max": 350},
+  "waste.inventory.wasted": {"min": 0, "max": 0},
+  "waste.order.wasted": {"min": 0, "max": 0}
+}

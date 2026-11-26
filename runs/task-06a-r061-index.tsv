@@ -1,0 +1,3 @@
+experiment	condition	scenario	rep	run	exit	conditions	note
+t03-na	na-none	retry-outage-burst	0	runs/retry-outage-burst-20261126T044456-r0	0	ORDER_TO_INVENTORY_TIMEOUT=5000ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=4 INVENTORY_RETRY_BACKOFF=none RECON_EXPECT=load/expectations/t03-na-none.json RETRY_EXPECT=load/expectations/t03-na-none.retry.json	
+t03-na	na-none	retry-outage-burst	1	runs/retry-outage-burst-20261126T044604-r1	0	ORDER_TO_INVENTORY_TIMEOUT=5000ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=4 INVENTORY_RETRY_BACKOFF=none RECON_EXPECT=load/expectations/t03-na-none.json RETRY_EXPECT=load/expectations/t03-na-none.retry.json	
