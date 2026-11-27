@@ -1,0 +1,18 @@
+{
+  "spike.sent": {
+    "min": 375,
+    "max": 375
+  },
+  "spike.baseSent": {
+    "min": 595,
+    "max": 595
+  },
+  "clients.unknown": {
+    "min": 0,
+    "max": 0
+  },
+  "payment.arrivals": {
+    "min": 970,
+    "max": 970
+  }
+}

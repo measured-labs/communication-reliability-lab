@@ -1,0 +1,110 @@
+{
+  "clients.completed": {
+    "min": 764,
+    "max": 764
+  },
+  "clients.unknown": {
+    "min": 36,
+    "max": 36
+  },
+  "clients.failed": {
+    "min": 0,
+    "max": 0
+  },
+  "mix.none.completed": {
+    "min": 393,
+    "max": 393
+  },
+  "mix.none.unknown": {
+    "min": 0,
+    "max": 0
+  },
+  "mix.none.paymentArrivals": {
+    "min": 472,
+    "max": 472
+  },
+  "mix.none.inventoryArrivals": {
+    "min": 393,
+    "max": 393
+  },
+  "mix.payment:fail-first=1.completed": {
+    "min": 165,
+    "max": 165
+  },
+  "mix.payment:fail-first=1.unknown": {
+    "min": 0,
+    "max": 0
+  },
+  "mix.payment:fail-first=1.paymentArrivals": {
+    "min": 330,
+    "max": 330
+  },
+  "mix.payment:fail-first=1.inventoryArrivals": {
+    "min": 165,
+    "max": 165
+  },
+  "mix.payment:fail-first=2.completed": {
+    "min": 76,
+    "max": 76
+  },
+  "mix.payment:fail-first=2.unknown": {
+    "min": 0,
+    "max": 0
+  },
+  "mix.payment:fail-first=2.paymentArrivals": {
+    "min": 304,
+    "max": 304
+  },
+  "mix.payment:fail-first=2.inventoryArrivals": {
+    "min": 152,
+    "max": 152
+  },
+  "mix.payment:fail-first=4.completed": {
+    "min": 47,
+    "max": 47
+  },
+  "mix.payment:fail-first=4.unknown": {
+    "min": 0,
+    "max": 0
+  },
+  "mix.payment:fail-first=4.paymentArrivals": {
+    "min": 235,
+    "max": 235
+  },
+  "mix.payment:fail-first=4.inventoryArrivals": {
+    "min": 94,
+    "max": 94
+  },
+  "mix.payment:fail-first=9.completed": {
+    "min": 0,
+    "max": 0
+  },
+  "mix.payment:fail-first=9.unknown": {
+    "min": 36,
+    "max": 36
+  },
+  "mix.payment:fail-first=9.paymentArrivals": {
+    "min": 324,
+    "max": 324
+  },
+  "mix.payment:fail-first=9.inventoryArrivals": {
+    "min": 108,
+    "max": 108
+  },
+  "mix.payment:slow-first=1@1500.completed": {
+    "min": 43,
+    "max": 43
+  },
+  "mix.payment:slow-first=1@1500.unknown": {
+    "min": 0,
+    "max": 0
+  },
+  "mix.payment:slow-first=1@1500.paymentArrivals": {
+    "min": 129,
+    "max": 129
+  },
+  "mix.payment:slow-first=1@1500.inventoryArrivals": {
+    "min": 86,
+    "max": 86
+  }
+}

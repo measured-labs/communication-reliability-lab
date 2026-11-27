@@ -1,0 +1,30 @@
+{
+  "clients.replayed": {
+    "min": 400,
+    "max": 400
+  },
+  "clients.status.201": {
+    "min": 800,
+    "max": 800
+  },
+  "layers.order.counts.replayed": {
+    "min": 400,
+    "max": 400
+  },
+  "layers.payment.arrivals": {
+    "min": 400,
+    "max": 400
+  },
+  "layers.order.keyRows": {
+    "min": 400,
+    "max": 400
+  },
+  "layers.inventory.keyRows": {
+    "min": 400,
+    "max": 400
+  },
+  "layers.payment.keyRows": {
+    "min": 400,
+    "max": 400
+  }
+}

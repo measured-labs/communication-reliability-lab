@@ -1,0 +1,82 @@
+{
+  "run" : "overload-edge-20261127T090723-r1",
+  "expect" : "/runs/overload-edge-20261127T090723-r1/expect.overload.json",
+  "differences" : [ ],
+  "answers" : 970,
+  "limit" : {
+    "limit" : 50,
+    "windowMs" : 1000,
+    "quietMs" : 2000
+  },
+  "spike" : {
+    "startMs" : 10004,
+    "endMs" : 14986,
+    "sent" : 375,
+    "baseSent" : 595,
+    "lastSentAfterEndMs" : 19954
+  },
+  "clients" : {
+    "completed" : 216,
+    "failed" : 754,
+    "unknown" : 0,
+    "successRatio" : 0.22268041237113403,
+    "badBeforeSpike" : 0,
+    "badDuringSpike" : 419,
+    "badAfterSpike" : 335,
+    "sentAfterSpike" : 340,
+    "recovered" : 0,
+    "recoveryMs" : null,
+    "completedElapsedMs" : {
+      "count" : 216,
+      "p50" : 14.0,
+      "p90" : 16.0,
+      "p99" : 318.0,
+      "max" : 319.0
+    },
+    "elapsedMs" : {
+      "count" : 970,
+      "p50" : 307.0,
+      "p90" : 317.0,
+      "p99" : 319.0,
+      "max" : 325.0
+    }
+  },
+  "payment" : {
+    "arrivals" : 2487,
+    "arrivalsCounted" : 2487,
+    "rejectedCounted" : 2271,
+    "rejectedObserved" : 2271,
+    "rejectedReplayed" : 2271,
+    "tieGroups" : 0,
+    "tieGroupsMismatched" : 0,
+    "otherStatus" : 0,
+    "maxWindowCount" : 280,
+    "rejectedBeforeSpike" : 0,
+    "rejectedDuringSpike" : 1219,
+    "rejectedAfterSpike" : 1052,
+    "arrivalsAfterSpike" : 1057,
+    "acceptedAfterSpike" : 5,
+    "recovered" : 0,
+    "rejectionsStopMs" : null
+  },
+  "inventory" : {
+    "callOutcomes" : {
+      "Completed" : 216,
+      "Failed:HTTP_503" : 754
+    }
+  },
+  "clock" : {
+    "offsetStartMs" : -21.721,
+    "offsetEndMs" : -22.773,
+    "offsetMs" : -22.247,
+    "shiftMs" : -22
+  },
+  "series" : {
+    "binMs" : 1000,
+    "originSentAtMs" : 1795770465783,
+    "paymentArrivals" : [ 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 159, 275, 277, 276, 276, 80, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 5 ],
+    "paymentRejected" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 118, 275, 277, 276, 276, 80, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 51, 0 ],
+    "clientSent" : [ 18, 17, 17, 17, 17, 17, 17, 17, 17, 17, 93, 92, 92, 92, 91, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 16, 0 ],
+    "clientBad" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 53, 92, 92, 92, 91, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 17, 11, 0 ]
+  }
+}

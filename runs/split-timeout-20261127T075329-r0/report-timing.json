@@ -1,0 +1,324 @@
+{
+  "run" : "split-timeout-20261127T075329-r0",
+  "expect" : "/runs/split-timeout-20261127T075329-r0/expect.timing.json",
+  "differences" : [ ],
+  "answers" : 800,
+  "clients" : {
+    "noResponse" : 0,
+    "notReachedServer" : 0,
+    "notReachedServerFirstSentMs" : null,
+    "notReachedServerLastSentMs" : null
+  },
+  "delays" : {
+    "inventory" : {
+      "count" : 0,
+      "p50" : null,
+      "p90" : null,
+      "p99" : null,
+      "max" : null
+    },
+    "order" : {
+      "count" : 0,
+      "p50" : null,
+      "p90" : null,
+      "p99" : null,
+      "max" : null
+    },
+    "payment" : {
+      "count" : 600,
+      "p50" : 1500.0,
+      "p90" : 2500.0,
+      "p99" : 2500.0,
+      "max" : 2500.0
+    }
+  },
+  "edges" : {
+    "order->inventory" : {
+      "timeoutMs" : 2000,
+      "calls" : 800,
+      "timeouts" : 0,
+      "falseTimeouts" : 0,
+      "falseTimeoutRatio" : 0.0,
+      "outcomes" : {
+        "Completed" : 400,
+        "Unknown:CHAIN_504" : 400
+      },
+      "callMs" : {
+        "count" : 800,
+        "p50" : 517.87,
+        "p90" : 1009.254,
+        "p99" : 1012.776,
+        "max" : 1026.472
+      },
+      "injectedCalleeDelayAtLeastTimeout" : 0,
+      "belowDelay" : {
+        "timeouts" : 0,
+        "calleeServiceAtLeastTimeout" : 0,
+        "calleeEndedAfterGiveUp" : 0,
+        "calleeEndedBeforeGiveUp" : 0,
+        "calleeNotStarted" : 0,
+        "callToCalleeStartMs" : {
+          "count" : 0,
+          "p50" : null,
+          "p90" : null,
+          "p99" : null,
+          "max" : null
+        },
+        "calleeServiceBeyondDelayMs" : {
+          "count" : 0,
+          "p50" : null,
+          "p90" : null,
+          "p99" : null,
+          "max" : null
+        }
+      }
+    },
+    "inventory->payment" : {
+      "timeoutMs" : 1000,
+      "calls" : 800,
+      "timeouts" : 400,
+      "falseTimeouts" : 400,
+      "falseTimeoutRatio" : 0.5,
+      "outcomes" : {
+        "Completed" : 400,
+        "Unknown:DEADLINE_EXCEEDED" : 400
+      },
+      "callMs" : {
+        "count" : 800,
+        "p50" : 510.363,
+        "p90" : 1001.664,
+        "p99" : 1002.111,
+        "max" : 1019.424
+      },
+      "injectedCalleeDelayAtLeastTimeout" : 400,
+      "belowDelay" : {
+        "timeouts" : 0,
+        "calleeServiceAtLeastTimeout" : 0,
+        "calleeEndedAfterGiveUp" : 0,
+        "calleeEndedBeforeGiveUp" : 0,
+        "calleeNotStarted" : 0,
+        "callToCalleeStartMs" : {
+          "count" : 0,
+          "p50" : null,
+          "p90" : null,
+          "p99" : null,
+          "max" : null
+        },
+        "calleeServiceBeyondDelayMs" : {
+          "count" : 0,
+          "p50" : null,
+          "p90" : null,
+          "p99" : null,
+          "max" : null
+        }
+      }
+    }
+  },
+  "layers" : {
+    "order" : {
+      "records" : 800,
+      "serviceMs" : {
+        "count" : 800,
+        "p50" : 526.193,
+        "p90" : 1015.899,
+        "p99" : 1019.704,
+        "max" : 1032.121
+      },
+      "stopped" : {
+        "cancelled-in-delay" : 0,
+        "deadline-before-start" : 0,
+        "deadline-before-work" : 0
+      }
+    },
+    "inventory" : {
+      "records" : 800,
+      "serviceMs" : {
+        "count" : 800,
+        "p50" : 514.148,
+        "p90" : 1005.843,
+        "p99" : 1008.523,
+        "max" : 1023.072
+      },
+      "stopped" : {
+        "cancelled-in-delay" : 0,
+        "deadline-before-start" : 0,
+        "deadline-before-work" : 0
+      }
+    },
+    "payment" : {
+      "records" : 800,
+      "serviceMs" : {
+        "count" : 800,
+        "p50" : 507.443,
+        "p90" : 2502.424,
+        "p99" : 2503.541,
+        "max" : 2510.022
+      },
+      "stopped" : {
+        "cancelled-in-delay" : 0,
+        "deadline-before-start" : 0,
+        "deadline-before-work" : 0
+      }
+    }
+  },
+  "waste" : {
+    "order" : {
+      "wasted" : 0,
+      "wastedProcessed" : 0,
+      "startedAfterGiveUp" : 0,
+      "startedAfterGiveUpMsSum" : 0.0,
+      "wastedMsSum" : 0.0,
+      "wastedMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "stopped" : 0,
+      "cancelSeen" : 0,
+      "cancelAfterGiveUpMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "endAfterCancelMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "cancelMinusDeadlineMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "cancelBeforeDeadline" : 0
+    },
+    "inventory" : {
+      "wasted" : 0,
+      "wastedProcessed" : 0,
+      "startedAfterGiveUp" : 0,
+      "startedAfterGiveUpMsSum" : 0.0,
+      "wastedMsSum" : 0.0,
+      "wastedMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "stopped" : 0,
+      "cancelSeen" : 0,
+      "cancelAfterGiveUpMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "endAfterCancelMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "cancelMinusDeadlineMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "cancelBeforeDeadline" : 0
+    },
+    "payment" : {
+      "wasted" : 400,
+      "wastedProcessed" : 400,
+      "startedAfterGiveUp" : 0,
+      "startedAfterGiveUpMsSum" : 0.0,
+      "wastedMsSum" : 401200.2,
+      "wastedMs" : {
+        "count" : 400,
+        "p50" : 521.641,
+        "p90" : 1503.656,
+        "p99" : 1504.767,
+        "max" : 1510.518
+      },
+      "stopped" : 0,
+      "cancelSeen" : 400,
+      "cancelAfterGiveUpMs" : {
+        "count" : 400,
+        "p50" : 0.182,
+        "p90" : 0.55,
+        "p99" : 1.072,
+        "max" : 1.451
+      },
+      "endAfterCancelMs" : {
+        "count" : 400,
+        "p50" : 522.478,
+        "p90" : 1503.385,
+        "p99" : 1504.49,
+        "max" : 1510.389
+      },
+      "cancelMinusDeadlineMs" : {
+        "count" : 400,
+        "p50" : 0.473,
+        "p90" : 0.954,
+        "p99" : 1.392,
+        "max" : 1.826
+      },
+      "cancelBeforeDeadline" : 5
+    }
+  },
+  "samples" : {
+    "order" : {
+      "count" : 447,
+      "intervalMs" : 100,
+      "maxGapMs" : 100,
+      "maxInflight" : 13,
+      "maxActive" : 15,
+      "maxThreads" : 200,
+      "maxQueue" : 0,
+      "maxConnections" : 301,
+      "saturatedMs" : 0,
+      "meanLoadDuringSend" : 12.4
+    },
+    "inventory" : {
+      "count" : 447,
+      "intervalMs" : 100,
+      "maxGapMs" : 100,
+      "maxInflight" : 14,
+      "maxActive" : 14,
+      "maxThreads" : 200,
+      "maxQueue" : 1,
+      "maxConnections" : null,
+      "saturatedMs" : 0,
+      "meanLoadDuringSend" : 12.7
+    },
+    "payment" : {
+      "count" : 446,
+      "intervalMs" : 100,
+      "maxGapMs" : 101,
+      "maxInflight" : 23,
+      "maxActive" : 23,
+      "maxThreads" : 200,
+      "maxQueue" : 0,
+      "maxConnections" : null,
+      "saturatedMs" : 0,
+      "meanLoadDuringSend" : 22.0
+    }
+  },
+  "clock" : {
+    "offsetStartMs" : 9.802,
+    "offsetEndMs" : 9.663,
+    "offsetMs" : 9.7325,
+    "shiftMs" : 10
+  }
+}

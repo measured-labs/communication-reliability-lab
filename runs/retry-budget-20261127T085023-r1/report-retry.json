@@ -1,0 +1,259 @@
+{
+  "run" : "retry-budget-20261127T085023-r1",
+  "expect" : "/runs/retry-budget-20261127T085023-r1/expect.retry.json",
+  "differences" : [ ],
+  "answers" : 1600,
+  "clients" : {
+    "answers" : 1600,
+    "completed" : 800,
+    "failed" : 800,
+    "unknown" : 0,
+    "successRatio" : 0.5,
+    "elapsedMs" : {
+      "count" : 1600,
+      "p50" : 14.0,
+      "p90" : 17.0,
+      "p99" : 116.0,
+      "max" : 317.0
+    },
+    "completedElapsedMs" : {
+      "count" : 800,
+      "p50" : 14.0,
+      "p90" : 16.0,
+      "p99" : 20.0,
+      "max" : 31.0
+    },
+    "noResponse" : 0,
+    "notReachedServer" : 0
+  },
+  "doubledTotal" : 0,
+  "layers" : {
+    "order" : {
+      "arrivals" : 1600,
+      "arrivalsPerRequest" : 1.0,
+      "requestsReached" : 1600,
+      "repeatArrivals" : 0,
+      "rows" : 1600,
+      "processedRows" : 800,
+      "doubled" : 0,
+      "extraProcessedRows" : 0,
+      "processedNotCompleted" : 0
+    },
+    "inventory" : {
+      "arrivals" : 1600,
+      "arrivalsPerRequest" : 1.0,
+      "requestsReached" : 1600,
+      "repeatArrivals" : 0,
+      "rows" : 1600,
+      "processedRows" : 800,
+      "doubled" : 0,
+      "extraProcessedRows" : 0,
+      "processedNotCompleted" : 0
+    },
+    "payment" : {
+      "arrivals" : 1689,
+      "arrivalsPerRequest" : 1.055625,
+      "requestsReached" : 1600,
+      "repeatArrivals" : 89,
+      "rows" : 800,
+      "processedRows" : 800,
+      "doubled" : 0,
+      "extraProcessedRows" : 0,
+      "processedNotCompleted" : 0
+    }
+  },
+  "edges" : {
+    "order->inventory" : {
+      "calls" : 0,
+      "attempts" : 0,
+      "retries" : 0,
+      "budgetDenied" : 0,
+      "decisions" : {
+        "success" : 0,
+        "not-retryable" : 0,
+        "retry" : 0,
+        "max-attempts" : 0,
+        "budget-denied" : 0
+      },
+      "callsByAttempts" : { },
+      "delayMs" : { },
+      "gapMs" : { },
+      "gapMinusDelayMs" : {
+        "count" : 0,
+        "p50" : null,
+        "p90" : null,
+        "p99" : null,
+        "max" : null
+      },
+      "retriesPeakPer50ms" : 0
+    },
+    "inventory->payment" : {
+      "calls" : 1600,
+      "attempts" : 1689,
+      "retries" : 89,
+      "budgetDenied" : 800,
+      "decisions" : {
+        "success" : 800,
+        "not-retryable" : 0,
+        "retry" : 89,
+        "max-attempts" : 0,
+        "budget-denied" : 800
+      },
+      "callsByAttempts" : {
+        "1" : 1514,
+        "2" : 83,
+        "3" : 3
+      },
+      "attemptsNotArrived" : 0,
+      "delayMs" : {
+        "attempt2" : {
+          "count" : 86,
+          "p50" : 100.0,
+          "p90" : 100.0,
+          "p99" : 100.0,
+          "max" : 100.0
+        },
+        "attempt3" : {
+          "count" : 3,
+          "p50" : 200.0,
+          "p90" : 200.0,
+          "p99" : 200.0,
+          "max" : 200.0
+        }
+      },
+      "gapMs" : {
+        "attempt2" : {
+          "count" : 86,
+          "p50" : 100.138,
+          "p90" : 100.186,
+          "p99" : 100.227,
+          "max" : 100.227
+        },
+        "attempt3" : {
+          "count" : 3,
+          "p50" : 200.131,
+          "p90" : 200.201,
+          "p99" : 200.201,
+          "max" : 200.201
+        }
+      },
+      "gapMinusDelayMs" : {
+        "count" : 89,
+        "p50" : 0.138,
+        "p90" : 0.189,
+        "p99" : 0.227,
+        "max" : 0.227
+      },
+      "retriesPeakPer50ms" : 2
+    }
+  },
+  "attemptFaults" : {
+    "order" : {
+      "fail-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "slow-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "outage" : {
+        "counted" : 0,
+        "expected" : 0
+      }
+    },
+    "inventory" : {
+      "fail-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "slow-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "outage" : {
+        "counted" : 0,
+        "expected" : 0
+      }
+    },
+    "payment" : {
+      "fail-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "slow-first" : {
+        "counted" : 0,
+        "expected" : 0
+      },
+      "outage" : {
+        "counted" : 889,
+        "expected" : 889
+      }
+    }
+  },
+  "mix" : {
+    "payment:outage=1795769456188-1795769476188" : {
+      "count" : 1600,
+      "completed" : 800,
+      "unknown" : 0,
+      "paymentArrivals" : 1689,
+      "inventoryArrivals" : 1600,
+      "elapsedMs" : {
+        "count" : 1600,
+        "p50" : 14.0,
+        "p90" : 17.0,
+        "p99" : 116.0,
+        "max" : 317.0
+      }
+    }
+  },
+  "bins" : {
+    "binMs" : 50,
+    "order" : {
+      "peakPer50ms" : 3,
+      "peakPer1s" : 41
+    },
+    "inventory" : {
+      "peakPer50ms" : 3,
+      "peakPer1s" : 41
+    },
+    "payment" : {
+      "peakPer50ms" : 4,
+      "peakPer1s" : 53
+    }
+  },
+  "outage" : {
+    "startMs" : 9996,
+    "endMs" : 29996,
+    "requestsSentDuring" : 800,
+    "completedSentDuring" : 0,
+    "calleeArrivalsDuring" : 889,
+    "calleePeakPer50msBefore" : 2,
+    "calleePeakPer50msDuring" : 4,
+    "calleePeakPer50msAfter" : 3,
+    "retriesPeakPer50msDuring" : 2,
+    "retryBinsDuring" : {
+      "count" : 84,
+      "p50" : 1.0,
+      "p90" : 1.0,
+      "p99" : 2.0,
+      "max" : 2.0
+    },
+    "retriesInCrowdedBinsDuring" : 0.0,
+    "retryTailMs" : -142,
+    "clientRecoveryMs" : -24
+  },
+  "clock" : {
+    "offsetStartMs" : 5.255,
+    "offsetEndMs" : 4.088,
+    "offsetMs" : 4.6715,
+    "shiftMs" : 5
+  },
+  "series" : {
+    "binMs" : 100,
+    "originSentAtMs" : 1795769446187,
+    "paymentArrivals" : [ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 8, 7, 8, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 5, 4, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 5, 4, 5, 4, 4, 6, 3, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 4, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 3 ],
+    "inventoryRetries" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 3, 4, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
+    "orderRetries" : [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+  }
+}

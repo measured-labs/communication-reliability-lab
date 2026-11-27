@@ -1,0 +1,18 @@
+{
+  "clients.completed": {
+    "min": 820,
+    "max": 820
+  },
+  "clients.failed": {
+    "min": 380,
+    "max": 380
+  },
+  "outage.requestsSentDuring": {
+    "min": 400,
+    "max": 400
+  },
+  "outage.completedSentDuring": {
+    "min": 20,
+    "max": 20
+  }
+}

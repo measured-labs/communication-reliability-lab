@@ -1,0 +1,34 @@
+{
+  "clients.completed": {
+    "min": 860,
+    "max": 860
+  },
+  "clients.failed": {
+    "min": 340,
+    "max": 340
+  },
+  "layers.payment.arrivals": {
+    "min": 2340,
+    "max": 2340
+  },
+  "edges.inventory->payment.retries": {
+    "min": 1140,
+    "max": 1140
+  },
+  "outage.requestsSentDuring": {
+    "min": 400,
+    "max": 400
+  },
+  "outage.completedSentDuring": {
+    "min": 60,
+    "max": 60
+  },
+  "outage.calleeArrivalsDuring": {
+    "min": 1480,
+    "max": 1480
+  },
+  "attemptFaults.payment.outage.counted": {
+    "min": 1480,
+    "max": 1480
+  }
+}

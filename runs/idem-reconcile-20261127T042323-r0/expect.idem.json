@@ -1,0 +1,50 @@
+{
+  "clients.status.201": {
+    "min": 400,
+    "max": 400
+  },
+  "clients.status.504": {
+    "min": 320,
+    "max": 320
+  },
+  "clients.status.0": {
+    "min": 80,
+    "max": 80
+  },
+  "dropFaults.order.counted": {
+    "min": 80,
+    "max": 80
+  },
+  "dropFaults.inventory.counted": {
+    "min": 80,
+    "max": 80
+  },
+  "dropFaults.payment.counted": {
+    "min": 80,
+    "max": 80
+  },
+  "reconcile.candidates": {
+    "min": 400,
+    "max": 400
+  },
+  "reconcile.resent": {
+    "min": 400,
+    "max": 400
+  },
+  "reconcile.completed": {
+    "min": 400,
+    "max": 400
+  },
+  "reconcile.finalDoubled": {
+    "min": 400,
+    "max": 400
+  },
+  "reconcile.finalOnce": {
+    "min": 0,
+    "max": 0
+  },
+  "layers.payment.arrivals": {
+    "min": 1200,
+    "max": 1200
+  }
+}

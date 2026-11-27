@@ -1,0 +1,233 @@
+ Image communication-reliability-lab-order Building 
+ Image communication-reliability-lab-inventory Building 
+ Image communication-reliability-lab-payment Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.64kB done
+#1 DONE 0.0s
+
+#2 [payment internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.44kB done
+#2 DONE 0.0s
+
+#3 [order internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble
+#3 DONE 0.3s
+
+#4 [payment internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble
+#4 DONE 0.3s
+
+#5 [inventory internal] load .dockerignore
+#5 transferring context: 103B done
+#5 DONE 0.0s
+
+#6 [payment service 1/2] FROM docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble@sha256:2ec98aa522c472deadfd2b7c5b39bca680e33ef522a53a72f10789bdf89a6bb5
+#6 resolve docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble@sha256:2ec98aa522c472deadfd2b7c5b39bca680e33ef522a53a72f10789bdf89a6bb5 0.0s done
+#6 DONE 0.0s
+
+#7 [inventory build  1/18] FROM docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble@sha256:c7eef3dfeb81468533ea48c67bddaa8c7ca916454259e4d0d734d12bcff8e125
+#7 resolve docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble@sha256:c7eef3dfeb81468533ea48c67bddaa8c7ca916454259e4d0d734d12bcff8e125 0.0s done
+#7 DONE 0.0s
+
+#8 [order internal] load build context
+#8 transferring context: 10.92kB done
+#8 DONE 0.0s
+
+#9 [order order 1/1] COPY --from=build /src/order/build/libs/app.jar app.jar
+#9 CACHED
+
+#10 [order build  3/18] COPY gradlew settings.gradle.kts gradle.properties ./
+#10 CACHED
+
+#11 [order build  2/18] WORKDIR /src
+#11 CACHED
+
+#12 [order build  5/18] COPY fault-header/build.gradle.kts fault-header/
+#12 CACHED
+
+#13 [order build 11/18] RUN ./gradlew --no-daemon -q       :fault-header:dependencies :chain-link:dependencies :order:dependencies :inventory:dependencies :payment:dependencies :analyzer:dependencies > /dev/null
+#13 CACHED
+
+#14 [order service 2/2] WORKDIR /app
+#14 CACHED
+
+#15 [order build 15/18] COPY inventory inventory
+#15 CACHED
+
+#16 [order build 17/18] COPY analyzer analyzer
+#16 CACHED
+
+#17 [order build 16/18] COPY payment payment
+#17 CACHED
+
+#18 [order build 13/18] COPY chain-link chain-link
+#18 CACHED
+
+#19 [order build  7/18] COPY order/build.gradle.kts order/
+#19 CACHED
+
+#20 [order build  6/18] COPY chain-link/build.gradle.kts chain-link/
+#20 CACHED
+
+#21 [order build 10/18] COPY analyzer/build.gradle.kts analyzer/
+#21 CACHED
+
+#22 [order build 12/18] COPY fault-header fault-header
+#22 CACHED
+
+#23 [order build  8/18] COPY inventory/build.gradle.kts inventory/
+#23 CACHED
+
+#24 [order build 18/18] RUN ./gradlew --no-daemon -q :order:bootJar :inventory:bootJar :payment:bootJar :analyzer:installDist
+#24 CACHED
+
+#25 [order build  9/18] COPY payment/build.gradle.kts payment/
+#25 CACHED
+
+#26 [order build 14/18] COPY order order
+#26 CACHED
+
+#27 [order build  4/18] COPY gradle gradle
+#27 CACHED
+
+#28 [inventory inventory 1/1] COPY --from=build /src/inventory/build/libs/app.jar app.jar
+#28 CACHED
+
+#29 [payment payment 1/1] COPY --from=build /src/payment/build/libs/app.jar app.jar
+#29 CACHED
+
+#30 [inventory] exporting to image
+#30 exporting layers done
+#30 exporting manifest sha256:e1c187f8f128ccae510341505589da01b6fac337e0cad2315c55562e8d8f8e59 done
+#30 exporting config sha256:d4eb546119f7455de56f0465ddd7ede714dc80ef38cef5b9fafee3875b90bbd9 done
+#30 naming to docker.io/library/communication-reliability-lab-inventory:latest done
+#30 unpacking to docker.io/library/communication-reliability-lab-inventory:latest 0.0s done
+#30 DONE 0.1s
+
+#31 [payment] exporting to image
+#31 exporting layers done
+#31 exporting manifest sha256:b84e5877450f5e7b952f81632f0ebe8419aab1550df5884db96aee5fb0ef2bb8 done
+#31 exporting config sha256:5bf18d26d4d54031eaf7d2bb36d9891f9e7ce8d2da2843cadd4f33175f9b9d7d done
+#31 naming to docker.io/library/communication-reliability-lab-payment:latest done
+#31 unpacking to docker.io/library/communication-reliability-lab-payment:latest 0.0s done
+#31 DONE 0.1s
+
+#32 [order] exporting to image
+#32 exporting layers done
+#32 exporting manifest sha256:31d0dbe104d94c0acaa601f82bf3ff089e6b4f6ff082a5678d2f80abed1b40b6 done
+#32 exporting config sha256:a33768790081ba1dbb9fe8cc11712113da0295e10d4b40fe8ae7076873ea01c0 done
+#32 naming to docker.io/library/communication-reliability-lab-order:latest done
+#32 unpacking to docker.io/library/communication-reliability-lab-order:latest 0.0s done
+#32 DONE 0.1s
+
+#33 [payment] resolving provenance for metadata file
+#33 DONE 0.0s
+
+#34 [inventory] resolving provenance for metadata file
+#34 DONE 0.0s
+
+#35 [order] resolving provenance for metadata file
+#35 DONE 0.0s
+ Image communication-reliability-lab-order Built 
+ Image communication-reliability-lab-inventory Built 
+ Image communication-reliability-lab-payment Built 
+ Image communication-reliability-lab-analyzer Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 610B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.44kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble
+#3 DONE 0.3s
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble
+#4 DONE 0.3s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 103B done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [build  1/18] FROM docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble@sha256:c7eef3dfeb81468533ea48c67bddaa8c7ca916454259e4d0d734d12bcff8e125
+#7 resolve docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble@sha256:c7eef3dfeb81468533ea48c67bddaa8c7ca916454259e4d0d734d12bcff8e125 0.0s done
+#7 DONE 0.0s
+
+#8 [analyzer 1/2] FROM docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble@sha256:2ec98aa522c472deadfd2b7c5b39bca680e33ef522a53a72f10789bdf89a6bb5
+#8 resolve docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble@sha256:2ec98aa522c472deadfd2b7c5b39bca680e33ef522a53a72f10789bdf89a6bb5 0.0s done
+#8 DONE 0.1s
+
+#6 [internal] load build context
+#6 transferring context: 10.92kB 0.0s done
+#6 DONE 0.0s
+
+#9 [build  3/18] COPY gradlew settings.gradle.kts gradle.properties ./
+#9 CACHED
+
+#10 [build 13/18] COPY chain-link chain-link
+#10 CACHED
+
+#11 [build 10/18] COPY analyzer/build.gradle.kts analyzer/
+#11 CACHED
+
+#12 [build  8/18] COPY inventory/build.gradle.kts inventory/
+#12 CACHED
+
+#13 [build  2/18] WORKDIR /src
+#13 CACHED
+
+#14 [build  5/18] COPY fault-header/build.gradle.kts fault-header/
+#14 CACHED
+
+#15 [build  7/18] COPY order/build.gradle.kts order/
+#15 CACHED
+
+#16 [build 11/18] RUN ./gradlew --no-daemon -q       :fault-header:dependencies :chain-link:dependencies :order:dependencies :inventory:dependencies :payment:dependencies :analyzer:dependencies > /dev/null
+#16 CACHED
+
+#17 [build  6/18] COPY chain-link/build.gradle.kts chain-link/
+#17 CACHED
+
+#18 [build 18/18] RUN ./gradlew --no-daemon -q :order:bootJar :inventory:bootJar :payment:bootJar :analyzer:installDist
+#18 CACHED
+
+#19 [build 14/18] COPY order order
+#19 CACHED
+
+#20 [build 17/18] COPY analyzer analyzer
+#20 CACHED
+
+#21 [build 16/18] COPY payment payment
+#21 CACHED
+
+#22 [build 15/18] COPY inventory inventory
+#22 CACHED
+
+#23 [build  9/18] COPY payment/build.gradle.kts payment/
+#23 CACHED
+
+#24 [build  4/18] COPY gradle gradle
+#24 CACHED
+
+#25 [build 12/18] COPY fault-header fault-header
+#25 CACHED
+
+#26 [analyzer 2/2] COPY --from=build /src/analyzer/build/install/analyzer /opt/analyzer
+#26 CACHED
+
+#27 exporting to image
+#27 exporting layers done
+#27 exporting manifest sha256:03f022246abf1820f7981daa33b0510cd8b5a46de703cd92202527742c6ee17d done
+#27 exporting config sha256:fbc6750bf667acc11590e9f1fb4c3e6355312027d22884efc5b8bd7fe8ac14b3 done
+#27 exporting attestation manifest sha256:6a68d58f94f1cbebff584363dc5035567ebba79f0515afd33376d2e7cdd14dce 0.0s done
+#27 exporting manifest list sha256:37a47a0f246c5840b1b670cc3219f9de961eca26dc92f588c165449cc8436a30 0.0s done
+#27 naming to docker.io/library/communication-reliability-lab-analyzer:latest
+#27 naming to docker.io/library/communication-reliability-lab-analyzer:latest done
+#27 unpacking to docker.io/library/communication-reliability-lab-analyzer:latest 0.0s done
+#27 DONE 0.1s
+
+#28 resolving provenance for metadata file
+#28 DONE 0.0s
+ Image communication-reliability-lab-analyzer Built 

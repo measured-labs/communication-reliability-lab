@@ -1,0 +1,74 @@
+{
+  "edges.order->inventory.timeouts": {
+    "min": 400,
+    "max": 400
+  },
+  "edges.order->inventory.falseTimeouts": {
+    "min": 200,
+    "max": 200
+  },
+  "edges.order->inventory.belowDelay.timeouts": {
+    "min": 400,
+    "max": 400
+  },
+  "edges.inventory->payment.timeouts": {
+    "min": 200,
+    "max": 200
+  },
+  "edges.inventory->payment.falseTimeouts": {
+    "min": 200,
+    "max": 200
+  },
+  "edges.inventory->payment.injectedCalleeDelayAtLeastTimeout": {
+    "min": 200,
+    "max": 200
+  },
+  "waste.inventory.wasted": {
+    "min": 400,
+    "max": 400
+  },
+  "waste.inventory.wastedProcessed": {
+    "min": 200,
+    "max": 200
+  },
+  "waste.payment.wasted": {
+    "min": 400,
+    "max": 400
+  },
+  "waste.payment.wastedProcessed": {
+    "min": 400,
+    "max": 400
+  },
+  "waste.order.wasted": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.order.startedAfterGiveUp": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.inventory.startedAfterGiveUp": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.payment.startedAfterGiveUp": {
+    "min": 0,
+    "max": 0
+  },
+  "clients.noResponse": {
+    "min": 0,
+    "max": 0
+  },
+  "clients.notReachedServer": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.inventory.cancelSeen": {
+    "min": 400,
+    "max": 400
+  },
+  "waste.payment.cancelSeen": {
+    "min": 200,
+    "max": 200
+  }
+}

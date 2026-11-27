@@ -1,0 +1,38 @@
+{
+  "slow.slowRequests": {
+    "min": 1200,
+    "max": 1200
+  },
+  "slow.slowChain.count": {
+    "min": 1200,
+    "max": 1200
+  },
+  "edges.order->inventory.calls": {
+    "min": 3000,
+    "max": 3000
+  },
+  "slow.slowChain.unknown": {
+    "min": 1200,
+    "max": 1200
+  },
+  "slow.slowChain.completed": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.injectedCalleeDelayAtLeastTimeout": {
+    "min": 1200,
+    "max": 1200
+  },
+  "edges.order->inventory.timeouts": {
+    "min": 0,
+    "max": 0
+  },
+  "clients.noResponse": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.timeouts": {
+    "min": 1200,
+    "max": 3000
+  }
+}

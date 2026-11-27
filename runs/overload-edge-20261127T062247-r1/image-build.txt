@@ -1,0 +1,18 @@
+ Image communication-reliability-lab-inventory Building 
+ Image communication-reliability-lab-payment Building 
+ Image communication-reliability-lab-order Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.64kB done
+#1 DONE 0.0s
+
+#2 [order internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.44kB done
+#2 DONE 0.0s
+
+#3 [order internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jdk-noble
+#3 DONE 0.6s
+
+#4 [order internal] load metadata for docker.io/library/eclipse-temurin:25.0.5.1_2-jre-noble
+#4 DONE 0.6s
+target order: failed to receive status: rpc error: code = Unavailable desc = error reading from server: read unix @->/run/docker.sock: read: connection reset by peer
+

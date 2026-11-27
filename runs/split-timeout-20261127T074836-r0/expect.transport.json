@@ -1,0 +1,6 @@
+{
+  "deadline.paymentAfterInventoryOverSlack": {
+    "min": 0,
+    "max": 0
+  }
+}

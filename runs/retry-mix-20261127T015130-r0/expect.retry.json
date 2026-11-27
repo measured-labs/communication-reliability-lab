@@ -1,0 +1,90 @@
+{
+  "clients.completed": {
+    "min": 764,
+    "max": 764
+  },
+  "clients.failed": {
+    "min": 36,
+    "max": 36
+  },
+  "clients.unknown": {
+    "min": 0,
+    "max": 0
+  },
+  "layers.payment.arrivals": {
+    "min": 1612,
+    "max": 1612
+  },
+  "layers.inventory.arrivals": {
+    "min": 800,
+    "max": 800
+  },
+  "edges.inventory->payment.retries": {
+    "min": 812,
+    "max": 812
+  },
+  "attemptFaults.payment.fail-first.counted": {
+    "min": 805,
+    "max": 805
+  },
+  "attemptFaults.payment.slow-first.counted": {
+    "min": 43,
+    "max": 43
+  },
+  "mix.none.completed": {
+    "min": 393,
+    "max": 393
+  },
+  "mix.none.paymentArrivals": {
+    "min": 393,
+    "max": 393
+  },
+  "mix.payment:fail-first=1.completed": {
+    "min": 165,
+    "max": 165
+  },
+  "mix.payment:fail-first=1.paymentArrivals": {
+    "min": 330,
+    "max": 330
+  },
+  "mix.payment:fail-first=2.completed": {
+    "min": 76,
+    "max": 76
+  },
+  "mix.payment:fail-first=2.paymentArrivals": {
+    "min": 228,
+    "max": 228
+  },
+  "mix.payment:fail-first=3.completed": {
+    "min": 40,
+    "max": 40
+  },
+  "mix.payment:fail-first=3.paymentArrivals": {
+    "min": 160,
+    "max": 160
+  },
+  "mix.payment:fail-first=4.completed": {
+    "min": 47,
+    "max": 47
+  },
+  "mix.payment:fail-first=4.paymentArrivals": {
+    "min": 235,
+    "max": 235
+  },
+  "mix.payment:fail-first=9.completed": {
+    "min": 0,
+    "max": 0
+  },
+  "mix.payment:fail-first=9.paymentArrivals": {
+    "min": 180,
+    "max": 180
+  },
+  "mix.payment:slow-first=1@1500.completed": {
+    "min": 43,
+    "max": 43
+  },
+  "mix.payment:slow-first=1@1500.paymentArrivals": {
+    "min": 86,
+    "max": 86
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "dropFaults.payment.counted": {
+    "min": 79,
+    "max": 79
+  },
+  "layers.payment.extraProcessedRows": {
+    "min": 122,
+    "max": 122
+  }
+}

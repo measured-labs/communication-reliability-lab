@@ -1,0 +1,171 @@
+{
+  "run" : "idem-retry-mix-20261127T031720-r0",
+  "expect" : "/runs/idem-retry-mix-20261127T031720-r0/expect.json",
+  "planned" : 800,
+  "differences" : [ ],
+  "reconciliation" : {
+    "amountMismatch" : 0,
+    "answers" : 800,
+    "doubledTotal" : 198,
+    "elapsedMs" : {
+      "all" : {
+        "count" : 800,
+        "max" : 1066.0,
+        "p50" : 117.0,
+        "p95" : 475.0,
+        "p99" : 1058.0
+      },
+      "completed" : {
+        "count" : 764,
+        "max" : 478.0,
+        "p50" : 116.0,
+        "p95" : 464.0,
+        "p99" : 473.0
+      },
+      "failed" : {
+        "count" : 0,
+        "max" : null,
+        "p50" : null,
+        "p95" : null,
+        "p99" : null
+      },
+      "unknown" : {
+        "count" : 36,
+        "max" : 1066.0,
+        "p50" : 1057.0,
+        "p95" : 1060.0,
+        "p99" : 1066.0
+      }
+    },
+    "faultCounts" : [ {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "order"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "inventory"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "delay",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "error",
+      "match" : true,
+      "service" : "payment"
+    }, {
+      "counted" : 0,
+      "injected" : 0,
+      "kind" : "fail-after-commit",
+      "match" : true,
+      "service" : "payment"
+    } ],
+    "faultCountsMatch" : true,
+    "labels" : {
+      "" : {
+        "answers" : 800,
+        "elapsedMs" : {
+          "count" : 800,
+          "max" : 1066.0,
+          "p50" : 117.0,
+          "p95" : 475.0,
+          "p99" : 1058.0
+        },
+        "requestIds" : 800,
+        "signatures" : {
+          "completed | COMPLETED | FAILED+RESERVED | APPROVED" : 87,
+          "completed | COMPLETED | RESERVED | APPROVED" : 479,
+          "completed | COMPLETED | RESERVED | APPROVED+APPROVED" : 79,
+          "completed | COMPLETED | RESERVED+RESERVED | APPROVED+APPROVED" : 76,
+          "completed | COMPLETED | RESERVED+RESERVED | APPROVED+APPROVED+APPROVED" : 43,
+          "unknown | UNKNOWN | FAILED+FAILED+FAILED | -" : 36
+        },
+        "verdicts" : {
+          "completed" : 764,
+          "failed" : 0,
+          "unknown" : 36
+        }
+      }
+    },
+    "layerMismatch" : 198,
+    "layers" : {
+      "order" : {
+        "amountMismatch" : 0,
+        "doubled" : 0,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 764,
+        "rows" : 800,
+        "unknownNotProcessed" : 36,
+        "unknownProcessed" : 0
+      },
+      "inventory" : {
+        "amountMismatch" : null,
+        "doubled" : 119,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 883,
+        "rows" : 1078,
+        "unknownNotProcessed" : 36,
+        "unknownProcessed" : 0
+      },
+      "payment" : {
+        "amountMismatch" : 0,
+        "doubled" : 198,
+        "failedButProcessed" : 0,
+        "lost" : 0,
+        "orphanRows" : 0,
+        "pendingRows" : 0,
+        "processedRows" : 1005,
+        "rows" : 1005,
+        "unknownNotProcessed" : 36,
+        "unknownProcessed" : 0
+      }
+    },
+    "lostTotal" : 0,
+    "orphanRows" : 0,
+    "pendingRows" : 0,
+    "requestIds" : 800,
+    "verdicts" : {
+      "completed" : 764,
+      "failed" : 0,
+      "unknown" : 36
+    }
+  }
+}
