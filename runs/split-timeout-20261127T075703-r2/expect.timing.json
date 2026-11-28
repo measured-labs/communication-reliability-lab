@@ -1,0 +1,38 @@
+{
+  "waste.order.startedAfterGiveUp": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.inventory.startedAfterGiveUp": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.payment.startedAfterGiveUp": {
+    "min": 0,
+    "max": 0
+  },
+  "clients.noResponse": {
+    "min": 0,
+    "max": 0
+  },
+  "clients.notReachedServer": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.timeouts": {
+    "min": 400,
+    "max": 400
+  },
+  "edges.inventory->payment.falseTimeouts": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.payment.wastedProcessed": {
+    "min": 0,
+    "max": 0
+  },
+  "layers.payment.stopped.cancelled-in-delay": {
+    "min": 400,
+    "max": 400
+  }
+}

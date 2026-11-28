@@ -1,0 +1,12 @@
+{
+  "answers": {"min": 300, "max": 300},
+  "clients.completed": {"min": 300, "max": 300},
+  "layers.payment.arrivals": {"min": 900, "max": 900},
+  "edges.inventory->payment.retries": {"min": 600, "max": 600},
+  "edges.inventory->payment.delayMs.attempt2.max": {"min": 0, "max": 99},
+  "edges.inventory->payment.delayMs.attempt2.p50": {"min": 35, "max": 65},
+  "edges.inventory->payment.delayMs.attempt3.max": {"min": 0, "max": 199},
+  "edges.inventory->payment.delayMs.attempt3.p50": {"min": 75, "max": 125},
+  "edges.inventory->payment.gapMinusDelayMs.max": {"min": 0, "max": 25},
+  "attemptFaults.payment.fail-first.counted": {"min": 600, "max": 600}
+}

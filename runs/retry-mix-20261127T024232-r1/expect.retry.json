@@ -1,0 +1,70 @@
+{
+  "clients.completed": {
+    "min": 677,
+    "max": 677
+  },
+  "clients.failed": {
+    "min": 123,
+    "max": 123
+  },
+  "layers.payment.arrivals": {
+    "min": 1406,
+    "max": 1406
+  },
+  "layers.inventory.arrivals": {
+    "min": 1406,
+    "max": 1406
+  },
+  "attemptFaults.payment.fail-first.counted": {
+    "min": 686,
+    "max": 686
+  },
+  "edges.order->inventory.retries": {
+    "min": 606,
+    "max": 606
+  },
+  "edges.order->inventory.decisions.success": {
+    "min": 677,
+    "max": 677
+  },
+  "edges.order->inventory.decisions.not-retryable": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.order->inventory.decisions.retry": {
+    "min": 606,
+    "max": 606
+  },
+  "edges.order->inventory.decisions.max-attempts": {
+    "min": 123,
+    "max": 123
+  },
+  "edges.order->inventory.decisions.budget-denied": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.retries": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.decisions.success": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.decisions.not-retryable": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.decisions.retry": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.decisions.max-attempts": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.decisions.budget-denied": {
+    "min": 0,
+    "max": 0
+  }
+}

@@ -114,13 +114,7 @@ class HttpNextLayerCall(
 
     private fun send(request: HttpRequest): LayerOutcome =
         try {
-            val status = client.send(request, HttpResponse.BodyHandlers.discarding()).statusCode()
-            when (status) {
-                in 200..299 -> LayerOutcome.Completed
-                504 -> LayerOutcome.Unknown("HTTP_504")
-                409 -> if (inProgressAsUnknown) LayerOutcome.Unknown("HTTP_409") else LayerOutcome.Failed("HTTP_409")
-                else -> LayerOutcome.Failed("HTTP_$status")
-            }
+            HttpOutcomes.read(client.send(request, HttpResponse.BodyHandlers.discarding()).statusCode(), inProgressAsUnknown)
         } catch (e: HttpConnectTimeoutException) {
             LayerOutcome.Failed("CONNECT_TIMEOUT") // HttpTimeoutException의 하위 — 먼저 잡는다
         } catch (e: HttpTimeoutException) {
@@ -130,6 +124,20 @@ class HttpNextLayerCall(
         } catch (e: IOException) {
             LayerOutcome.Unknown("IO_${e.javaClass.simpleName}")
         }
+}
+
+/**
+ * 아래 층이 돌려준 HTTP 응답 상태를 결과로 읽는 규칙 — Spring·HTTP 클라이언트 없이 부를 수 있는 순수 함수(docs/idempotency.md 3-1절의 표).
+ * 응답을 받지 못한 끝(타임아웃·연결 실패·끊김)은 여기가 아니라 [HttpNextLayerCall]이 예외로 가른다.
+ */
+object HttpOutcomes {
+    /** 2xx 완료 · 504 결과 모름(`HTTP_504`) · 409는 [inProgressAsUnknown]이면 결과 모름, 아니면 실패(`HTTP_409`) · 그 밖 실패(`HTTP_<n>`). */
+    fun read(status: Int, inProgressAsUnknown: Boolean): LayerOutcome = when (status) {
+        in 200..299 -> LayerOutcome.Completed
+        504 -> LayerOutcome.Unknown("HTTP_504")
+        409 -> if (inProgressAsUnknown) LayerOutcome.Unknown("HTTP_409") else LayerOutcome.Failed("HTTP_409")
+        else -> LayerOutcome.Failed("HTTP_$status")
+    }
 }
 
 /** 시각 기록에 남기는 결과의 이름: "Completed" · "Failed:<까닭>" · "Unknown:<까닭>". */

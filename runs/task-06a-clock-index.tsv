@@ -1,0 +1,6 @@
+experiment	condition	scenario	rep	run	exit	conditions	note
+clock	base-calibration	calibration	0	runs/calibration-20261126T041519-r0	0		
+clock	base-calibration	calibration	1	runs/calibration-20261126T041635-r1	0		
+clock	base-c7-burst	cal-retry-burst	1	runs/cal-retry-burst-20261126T041800-r1	0	ORDER_TO_INVENTORY_TIMEOUT=5000ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=2 INVENTORY_RETRY_BACKOFF=fixed INVENTORY_RETRY_BASE_DELAY=200ms RETRY_EXPECT=load/expectations/cal-retry-c7-burst.retry.json	
+clock	base-c6-outage	cal-retry-outage	1	runs/cal-retry-outage-20261126T041900-r1	0	ORDER_TO_INVENTORY_TIMEOUT=5000ms INVENTORY_RETRY_ENABLED=true INVENTORY_RETRY_MAX_ATTEMPTS=2 INVENTORY_RETRY_BACKOFF=fixed INVENTORY_RETRY_BASE_DELAY=200ms RETRY_EXPECT=load/expectations/cal-retry-c6-outage.retry.json	
+clock	cal-overload	cal-overload	1	runs/cal-overload-20261126T042010-r1	0	PAYMENT_OVERLOAD_ENABLED=true PAYMENT_OVERLOAD_LIMIT=50 PAYMENT_OVERLOAD_WINDOW=1000ms ORDER_TO_INVENTORY_TIMEOUT=5000ms	

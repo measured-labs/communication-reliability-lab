@@ -1,0 +1,10 @@
+{
+  "edges.inventory->payment.calls": {
+    "min": 1600,
+    "max": 1600
+  },
+  "edges.inventory->payment.retries": {
+    "min": 0,
+    "max": 170
+  }
+}

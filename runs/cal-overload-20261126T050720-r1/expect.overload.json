@@ -1,0 +1,13 @@
+{
+  "answers": {"min": 1250, "max": 1250},
+  "spike.sent": {"min": 375, "max": 375},
+  "spike.baseSent": {"min": 875, "max": 875},
+  "payment.arrivals": {"min": 1250, "max": 1250},
+  "payment.rejectedObserved": {"min": 470, "max": 500},
+  "payment.recovered": {"min": 1, "max": 1},
+  "payment.rejectionsStopMs": {"min": 550, "max": 750},
+  "clients.recovered": {"min": 1, "max": 1},
+  "clients.recoveryMs": {"min": 550, "max": 750},
+  "clients.failed": {"min": 470, "max": 500},
+  "clients.unknown": {"min": 0, "max": 0}
+}

@@ -1,0 +1,6 @@
+{
+  "records.payment.stopped": {
+    "min": 400,
+    "max": 400
+  }
+}

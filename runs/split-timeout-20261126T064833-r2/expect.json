@@ -1,0 +1,21 @@
+{
+  "answers": 800,
+  "layerMismatch": 400,
+  "lostTotal": 0,
+  "doubledTotal": 0,
+  "faultCountsMatch": true,
+  "labels": {
+    "": {
+      "completed | COMPLETED | RESERVED | APPROVED": 200
+    },
+    "payment:delay=500": {
+      "completed | COMPLETED | RESERVED | APPROVED": 200
+    },
+    "payment:delay=1500": {
+      "unknown | UNKNOWN | RESERVED | APPROVED": 200
+    },
+    "payment:delay=2500": {
+      "unknown | UNKNOWN | UNKNOWN | APPROVED": 200
+    }
+  }
+}

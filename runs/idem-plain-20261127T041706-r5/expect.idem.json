@@ -1,0 +1,22 @@
+{
+  "clients.status.201": {
+    "min": 1200,
+    "max": 1200
+  },
+  "layers.payment.arrivals": {
+    "min": 1200,
+    "max": 1200
+  },
+  "layers.order.keyRows": {
+    "min": 0,
+    "max": 0
+  },
+  "layers.inventory.keyRows": {
+    "min": 0,
+    "max": 0
+  },
+  "layers.payment.keyRows": {
+    "min": 0,
+    "max": 0
+  }
+}

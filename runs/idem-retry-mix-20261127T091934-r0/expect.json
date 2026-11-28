@@ -1,0 +1,12 @@
+{
+  "doubledTotal": 122,
+  "layerMismatch": 122,
+  "faultCountsMatch": true,
+  "labels": {
+    "": {
+      "completed | COMPLETED | RESERVED | APPROVED": 555,
+      "completed | COMPLETED | RESERVED | APPROVED+APPROVED": 122,
+      "failed | FAILED | FAILED | -": 123
+    }
+  }
+}

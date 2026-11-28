@@ -1,0 +1,8 @@
+ Image communication-reliability-lab-order Building 
+ Image communication-reliability-lab-inventory Building 
+ Image communication-reliability-lab-payment Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.64kB done
+#1 DONE 0.0s
+target inventory: failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF
+

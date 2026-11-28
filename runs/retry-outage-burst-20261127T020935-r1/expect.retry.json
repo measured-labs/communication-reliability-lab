@@ -1,0 +1,18 @@
+{
+  "layers.payment.arrivals": {
+    "min": 2400,
+    "max": 2400
+  },
+  "edges.inventory->payment.retries": {
+    "min": 1200,
+    "max": 1200
+  },
+  "outage.requestsSentDuring": {
+    "min": 400,
+    "max": 400
+  },
+  "clients.completed": {
+    "min": 800,
+    "max": 820
+  }
+}

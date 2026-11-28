@@ -1,0 +1,13 @@
+{
+  "answers": 400,
+  "lostTotal": 0,
+  "doubledTotal": 0,
+  "layerMismatch": 0,
+  "orphanRows": 0,
+  "pendingRows": 0,
+  "amountMismatch": 0,
+  "faultCountsMatch": true,
+  "labels": {
+    "payment:delay=600": { "unknown | UNKNOWN | UNKNOWN | -": 400 }
+  }
+}

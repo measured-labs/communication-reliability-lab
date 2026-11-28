@@ -14,27 +14,28 @@ OUT="runs/${NAME}"
 mkdir -p "$OUT"
 KEY="$NAME-k1"
 send() {
-  curl -sS -m 10 -D - -o "$OUT/body-$1.json" -X POST localhost:8081/orders -H 'Content-Type: application/json' \
+  curl -sS -m 10 -D - -o "$OUT/body-$1.json" -X POST "${SERVICES_HOST}:8081/orders" -H 'Content-Type: application/json' \
     -H "X-Request-Id: $KEY" -H "Idempotency-Key: $KEY" -d '{"amount":4242}' | tr -d '\r' > "$OUT/headers-$1.txt"
 }
 count() { psql_lab "$1" "$2"; }
 {
-  echo "git_commit=$(git rev-parse HEAD 2>/dev/null || echo 모름)"
+  # (task 06) 서버에서 잴 때는 보낸 커밋 표지를 git보다 먼저(scripts/run.sh 2절과 같다 — R06-9)
+  echo "git_commit=$({ [[ -n $SERVICES_SSH ]] && cat .deployed-commit; } || git rev-parse HEAD 2>/dev/null || echo 모름)"
   echo "started_at=$(date -Iseconds)"
   echo "key=$KEY"
   send first
   echo "first: $(head -1 "$OUT/headers-first.txt") $(grep -i '^Idempotent-Replayed' "$OUT/headers-first.txt" || echo 'Idempotent-Replayed 없음')"
-  before=$(docker inspect --format '{{.State.StartedAt}}' "$("${COMPOSE[@]}" ps -q order)")
+  before=$("${DOCKER[@]}" inspect --format '{{.State.StartedAt}}' "$("${COMPOSE[@]}" ps -q order)")
   "${COMPOSE[@]}" restart order > /dev/null
   wait_ready
-  after=$(docker inspect --format '{{.State.StartedAt}}' "$("${COMPOSE[@]}" ps -q order)")
+  after=$("${DOCKER[@]}" inspect --format '{{.State.StartedAt}}' "$("${COMPOSE[@]}" ps -q order)")
   echo "order StartedAt: $before → $after"
   send second
   echo "second: $(head -1 "$OUT/headers-second.txt") $(grep -i '^Idempotent-Replayed' "$OUT/headers-second.txt" || echo 'Idempotent-Replayed 없음')"
   echo "bodies equal: $(cmp -s "$OUT/body-first.json" "$OUT/body-second.json" && echo yes || echo no)"
   echo "orders=$(count order_db "select count(*) from orders where request_id = '$KEY'") reservations=$(count inventory_db "select count(*) from reservations where request_id = '$KEY'") payments=$(count payment_db "select count(*) from payments where request_id = '$KEY'")"
   echo "keys order=$(count order_db "select count(*) from idempotency_keys where key = '$KEY'") inventory=$(count inventory_db "select count(*) from idempotency_keys where key = '$KEY'") payment=$(count payment_db "select count(*) from idempotency_keys where key = '$KEY'")"
-  echo "order counts after restart: $(curl -sf localhost:8081/idempotency-counts)"
+  echo "order counts after restart: $(curl -sf "${SERVICES_HOST}:8081/idempotency-counts")"
 } | tee "$OUT/result.txt"
 r=$OUT/result.txt
 grep -q '^first: HTTP/1.1 201' "$r" && grep -Eq '^second: HTTP/1.1 201 +Idempotent-Replayed: true' "$r" && grep -q '^bodies equal: yes' "$r" \

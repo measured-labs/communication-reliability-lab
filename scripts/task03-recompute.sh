@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 source scripts/lib.sh
 
 (($# > 0)) || die "실행 폴더를 하나 이상 준다"
-"${COMPOSE[@]}" --profile tools build analyzer > /dev/null
+"${COMPOSE_LOCAL[@]}" --profile tools build analyzer > /dev/null
 bad=0
 for run in "$@"; do
   run=${run%/}
@@ -18,25 +18,26 @@ for run in "$@"; do
   tmp=runs/.recompute/$name
   rm -rf "$tmp"; mkdir -p "$tmp"
   tar -xzf "$run/raw.tar.gz" -C "$tmp"
+  cp "$run/config.env" "$tmp/config.env" # (task 06) 분석기가 시계 어긋남을 읽는다(docs/measurement.md 12절 — 노트북의 실행에는 그 칸이 없다)
   conf() { sed -n "s/^$1=//p" "$run/config.env"; }
   args=(--run "/runs/.recompute/${name}" --planned "$(conf planned_requests)")
   [[ -f $tmp/expect.json ]] && args+=(--expect "/runs/.recompute/${name}/expect.json")
   set +e
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${args[@]}" > /dev/null 2>&1
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${args[@]}" > /dev/null 2>&1
   rc=$?
   set -e
   files=(report.json)
   if [[ -f $run/report-retry.json ]]; then
     rargs=(retry --run "/runs/.recompute/${name}")
     [[ -f $tmp/expect.retry.json ]] && rargs+=(--expect "/runs/.recompute/${name}/expect.retry.json")
-    set +e; "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${rargs[@]}" > /dev/null 2>&1; set -e
+    set +e; "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${rargs[@]}" > /dev/null 2>&1; set -e
     files+=(report-retry.json metrics-retry.tsv)
   fi
   if [[ -f $run/report-timing.json ]]; then
     targs=(timing --run "/runs/.recompute/${name}")
     slow=$(conf slow_label); [[ -n $slow ]] && targs+=(--slow-label "$slow")
     [[ -f $tmp/expect.timing.json ]] && targs+=(--expect "/runs/.recompute/${name}/expect.timing.json")
-    set +e; "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}" > /dev/null 2>&1; set -e
+    set +e; "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}" > /dev/null 2>&1; set -e
     files+=(report-timing.json metrics.tsv)
   fi
   same=yes

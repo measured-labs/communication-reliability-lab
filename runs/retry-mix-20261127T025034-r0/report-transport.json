@@ -1,0 +1,102 @@
+{
+  "run" : "retry-mix-20261127T025034-r0",
+  "expect" : null,
+  "differences" : [ ],
+  "chosen" : "http",
+  "settings" : {
+    "order" : {
+      "deadlinePropagation" : false,
+      "observeCancellation" : false
+    },
+    "inventory" : {
+      "deadlinePropagation" : false,
+      "observeCancellation" : false
+    },
+    "payment" : {
+      "deadlinePropagation" : false,
+      "observeCancellation" : false
+    }
+  },
+  "counts" : {
+    "order" : {
+      "inbound" : {
+        "http" : 800,
+        "grpc" : 0
+      },
+      "outbound" : {
+        "http" : 959,
+        "grpc" : 0
+      },
+      "cancelledBeforeHandler" : {
+        "grpc" : 0
+      }
+    },
+    "inventory" : {
+      "inbound" : {
+        "http" : 959,
+        "grpc" : 0
+      },
+      "outbound" : {
+        "http" : 1756,
+        "grpc" : 0
+      },
+      "cancelledBeforeHandler" : {
+        "grpc" : 0
+      }
+    },
+    "payment" : {
+      "inbound" : {
+        "http" : 1756,
+        "grpc" : 0
+      },
+      "outbound" : {
+        "http" : 0,
+        "grpc" : 0
+      },
+      "cancelledBeforeHandler" : {
+        "grpc" : 0
+      }
+    }
+  },
+  "records" : {
+    "order" : {
+      "count" : 800,
+      "calls" : 800,
+      "attempts" : 959,
+      "wrongTransport" : 0,
+      "grpcFieldsOnHttp" : 0,
+      "stopped" : 0,
+      "cancelled" : 0
+    },
+    "inventory" : {
+      "count" : 959,
+      "calls" : 959,
+      "attempts" : 1756,
+      "wrongTransport" : 0,
+      "grpcFieldsOnHttp" : 0,
+      "stopped" : 0,
+      "cancelled" : 0
+    },
+    "payment" : {
+      "count" : 1756,
+      "calls" : 0,
+      "attempts" : null,
+      "wrongTransport" : 0,
+      "grpcFieldsOnHttp" : 0,
+      "stopped" : 0,
+      "cancelled" : 0
+    }
+  },
+  "deadline" : {
+    "inventoryMissing" : 0,
+    "paymentMissing" : 0,
+    "paymentAfterInventoryMs" : {
+      "count" : 0,
+      "p50" : null,
+      "p90" : null,
+      "p99" : null,
+      "max" : null
+    },
+    "paymentAfterInventoryOverSlack" : 0
+  }
+}

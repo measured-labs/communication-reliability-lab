@@ -1,0 +1,50 @@
+{
+  "reconcile.resent": {
+    "min": 400,
+    "max": 400
+  },
+  "reconcile.completed": {
+    "min": 400,
+    "max": 400
+  },
+  "reconcile.replayed": {
+    "min": 80,
+    "max": 80
+  },
+  "reconcile.finalOnce": {
+    "min": 400,
+    "max": 400
+  },
+  "reconcile.finalDoubled": {
+    "min": 0,
+    "max": 0
+  },
+  "layers.payment.arrivals": {
+    "min": 960,
+    "max": 960
+  },
+  "layers.order.keyRows": {
+    "min": 800,
+    "max": 800
+  },
+  "layers.inventory.keyRows": {
+    "min": 800,
+    "max": 800
+  },
+  "layers.payment.keyRows": {
+    "min": 800,
+    "max": 800
+  },
+  "layers.order.processedClientUnknown": {
+    "min": 400,
+    "max": 400
+  },
+  "layers.inventory.processedClientUnknown": {
+    "min": 400,
+    "max": 400
+  },
+  "layers.payment.processedClientUnknown": {
+    "min": 400,
+    "max": 400
+  }
+}

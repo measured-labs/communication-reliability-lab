@@ -1,0 +1,58 @@
+{
+  "layers.payment.processedRows": {
+    "min": 677,
+    "max": 677
+  },
+  "layers.payment.keyRows": {
+    "min": 677,
+    "max": 677
+  },
+  "layers.payment.counts.replayed": {
+    "min": 122,
+    "max": 122
+  },
+  "layers.inventory.counts.new": {
+    "min": 800,
+    "max": 800
+  },
+  "layers.inventory.keyStates.COMPLETED": {
+    "min": 677,
+    "max": 677
+  },
+  "layers.inventory.keyStates.FAILED": {
+    "min": 123,
+    "max": 123
+  },
+  "dropFaults.payment.counted": {
+    "min": 79,
+    "max": 79
+  },
+  "clients.status.201": {
+    "min": 634,
+    "max": 634
+  },
+  "clients.status.502": {
+    "min": 123,
+    "max": 123
+  },
+  "clients.status.504": {
+    "min": 43,
+    "max": 43
+  },
+  "layers.order.keyStates.COMPLETED": {
+    "min": 634,
+    "max": 634
+  },
+  "layers.order.keyStates.FAILED": {
+    "min": 123,
+    "max": 123
+  },
+  "layers.order.keyStates.UNKNOWN": {
+    "min": 43,
+    "max": 43
+  },
+  "layers.payment.processedClientUnknown": {
+    "min": 43,
+    "max": 43
+  }
+}

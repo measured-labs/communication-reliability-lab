@@ -1,0 +1,26 @@
+{
+  "layers.payment.arrivals": {
+    "min": 400,
+    "max": 400
+  },
+  "layers.order.keyRows": {
+    "min": 400,
+    "max": 400
+  },
+  "layers.inventory.keyRows": {
+    "min": 400,
+    "max": 400
+  },
+  "layers.payment.keyRows": {
+    "min": 400,
+    "max": 400
+  },
+  "duplicates.requestIds": {
+    "min": 400,
+    "max": 400
+  },
+  "duplicates.doubled": {
+    "min": 0,
+    "max": 0
+  }
+}

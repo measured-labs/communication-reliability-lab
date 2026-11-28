@@ -7,12 +7,13 @@
 # 분석기 이미지는 지금의 코드로 짓는다(docker compose build analyzer).
 # WRITE=yes 를 주면 견주지 않고, 다시 돈 보고로 실행 폴더의 보고(report.json·report.md·report-timing.json·metrics.tsv)를 바꾼다 —
 # 분석기의 지표를 고친 뒤 커밋한 실행들을 지금의 분석기로 다시 분석할 때(그 뒤 WRITE 없이 다시 돌려 같음을 확인한다).
+# WRITE=yes에서 분석기의 종료 코드가 하나라도 0이 아닌 실행은 보고를 쓰지 않고 실패로 센다(종료 코드 1 — R06-4, task04-recompute.sh와 같다).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source scripts/lib.sh
 
 (($# > 0)) || die "실행 폴더를 하나 이상 준다"
-"${COMPOSE[@]}" --profile tools build analyzer > /dev/null
+"${COMPOSE_LOCAL[@]}" --profile tools build analyzer > /dev/null
 bad=0
 for run in "$@"; do
   run=${run%/}
@@ -22,6 +23,7 @@ for run in "$@"; do
   rm -rf "$tmp"
   mkdir -p "$tmp"
   tar -xzf "$run/raw.tar.gz" -C "$tmp"
+  cp "$run/config.env" "$tmp/config.env" # (task 06) 분석기가 시계 어긋남을 읽는다(docs/measurement.md 12절 — 노트북의 실행에는 그 칸이 없다)
   conf() { sed -n "s/^$1=//p" "$run/config.env"; }
   planned=$(conf planned_requests)
   slow=$(conf slow_label)
@@ -31,12 +33,17 @@ for run in "$@"; do
   [[ -n $slow ]] && targs+=(--slow-label "$slow")
   [[ -f $tmp/expect.timing.json ]] && targs+=(--expect "/runs/.recompute/${name}/expect.timing.json")
   set +e
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${args[@]}" > /dev/null 2>&1
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${args[@]}" > /dev/null 2>&1
   rc=$?
-  "${COMPOSE[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}" > /dev/null 2>&1
+  "${COMPOSE_LOCAL[@]}" run --rm --no-deps --user "$(id -u):$(id -g)" analyzer "${targs[@]}" > /dev/null 2>&1
   trc=$?
   set -e
   if [[ ${WRITE:-no} == yes ]]; then
+    if ((rc != 0 || trc != 0)); then
+      echo "$name: 대조 분석 $rc, 시각 분석 $trc — 0이 아닌 분석이 있어 보고를 쓰지 않음(실패)"
+      bad=1
+      continue
+    fi
     for f in report.json report.md report-timing.json metrics.tsv; do
       [[ -f $tmp/$f ]] || die "$name: 다시 돈 분석이 $f 를 쓰지 않았다(대조 분석 $rc, 시각 분석 $trc)"
       sed "s#/runs/.recompute/${name}#/runs/${name}#g" "$tmp/$f" > "$run/$f"

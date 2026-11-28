@@ -1,0 +1,14 @@
+{
+  "slow.slowRequests": {
+    "min": 1200,
+    "max": 1200
+  },
+  "slow.slowChain.count": {
+    "min": 1200,
+    "max": 1200
+  },
+  "edges.order->inventory.calls": {
+    "min": 3000,
+    "max": 3000
+  }
+}

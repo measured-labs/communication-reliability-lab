@@ -1,0 +1,6 @@
+{
+  "edges.inventory->payment.budgetDenied": {
+    "min": 0,
+    "max": 0
+  }
+}

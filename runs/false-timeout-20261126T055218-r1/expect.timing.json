@@ -1,0 +1,42 @@
+{
+  "edges.inventory->payment.calls": {
+    "min": 1200,
+    "max": 1200
+  },
+  "edges.order->inventory.timeouts": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.order.wasted": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.inventory.wasted": {
+    "min": 0,
+    "max": 0
+  },
+  "clients.noResponse": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.timeouts": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.falseTimeouts": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.belowDelay.timeouts": {
+    "min": 0,
+    "max": 0
+  },
+  "waste.payment.wasted": {
+    "min": 0,
+    "max": 0
+  },
+  "edges.inventory->payment.injectedCalleeDelayAtLeastTimeout": {
+    "min": 0,
+    "max": 0
+  }
+}

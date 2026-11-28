@@ -108,7 +108,11 @@ private fun parseRetryArgs(args: Array<String>): Map<String, String> {
 
 // ───────────── 읽기 ─────────────
 
-fun readRetryAnswers(path: Path): List<RetryAnswer> {
+/**
+ * [shiftMs]: (task 06) 구간 장애(`outage`)의 from·to는 서비스가 **자기 시계로** 판정하는 시각이다 — 이 양을 빼 부하 서버의 시계로
+ * 옮긴다([retryReport]는 [ClockOffset.outageShiftMs]를 준다 — docs/measurement.md 12-4). 라벨(`attemptFault` 문자열)은 그대로 둔다.
+ */
+fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer> {
     val timed = readTimedAnswers(path)
     val lines = Files.readString(path).removeSuffix("\n").split('\n')
     return timed.mapIndexed { i, a ->
@@ -121,11 +125,15 @@ fun readRetryAnswers(path: Path): List<RetryAnswer> {
         } catch (e: IllegalArgumentException) {
             throw InputException("$where: attemptFault '$raw' 가 문법에 맞지 않는다 (${e.message})")
         }
-        RetryAnswer(a.requestId, raw, directives, a.status, a.elapsedMs, a.sentAtMs)
+        val shifted = if (shiftMs == 0L) directives else directives.map { d ->
+            if (d is AttemptFault.Outage) d.copy(fromMs = d.fromMs - shiftMs, toMs = d.toMs - shiftMs) else d
+        }
+        RetryAnswer(a.requestId, raw, shifted, a.status, a.elapsedMs, a.sentAtMs)
     }
 }
 
-fun readAttempts(path: Path, known: Set<String>): List<Attempt> {
+/** [shiftMs]: [readTimings]와 같다 — 검사 뒤 `startUs`·`endUs`에서 `shiftMs × 1000`을 뺀다. */
+fun readAttempts(path: Path, known: Set<String>, shiftMs: Long = 0): List<Attempt> {
     val node = readJson(path)
     if (!node.isArray) throw InputException("$path: JSON 배열이 아니다")
     fun JsonNode.lng(name: String, where: String): Long {
@@ -163,7 +171,8 @@ fun readAttempts(path: Path, known: Set<String>): List<Attempt> {
         if (sorted.last().decision == "retry") throw InputException("$where: 마지막 시도의 decision이 retry다(뒤의 시도 기록이 없다)")
         sorted.zipWithNext().forEach { (p, n) -> if (n.startUs < p.endUs) throw InputException("$where: 시도 ${n.attempt}가 앞 시도가 끝나기 전에 시작했다") }
     }
-    return list
+    val s = shiftMs * 1000
+    return if (s == 0L) list else list.map { it.copy(startUs = it.startUs - s, endUs = it.endUs - s) }
 }
 
 fun readAttemptFaultCounts(path: Path): Map<String, Map<String, Long>> {
@@ -213,21 +222,26 @@ private fun series(times: List<Long>, origin: Long, last: Long): List<Int> {
 
 /** 보고와, 늘 견주는 것의 차이 줄(8-4). */
 fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
-    val answers = readRetryAnswers(run.resolve("answers.jsonl"))
+    val clock = readClockOffset(run) // (task 06) 서비스의 시각을 부하 서버의 시계로 — 12절
+    val shift = clock?.shiftMs ?: 0L
+    // 구간 장애의 from·to는 k6가 헤더에 더한 양만큼 되옮긴다 — k6가 뜻한 구간(부하 서버의 시계, 12-4). 옮긴 서비스의 시각과 견줄 때는
+    // svcMs로 서비스와 같은 양만 옮긴 값을 쓴다(= 헤더 그대로의 from·to와 기록 그대로의 시각을 견준 것 — 서비스가 판정한 그대로).
+    val answers = readRetryAnswers(run.resolve("answers.jsonl"), clock?.outageShiftMs ?: 0L)
+    val svcMs: (Long) -> Long = { it + (clock?.outageShiftMs ?: 0L) - shift }
     val dup = answers.groupBy { it.requestId }.filterValues { it.size > 1 }.keys
     if (dup.isNotEmpty()) throw InputException("같은 requestId를 두 번 보낸 정답이 있다(${dup.take(3)}) — 재시도 지표는 requestId마다 한 번 보낸 실행에서만 정의된다")
     val byId = answers.associateBy { it.requestId }
     val rows = Layer.entries.associateWith { readLayer(run.resolve("db").resolve(it.file), it) }
     val timings = Layer.entries.associateWith { layer ->
         val path = run.resolve("timing").resolve("timings-${layer.label}.json")
-        val list = readTimings(path, layer != Layer.PAYMENT)
+        val list = readTimings(path, layer != Layer.PAYMENT, shift)
         val stray = list.filter { it.requestId !in byId }
         if (stray.isNotEmpty()) throw InputException("$path: 정답에 없는 requestId의 시각 기록 ${stray.size}건(${stray.take(3).map { it.requestId }})")
         list
     }
     val attempts = mapOf(
-        Layer.ORDER to readAttempts(run.resolve("timing").resolve("attempts-order.json"), byId.keys),
-        Layer.INVENTORY to readAttempts(run.resolve("timing").resolve("attempts-inventory.json"), byId.keys),
+        Layer.ORDER to readAttempts(run.resolve("timing").resolve("attempts-order.json"), byId.keys, shift),
+        Layer.INVENTORY to readAttempts(run.resolve("timing").resolve("attempts-inventory.json"), byId.keys, shift),
     )
     val counted = readAttemptFaultCounts(run.resolve("attempt-faults.json"))
     val retryOn = mapOf(Layer.ORDER to retryEnabled(run, "order"), Layer.INVENTORY to retryEnabled(run, "inventory"))
@@ -334,7 +348,7 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
         val outageOf = answers.associate { a -> a.requestId to a.directives.filterIsInstance<AttemptFault.Outage>().firstOrNull { it.service == svc } }
         expected["outage"] = timings.getValue(layer).count { t ->
             val o = outageOf[t.requestId] ?: return@count false
-            t.startUs >= o.fromMs * 1000 && t.startUs < o.toMs * 1000
+            t.startUs >= svcMs(o.fromMs) * 1000 && t.startUs < svcMs(o.toMs) * 1000
         }.toLong()
         svc to AttemptFault.KINDS.associateWith { kind ->
             val c = counted.getValue(svc).getValue(kind)
@@ -392,7 +406,7 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
             "endMs" to o.toMs - t0,
             "requestsSentDuring" to during.size,
             "completedSentDuring" to during.count { it.completed },
-            "calleeArrivalsDuring" to timings.getValue(layer).count { it.startUs >= o.fromMs * 1000 && it.startUs < o.toMs * 1000 },
+            "calleeArrivalsDuring" to timings.getValue(layer).count { it.startUs >= svcMs(o.fromMs) * 1000 && it.startUs < svcMs(o.toMs) * 1000 },
             "calleePeakPer50msBefore" to peak(times, BIN_MS, t0) { it + BIN_MS <= o.fromMs },
             "calleePeakPer50msDuring" to peak(times, BIN_MS, t0) { it >= o.fromMs && it + BIN_MS <= o.toMs },
             "calleePeakPer50msAfter" to peak(times, BIN_MS, t0) { it >= o.toMs },
@@ -400,10 +414,12 @@ fun retryReport(run: Path): Pair<Map<String, Any?>, List<String>> {
             // 재시도만의 칸 분포(구간 안, 재시도가 하나 이상 든 칸만): 칸의 수(count)와 칸마다의 수의 분위수
             "retryBinsDuring" to quantiles(retryBins.map { it.toDouble() }),
             "retriesInCrowdedBinsDuring" to retryBins.sum().takeIf { it > 0 }?.let { total -> retryBins.filter { it >= CROWDED_BIN }.sum().toDouble() / total },
-            "retryTailMs" to retryStarts.maxOrNull()?.let { it - o.toMs },
+            "retryTailMs" to retryStarts.maxOrNull()?.let { it - svcMs(o.toMs) },
             "clientRecoveryMs" to answers.filter { !it.completed }.maxOfOrNull { it.sentAtMs }?.let { it - o.toMs },
         )
     }
+
+    clock?.let { report["clock"] = it.report() }
 
     // 시간 흐름(보고에만 — metrics에 들지 않는다): 100ms 칸마다 결제에 든 수와 재고의 재시도 수
     val last = (arrivalMs.values.flatten() + answers.map { it.sentAtMs + it.elapsedMs.toLong() }).max()

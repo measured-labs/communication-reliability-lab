@@ -1,0 +1,13 @@
+{
+  "doubledTotal": 400,
+  "layerMismatch": 320,
+  "faultCountsMatch": true,
+  "labels": {
+    "": {
+      "completed | COMPLETED | RESERVED | APPROVED": 400,
+      "unknown | COMPLETED+COMPLETED | RESERVED+RESERVED | APPROVED+APPROVED": 80,
+      "unknown | COMPLETED+UNKNOWN | RESERVED+RESERVED | APPROVED+APPROVED": 160,
+      "unknown | COMPLETED+UNKNOWN | RESERVED+UNKNOWN | APPROVED+APPROVED": 160
+    }
+  }
+}

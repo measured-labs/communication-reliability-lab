@@ -1,0 +1,10 @@
+{
+  "records.payment.stopped": {
+    "min": 200,
+    "max": 200
+  },
+  "deadline.paymentAfterInventoryOverSlack": {
+    "min": 800,
+    "max": 800
+  }
+}

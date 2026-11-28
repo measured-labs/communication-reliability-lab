@@ -2,6 +2,7 @@
 # task 02의 조건 하나: 서비스를 그 조건으로 다시 띄우고 → 버리는 실행(r0) → 반복 r1..r<N>.
 #   scripts/task02.sh <실험 이름> <조건 이름> <시나리오> [VAR=값 ...]
 #   예: scripts/task02.sh ga ga-1 false-timeout INVENTORY_TO_PAYMENT_TIMEOUT=80ms ORDER_TO_INVENTORY_TIMEOUT=5000ms
+# 받는 변수: ORDER_TO_INVENTORY_TIMEOUT, INVENTORY_TO_PAYMENT_TIMEOUT, VIRTUAL_THREADS, TIMING_EXPECT, RECON_EXPECT(task 06 — 대조 분석의 기대 파일).
 # 환경 변수 REPS(기본 3), DISCARD(기본 yes — no면 r0을 돌리지 않는다: 보정).
 # 실행마다 runs/task-02-index.tsv에 한 줄(실험, 조건, 시나리오, 반복, 실행 폴더, 종료 코드, 조건 값, 비고)을 덧붙인다.
 # 비고(8번째 칸)는 비워 둔다 — 다시 잰 실행으로 대체된 옛 실행은 손으로 "대체됨: <까닭>"을 적는다(지우지 않는다).
@@ -16,7 +17,7 @@ CONDITION=${2:?"조건 이름"}
 SCENARIO=${3:?"시나리오"}
 shift 3
 for kv in "$@"; do
-  [[ $kv =~ ^(ORDER_TO_INVENTORY_TIMEOUT|INVENTORY_TO_PAYMENT_TIMEOUT|VIRTUAL_THREADS|TIMING_EXPECT)=.+$ ]] || die "모르는 조건 '$kv'"
+  [[ $kv =~ ^(ORDER_TO_INVENTORY_TIMEOUT|INVENTORY_TO_PAYMENT_TIMEOUT|VIRTUAL_THREADS|TIMING_EXPECT|RECON_EXPECT)=.+$ ]] || die "모르는 조건 '$kv'"
   export "${kv?}"
 done
 REPS=${REPS:-3}

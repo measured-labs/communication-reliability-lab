@@ -1,0 +1,34 @@
+{
+  "layers.payment.processedRows": {
+    "min": 677,
+    "max": 677
+  },
+  "layers.payment.keyRows": {
+    "min": 677,
+    "max": 677
+  },
+  "layers.payment.counts.replayed": {
+    "min": 122,
+    "max": 122
+  },
+  "layers.inventory.counts.new": {
+    "min": 800,
+    "max": 800
+  },
+  "layers.inventory.keyStates.COMPLETED": {
+    "min": 677,
+    "max": 677
+  },
+  "layers.inventory.keyStates.FAILED": {
+    "min": 123,
+    "max": 123
+  },
+  "dropFaults.payment.counted": {
+    "min": 79,
+    "max": 79
+  },
+  "layers.order.counts.new": {
+    "min": 800,
+    "max": 800
+  }
+}

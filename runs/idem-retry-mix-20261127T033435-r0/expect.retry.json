@@ -1,0 +1,10 @@
+{
+  "layers.payment.arrivals": {
+    "min": 1485,
+    "max": 1485
+  },
+  "edges.inventory->payment.retries": {
+    "min": 685,
+    "max": 685
+  }
+}

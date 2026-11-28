@@ -1,0 +1,18 @@
+{
+  "layers.order.arrivals": {
+    "min": 1600,
+    "max": 1600
+  },
+  "layers.inventory.arrivals": {
+    "min": 1600,
+    "max": 1600
+  },
+  "edges.inventory->payment.calls": {
+    "min": 1600,
+    "max": 1600
+  },
+  "edges.inventory->payment.budgetDenied": {
+    "min": 0,
+    "max": 0
+  }
+}

@@ -1,0 +1,10 @@
+git_commit=9742351d5e1ebb1ad5435e76da8274c362b72683
+started_at=2026-11-26T05:16:15+00:00
+key=restart-check-20261126T051615-k1
+first: HTTP/1.1 201  Idempotent-Replayed 없음
+order StartedAt: 2026-11-26T05:16:10.468815664Z → 2026-11-26T05:16:16.491276195Z
+second: HTTP/1.1 201  Idempotent-Replayed: true
+bodies equal: yes
+orders=1 reservations=1 payments=1
+keys order=1 inventory=1 payment=1
+order counts after restart: {"new":0,"replayed":1,"in-progress":0,"mismatch":0,"resumed":0,"missing-key":0}

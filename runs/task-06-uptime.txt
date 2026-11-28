@@ -1,0 +1,52 @@
+2026-11-26T03:10:37+00:00	base-calibration	load:  03:10:37 up 117 days, 19:58,  1 user,  load average: 0.30, 0.51, 0.26	services:  03:10:37 up 19:20,  1 user,  load average: 0.32, 0.42, 0.23
+2026-11-26T03:15:40+00:00	base-duplicate	load:  03:15:40 up 117 days, 20:03,  1 user,  load average: 0.65, 0.47, 0.30	services:  03:15:41 up 19:25,  1 user,  load average: 0.08, 0.28, 0.23
+2026-11-26T03:16:38+00:00	base-ft-t300	load:  03:16:38 up 117 days, 20:04,  1 user,  load average: 0.41, 0.43, 0.29	services:  03:16:39 up 19:26,  1 user,  load average: 0.40, 0.34, 0.25
+2026-11-26T03:17:49+00:00	base-ft-t1000	load:  03:17:49 up 117 days, 20:05,  1 user,  load average: 0.39, 0.41, 0.30	services:  03:17:49 up 19:27,  1 user,  load average: 1.07, 0.53, 0.32
+2026-11-26T03:18:59+00:00	base-sampler	load:  03:18:59 up 117 days, 20:06,  1 user,  load average: 0.44, 0.43, 0.31	services:  03:18:59 up 19:28,  1 user,  load average: 1.96, 0.88, 0.46
+2026-11-26T03:20:21+00:00	base-c1-max1	load:  03:20:21 up 117 days, 20:08,  1 user,  load average: 0.54, 0.47, 0.33	services:  03:20:21 up 19:30,  1 user,  load average: 1.10, 0.86, 0.49
+2026-11-26T03:21:27+00:00	base-c2-fixed200	load:  03:21:27 up 117 days, 20:09,  1 user,  load average: 0.37, 0.45, 0.34	services:  03:21:27 up 19:31,  1 user,  load average: 1.49, 1.09, 0.60
+2026-11-26T03:22:31+00:00	base-c6-outage	load:  03:22:31 up 117 days, 20:10,  1 user,  load average: 0.25, 0.40, 0.33	services:  03:22:32 up 19:32,  1 user,  load average: 1.07, 1.05, 0.62
+2026-11-26T03:23:37+00:00	base-c7-burst	load:  03:23:37 up 117 days, 20:11,  1 user,  load average: 0.17, 0.35, 0.32	services:  03:23:37 up 19:33,  1 user,  load average: 0.59, 0.92, 0.60
+2026-11-26T03:24:36+00:00	base-c3-exponential	load:  03:24:36 up 117 days, 20:12,  1 user,  load average: 0.64, 0.42, 0.34	services:  03:24:37 up 19:34,  1 user,  load average: 0.33, 0.79, 0.58
+2026-11-26T03:25:42+00:00	base-c4-jitter	load:  03:25:42 up 117 days, 20:13,  1 user,  load average: 0.55, 0.46, 0.36	services:  03:25:42 up 19:35,  1 user,  load average: 0.52, 0.78, 0.59
+2026-11-26T03:26:47+00:00	base-c5-budget0	load:  03:26:47 up 117 days, 20:14,  1 user,  load average: 0.28, 0.40, 0.34	services:  03:26:47 up 19:36,  1 user,  load average: 0.66, 0.79, 0.61
+2026-11-26T03:27:52+00:00	base-cal-idem-off	load:  03:27:52 up 117 days, 20:15,  1 user,  load average: 0.25, 0.36, 0.34	services:  03:27:52 up 19:37,  1 user,  load average: 0.51, 0.71, 0.59
+2026-11-26T03:29:25+00:00	base-cal-idem-on	load:  03:29:25 up 117 days, 20:17,  1 user,  load average: 0.54, 0.39, 0.34	services:  03:29:26 up 19:39,  1 user,  load average: 0.43, 0.63, 0.58
+2026-11-26T03:30:59+00:00	cal-overload	load:  03:30:59 up 117 days, 20:18,  1 user,  load average: 0.31, 0.34, 0.33	services:  03:31:00 up 19:40,  1 user,  load average: 0.62, 0.63, 0.58
+2026-11-26T03:32:26+00:00	cal-g1-calibration	load:  03:32:26 up 117 days, 20:20,  1 user,  load average: 0.52, 0.41, 0.36	services:  03:32:27 up 19:42,  1 user,  load average: 0.70, 0.69, 0.60
+2026-11-26T03:33:52+00:00	cal-g1-ft300	load:  03:33:52 up 117 days, 20:21,  1 user,  load average: 0.15, 0.32, 0.33	services:  03:33:52 up 19:43,  1 user,  load average: 0.82, 0.77, 0.64
+2026-11-26T03:35:02+00:00	cal-g1-ft1000	load:  03:35:02 up 117 days, 20:23,  1 user,  load average: 0.30, 0.33, 0.33	services:  03:35:03 up 19:44,  1 user,  load average: 0.57, 0.72, 0.63
+2026-11-26T03:36:12+00:00	cal-g2-calibration	load:  03:36:12 up 117 days, 20:24,  1 user,  load average: 0.18, 0.29, 0.32	services:  03:36:13 up 19:45,  1 user,  load average: 0.51, 0.67, 0.63
+2026-11-26T03:37:38+00:00	cal-g3-calibration	load:  03:37:38 up 117 days, 20:25,  1 user,  load average: 0.36, 0.32, 0.33	services:  03:37:39 up 19:47,  1 user,  load average: 0.39, 0.63, 0.62
+2026-11-26T03:39:04+00:00	cal-g3-ft300	load:  03:39:04 up 117 days, 20:27,  1 user,  load average: 0.50, 0.35, 0.34	services:  03:39:04 up 19:48,  1 user,  load average: 0.58, 0.69, 0.64
+2026-11-26T03:40:14+00:00	cal-g1o-calibration	load:  03:40:14 up 117 days, 20:28,  1 user,  load average: 0.31, 0.31, 0.32	services:  03:40:15 up 19:49,  1 user,  load average: 0.49, 0.67, 0.64
+2026-11-26T03:41:39+00:00	cal-g1o-ft300	load:  03:41:39 up 117 days, 20:29,  1 user,  load average: 0.18, 0.26, 0.30	services:  03:41:40 up 19:51,  1 user,  load average: 0.32, 0.61, 0.62
+2026-11-26T03:42:50+00:00	restart-check	load:  03:42:50 up 117 days, 20:30,  1 user,  load average: 0.51, 0.34, 0.32	services:  03:42:50 up 19:52,  1 user,  load average: 0.69, 0.65, 0.63
+2026-11-26T03:43:12+00:00	끝	load:  03:43:12 up 117 days, 20:31,  1 user,  load average: 0.51, 0.35, 0.33	services:  03:43:12 up 19:52,  1 user,  load average: 0.99, 0.72, 0.66
+2026-11-26T04:50:31+00:00	cal base-calibration 1 2 3	load:  04:50:31 up 117 days, 21:38,  2 users,  load average: 0.12, 0.27, 0.22	services:  04:50:31 up 21:00,  1 user,  load average: 0.03, 0.26, 0.23
+2026-11-26T04:54:44+00:00	cal base-duplicate 1	load:  04:54:44 up 117 days, 21:42,  2 users,  load average: 0.34, 0.25, 0.21	services:  04:54:44 up 21:04,  1 user,  load average: 0.57, 0.55, 0.37
+2026-11-26T04:55:27+00:00	cal base-ft-t300 1	load:  04:55:27 up 117 days, 21:43,  2 users,  load average: 0.23, 0.24, 0.21	services:  04:55:27 up 21:05,  1 user,  load average: 0.33, 0.49, 0.36
+2026-11-26T04:56:22+00:00	cal base-ft-t1000 1	load:  04:56:22 up 117 days, 21:44,  2 users,  load average: 0.30, 0.24, 0.21	services:  04:56:22 up 21:06,  1 user,  load average: 0.72, 0.62, 0.42
+2026-11-26T04:57:17+00:00	cal base-sampler 1	load:  04:57:17 up 117 days, 21:45,  2 users,  load average: 0.36, 0.25, 0.21	services:  04:57:17 up 21:07,  1 user,  load average: 0.70, 0.64, 0.43
+2026-11-26T04:58:23+00:00	cal base-c1-max1 1	load:  04:58:23 up 117 days, 21:46,  2 users,  load average: 0.22, 0.24, 0.21	services:  04:58:23 up 21:08,  1 user,  load average: 0.52, 0.60, 0.44
+2026-11-26T04:59:13+00:00	cal base-c2-fixed200 1	load:  04:59:13 up 117 days, 21:47,  2 users,  load average: 0.36, 0.28, 0.22	services:  04:59:13 up 21:08,  1 user,  load average: 0.49, 0.60, 0.45
+2026-11-26T05:00:03+00:00	cal base-c6-outage 1	load:  05:00:03 up 117 days, 21:48,  2 users,  load average: 0.36, 0.30, 0.23	services:  05:00:03 up 21:09,  1 user,  load average: 0.76, 0.66, 0.47
+2026-11-26T05:01:26+00:00	cal base-c7-burst 1	load:  05:01:26 up 117 days, 21:49,  2 users,  load average: 0.27, 0.27, 0.22	services:  05:01:26 up 21:11,  1 user,  load average: 0.22, 0.51, 0.44
+2026-11-26T05:02:11+00:00	cal base-c3-exponential 1	load:  05:02:11 up 117 days, 21:50,  2 users,  load average: 0.43, 0.31, 0.24	services:  05:02:11 up 21:11,  1 user,  load average: 0.23, 0.47, 0.43
+2026-11-26T05:03:01+00:00	cal base-c4-jitter 1	load:  05:03:01 up 117 days, 21:50,  2 users,  load average: 0.37, 0.31, 0.24	services:  05:03:01 up 21:12,  1 user,  load average: 0.22, 0.44, 0.42
+2026-11-26T05:03:51+00:00	cal base-c5-budget0 1	load:  05:03:51 up 117 days, 21:51,  2 users,  load average: 0.67, 0.40, 0.28	services:  05:03:51 up 21:13,  1 user,  load average: 0.41, 0.46, 0.43
+2026-11-26T05:04:41+00:00	cal base-cal-idem-off 1	load:  05:04:41 up 117 days, 21:52,  2 users,  load average: 0.59, 0.40, 0.28	services:  05:04:41 up 21:14,  1 user,  load average: 0.54, 0.50, 0.44
+2026-11-26T05:05:56+00:00	cal base-cal-idem-on 1	load:  05:05:56 up 117 days, 21:53,  2 users,  load average: 0.60, 0.41, 0.29	services:  05:05:56 up 21:15,  1 user,  load average: 0.78, 0.60, 0.48
+2026-11-26T05:07:11+00:00	cal cal-overload 1	load:  05:07:11 up 117 days, 21:55,  2 users,  load average: 0.31, 0.36, 0.28	services:  05:07:11 up 21:16,  1 user,  load average: 0.69, 0.67, 0.52
+2026-11-26T05:08:23+00:00	cal cal-g1-calibration 1	load:  05:08:23 up 117 days, 21:56,  2 users,  load average: 0.42, 0.36, 0.28	services:  05:08:23 up 21:18,  1 user,  load average: 0.73, 0.74, 0.56
+2026-11-26T05:09:32+00:00	cal cal-g1-ft300 1	load:  05:09:32 up 117 days, 21:57,  2 users,  load average: 0.23, 0.32, 0.27	services:  05:09:32 up 21:19,  1 user,  load average: 0.56, 0.70, 0.56
+2026-11-26T05:10:28+00:00	cal cal-g1-ft1000 1	load:  05:10:28 up 117 days, 21:58,  2 users,  load average: 0.33, 0.35, 0.29	services:  05:10:28 up 21:20,  1 user,  load average: 1.02, 0.85, 0.62
+2026-11-26T05:11:23+00:00	cal cal-g2-calibration 1	load:  05:11:23 up 117 days, 21:59,  2 users,  load average: 0.30, 0.35, 0.29	services:  05:11:23 up 21:21,  1 user,  load average: 0.53, 0.75, 0.60
+2026-11-26T05:12:32+00:00	cal cal-g3-calibration 1	load:  05:12:32 up 117 days, 22:00,  2 users,  load average: 0.24, 0.32, 0.28	services:  05:12:32 up 21:22,  1 user,  load average: 0.68, 0.78, 0.63
+2026-11-26T05:13:42+00:00	cal cal-g3-ft300 1	load:  05:13:42 up 117 days, 22:01,  2 users,  load average: 0.17, 0.28, 0.27	services:  05:13:42 up 21:23,  1 user,  load average: 1.08, 0.97, 0.71
+2026-11-26T05:14:38+00:00	cal cal-g1o-calibration 1	load:  05:14:38 up 117 days, 22:02,  2 users,  load average: 0.21, 0.29, 0.27	services:  05:14:37 up 21:24,  1 user,  load average: 0.95, 0.98, 0.73
+2026-11-26T05:15:48+00:00	cal cal-g1o-ft300 1	load:  05:15:48 up 117 days, 22:03,  2 users,  load average: 0.27, 0.31, 0.27	services:  05:15:48 up 21:25,  1 user,  load average: 0.59, 0.89, 0.72
+2026-11-26T05:16:04+00:00	restart-check	load:  05:16:04 up 117 days, 22:04,  2 users,  load average: 0.19, 0.29, 0.27	services:  05:16:04 up 21:25,  1 user,  load average: 0.53, 0.86, 0.71
+2026-11-26T05:16:22+00:00	끝	load:  05:16:22 up 117 days, 22:04,  2 users,  load average: 0.15, 0.28, 0.26	services:  05:16:22 up 21:26,  1 user,  load average: 1.02, 0.95, 0.74
+2026-11-26T05:25:50+00:00	cal cal-g1o-ft300 1	load:  05:25:50 up 117 days, 22:13,  2 users,  load average: 0.12, 0.14, 0.19	services:  05:25:50 up 21:35,  1 user,  load average: 0.02, 0.14, 0.39
+2026-11-26T05:26:46+00:00	끝	load:  05:26:46 up 117 days, 22:14,  2 users,  load average: 0.24, 0.16, 0.19	services:  05:26:46 up 21:36,  1 user,  load average: 0.16, 0.16, 0.38

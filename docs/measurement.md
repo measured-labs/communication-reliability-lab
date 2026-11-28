@@ -246,7 +246,7 @@ JSON 객체. 아래 키 가운데 **적은 것만** 견준다(하나 이상 적�
 
 | 파일 | 내용 |
 |---|---|
-| `config.env` | 시나리오, 반복 번호, 시각, git 커밋(`git_commit`)과 작업 트리가 깨끗했는지(`git_dirty` = `no`/`yes`, 깨끗하지 않으면 `git_dirty_paths`에 바뀐 경로) — git을 읽지 못하면 둘 다 `모름`, 도착률·시간·계획한 수, k6 요청 타임아웃, 가라앉기 최대 시간(`settle_timeout_seconds`)과 실제로 걸린 시간(`settled_after_ms`), 워밍업, k6 판, 호스트 CPU·메모리 |
+| `config.env` | 시나리오, 반복 번호, 시각, git 커밋(`git_commit`)과 작업 트리가 깨끗했는지(`git_dirty` = `no`/`yes`, 깨끗하지 않으면 `git_dirty_paths`에 바뀐 경로) — git을 읽지 못하면 둘 다 `모름`, 도착률·시간·계획한 수, k6 요청 타임아웃, 가라앉기 최대 시간(`settle_timeout_seconds`)과 실제로 걸린 시간(`settled_after_ms`), 워밍업, k6 판(`k6_version` — `k6 version`의 첫 줄 전체)과 (task 06부터) 바이너리의 sha256(`k6_sha256` — 실행 스크립트가 정한 값과 다르면 실행 실패), 호스트 CPU·메모리 |
 | `image-build.txt` | 실행 앞에 이미지를 지은 출력(바뀐 것이 없으면 캐시) |
 | `compose.resolved.yaml` | `docker compose config` — 자원 제한, JVM 옵션(`-Djdk.httpclient.disableRetryConnect=true` 등), 층 사이 타임아웃 |
 | `images.txt` | 쓴 이미지와 PostgreSQL 이미지의 다이제스트 |
@@ -261,6 +261,7 @@ JSON 객체. 아래 키 가운데 **적은 것만** 견준다(하나 이상 적�
 | (task 02) `config.env`에 더한 칸 | `k6_max_vus`, `k6_no_connection_reuse`(부하의 k6가 keep-alive를 껐나 — `true`면 요청마다 새 연결과 `Connection: close`. `slow-layer`만 `true`, 까닭은 `scripts/run.sh` 머리와 `docs/results/task-02-timeouts.md` 실험 나), `lookup_rate_per_second`, `slow_label`, 조건 `order_to_inventory_timeout`·`inventory_to_payment_timeout`·`virtual_threads`, `timing_expect`, `discard_run`(반복 번호 0 = 서비스를 새로 띄운 직후의 버리는 실행 — `yes`) |
 | (task 02) `timing/timings-<서비스>.json`, `timing/samples-<서비스>.json`, `lookups.jsonl` | 7-1절 |
 | (task 02) `expect.timing.json`, `report-timing.json`, `metrics.tsv` | 7-4절 |
+| (task 06) `config.env`에 더한 칸 — 서버에서 잴 때만(`SERVICES_SSH`를 줬을 때) | `load_host_hostname`(부하 서버 — 이 실행 스크립트가 돈 곳. 그곳의 코어·메모리·load average는 원래의 `host_nproc`·`host_mem_total_kb`·`host_loadavg_*`), `services_host`(서비스 서버 주소의 끝 마디 — 예 `.164`. 주소 전체는 적지 않는다), `services_hostname`·`services_nproc`·`services_mem_total_kb`, `services_loadavg_start`·`services_loadavg_end`(`/proc/loadavg` 그대로), 조용함의 문턱 `loadavg_max_per_core`·`loadavg_wait_seconds`와 지난 값 `quiet_waited_seconds`·`quiet_loadavg_load_host`·`quiet_loadavg_services_host`(1분 값), 시계 — k6를 띄우기 바로 앞(워밍업·상태 초기화 뒤) `clock_offset_services_minus_load_ms_start`(서비스 서버의 시계 − 부하 서버의 시계)·`clock_offset_error_ms_start`(잰 순간의 오차 상한 ±), k6가 끝난 바로 뒤(가라앉기 앞) `…_end` 둘, 앞·뒤의 차의 문턱 `clock_offset_drift_max_ms`(06-a의 실행 27개는 앞의 값만 접미사 없는 이름 `clock_offset_services_minus_load_ms`·`clock_offset_error_ms`로 남겼다). 재는 법과 문턱의 까닭: `docs/experiments/task-06-design.md` 2절, 분석에 쓰는 규칙: 12절. `git_commit`·`git_dirty`는 서버에서 잴 때 git이 아니라 `scripts/servers-sync.sh`가 보낸 커밋 표지와 파일 sha256으로 적는다(실행 앞에 두 서버의 목록 `.deployed-sha256` 자체의 sha256도 견준다 — 다르면 실행 실패). 노트북에서 돌리면(기본) 이 칸들은 없다 |
 
 task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, `VIRTUAL_THREADS`)은 환경 변수로 주고, 서비스도 같은 값으로 띄워 둔다(`scripts/up.sh` — `compose.yaml`이 그 변수를 읽는다). 실행 스크립트는 설정 기록 뒤 `settings-<서비스>.json`(떠 있는 객체의 값)에서 주문·재고의 `nextLayer.requestTimeoutMs`와 세 서비스의 `tomcat.executorVirtualThreads`가 그 조건과 같은지 보고, 다르면 실패(종료 코드 1). 조건 하나를 버리는 실행과 반복으로 돌리는 것은 `scripts/task02.sh`, 모든 조건은 `scripts/task02-all.sh`, 결과 표는 `scripts/task02-table.sh`(`runs/task-02-index.tsv`와 `metrics.tsv`에서 다시 계산).
 
@@ -336,7 +337,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 | (task 05) `waste.<L>.cancelBeforeDeadline` | 그 가운데 `cancelledUs − deadlineUs < −500`μs인 것(`CANCEL_BEFORE_DEADLINE_MARGIN_US` = 500)의 수 — **L이 받은 기한보다 먼저 안 취소**(부른 쪽이 끊은 신호 RST_STREAM이 기한 전에 닿았다). 둘 가운데 하나라도 없는 기록은 세지 않는다. 이 신호가 위의 위에서 전파된 취소인지, 바로 위가 같은 기한에 끊은 것인지는 가르지 못한다 — 받은 쪽은 기한을 "받은 때 + 남은 시간"으로 다시 세워 전달 시간만큼 늦으므로, 바로 위가 같은 기한에 끊은 신호도 L의 타이머보다 먼저 닿을 수 있다(11-3절 ⑥의 50ms의 까닭과 같다). 테스트 입구: `timingReport(run, null)["waste"][L]["cancelBeforeDeadline"]`, `cancelMinusDeadlineUs(t: Timing): Long?`, 상수 `CANCEL_BEFORE_DEADLINE_MARGIN_US` |
 | (task 05) `layers.<L>.stopped.<자리>` | L의 시각 기록 가운데 `stopped`가 그 자리인 것의 수(자리 셋 모두 — 없으면 0) |
 | `samples.<서비스>.maxGapMs` | 이웃한 표본의 `atMs` 차의 최대. **표본이 하나면 `null`**(간격이 없다 — 7-4의 검사가 차이 줄을 낸다) |
-| `samples.<서비스>.maxInflight`·`maxActive`·`maxThreads`·`maxQueue`·`maxConnections` | 표본의 최대(그 칸이 모두 `null`이면 `null`) |
+| `samples.<서비스>.maxInflight`·`maxActive`·`maxThreads`·`maxQueue`·`maxConnections` | 표본의 최대(그 칸이 모두 `null`이면 `null`). **Tomcat 표본의 `queue`가 0보다 크다고 스레드를 기다린 요청이 있었던 것은 아니다**(7-5절) — 스레드를 기다렸는지는 `saturatedMs`로 본다 |
 | `samples.<서비스>.saturatedMs` | `active ≥ maxThreads`인 표본 수 × `intervalMs`(`maxThreads`가 없으면 `null`) |
 | `samples.<서비스>.meanLoadDuringSend` | `atMs`가 [첫 `sentAtMs`, 마지막 `sentAtMs`](양끝 포함)인 표본의 `inflight + queue`(queue가 `null`이면 0) 평균. **그 창 안에 표본이 없으면 `null`**(7-4의 검사가 차이 줄을 낸다 — 보내는 시간이 표본 간격보다 짧은 실행) |
 | `slow.startMs`·`endMs` | `--slow-label`과 `fault`가 같은 정답의 `sentAtMs` 최소·최대(느린 구간) |
@@ -363,8 +364,10 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 ### 7-5. 알려진 한계
 
 - 시계: 세 서비스(컨테이너)와 k6가 한 컴퓨터의 같은 커널 시계를 쓴다는 것에 기댄다. 서버 여러 대로 나누면(task 06) 시계가 어긋난 만큼 `giveUp`과 `end`의 차가 틀린다 — 그때 다시 본다.
+  - (task 06) 세 서비스는 한 서버(.164)의 시계를 쓰므로 층 사이의 시각 지표(`callStart`·`callEnd`·`start`·`end`를 서로 견주는 것 — 서비스의 타임아웃이 정한 `giveUp`, 헛일 중 위 층의 포기에서 나온 몫, `callMs`·`serviceMs`)는 그대로다. 부하 도구의 시각(`sentAtMs`·`elapsedMs`)과 서비스의 시각을 견주는 것 — k6가 응답을 못 받은 요청의 `giveUp`(`sentAtMs + elapsedMs`), 표본이 부하 구간을 덮는지의 검사(7-2), `meanLoadDuringSend`의 창, `slow.*`의 회복·조회 구간, 8·10절의 구간·회복 시간 — 는 두 서버 시계의 어긋남만큼 밀린다. 실행마다 그 어긋남을 앞·뒤로 재어 `config.env`에 남기고, 분석기가 그 평균만큼 서비스의 시각을 부하 서버의 시계로 옮겨 계산한다(12절 — 옮기는 지표의 전수는 12-3). 2026-11-26의 실측(−17~+10ms, 실행 사이에 움직임)과 그것으로 실패한 보정 하나: `docs/experiments/task-06-design.md` 6절.
 - `end`는 입구 필터를 나간 때다. 처리 코드가 예외로 끝나면 `status`는 필터를 나갈 때의 값이라 실제 응답(오류 페이지)과 다를 수 있다.
 - 헛일은 "위가 포기한 뒤 아래가 쓴 시간"이다. HTTP 경로에서는 아래가 위의 포기를 알 길이 없으므로(취소가 전해지지 않는다) 아래 층은 늘 끝까지 일한다. task 05의 gRPC 경로에서는 아래 층이 받은 기한이 지난 것이나 취소를 알 수 있다(`cancelledUs` — 11절. 둘을 가르지 않는다) — 알고도 계속하는지는 조건(처리 코드가 보는가 — G3·G1o)이 정한다.
+- **Tomcat 표본의 `queue`에는 빈 스레드에 넘겨주는 중인 일이 든다**(2026-11-25 확인 — `docs/calibration.md` "cal-sampler의 큐 1"). Tomcat 11.0.27의 `TaskQueue.offer`는 풀이 상한에 닿았을 때와 함께 **빈 스레드가 있을 때**(`submittedCount ≤ poolSize`)도 일을 큐에 넣고, 빈 스레드가 그것을 꺼내 간다. 빈 스레드가 없고 풀이 상한보다 작을 때만 큐를 거치지 않고 스레드를 새로 만든다. 그래서 풀이 상한보다 작은 동안 표본에 잡히는 `queue` 1은 꺼내 가기 직전의 순간이고 스레드를 기다린 요청이 아니다. 기다림은 풀이 상한에 닿은 뒤에만 생긴다(`saturatedMs`). `inflight + queue`를 쓰는 지표(`meanLoadDuringSend`, `slow.baselineOrderLoad`, `slow.recoveredBySamples`·`recoveryBySamplesMs`)는 이 몫으로 1쯤 흔들릴 수 있다 — 상한에 닿은 동안(task 02 실험 나의 느린 구간)의 큐 수백과 견주면 작지만, 기준값(`baselineOrderLoad`)에 1이 더해지거나 빠지면 회복 판정의 문턱이 1 움직인다.
 - 헛일의 건수(`wasted`)는 `end > giveUp`인 것을 센다 — 취소로 곧 멈춘 일도 `giveUp`보다 조금이라도 늦게 끝나면 한 건이다. 취소의 효과는 건수보다 시간(`wastedMsSum`)과 처리 행(`wastedProcessed`)에 나온다.
 - 표본 간격 100ms보다 짧게 차고 빠지는 것은 보이지 않는다.
 
@@ -477,7 +480,7 @@ task 02의 조건(`ORDER_TO_INVENTORY_TIMEOUT`, `INVENTORY_TO_PAYMENT_TIMEOUT`, 
 - 시계: 7-5절과 같다(한 컴퓨터의 같은 시계).
 - 50ms 칸은 t0에 맞춘 고정 칸이다 — 한 무리가 칸 경계에 걸치면 두 칸으로 나뉘어 최대가 작게 나온다.
 - 시도 기록과 시각 기록은 메모리에만 있다. 서비스가 다시 뜨면 사라진다.
-- `outage`의 판정은 서비스의 시계로 한다. 부하 도구는 그 구간을 시나리오의 시작 시각(`exec.scenario.startTime`)에서 계산해 헤더에 싣는다 — 둘이 같은 시계라는 것에 기댄다.
+- `outage`의 판정은 서비스의 시계로 한다. 부하 도구는 그 구간을 시나리오의 시작 시각(`exec.scenario.startTime`)에서 계산해 헤더에 싣는다 — 둘이 같은 시계라는 것에 기댄다. (task 06) 서버 두 대에서는 k6가 실행 앞의 어긋남만큼 헤더를 옮기고, 분석기는 from·to를 서비스의 시각으로 읽어 옮긴다(12-4).
 
 ## 9. 멱등 키 지표 (task 04) — `analyzer idem`
 
@@ -689,7 +692,7 @@ class OverloadLimit(val enabled: Boolean, val limit: Int, val windowMs: Long, cl
 
 ### 10-7. 알려진 한계
 
-- 시계: 7-5절과 같다(한 컴퓨터의 같은 시계). 결제의 든 시각(서비스의 시계)과 구간의 끝(k6의 송신 시각)을 바로 뺀다.
+- 시계: 7-5절과 같다(한 컴퓨터의 같은 시계). 결제의 든 시각(서비스의 시계)과 구간의 끝(k6의 송신 시각)을 바로 뺀다 — (task 06) 서버 두 대에서는 결제의 든 시각을 어긋남만큼 옮긴 뒤 뺀다(12절).
 - 한도는 흉내 낸 것이다: 실제 서비스가 지치는 꼴(스레드·연결 풀이 차고, 대기열이 길어지고, GC가 멈추게 하는 것 — 거절 대신 느려지는 것)과 다르다. 거절은 처리 전 503이라 싸다.
 - 창의 수는 실행 사이에 `DELETE /overload`로 비운다 — 워밍업의 호출은 들지 않는다. 부하가 시작된 첫 W 동안은 창이 덜 차 있다(평소 도착률에서는 한도에 닿지 않는다).
 
@@ -755,3 +758,111 @@ class OverloadLimit(val enabled: Boolean, val limit: Int, val windowMs: Long, cl
 - `cancelledUs`는 서비스가 그 호출의 문맥이 취소된 것을 안 시각이다. 위가 끊은 신호(RST_STREAM)가 닿은 때와 받은 기한이 지난 때 가운데 이른 것이고, 둘을 가르지 않는다. 그래서 `waste.<L>.cancelAfterGiveUpMs`는 **취소 전파의 지연이 아니다**(7-3절) — 기한보다 먼저 안 것만 `cancelBeforeDeadline`으로 따로 센다.
 - **④의 들어온 수와 `grpcCancelledBeforeHandler`가 빠뜨리는 호출이 없는가(R05-7 — grpc-core 1.84.1 소스로 확인, 실행으로는 스모크의 3000 = 2657 + 343 하나)**: 서버는 들어온 스트림마다(`ServerImpl.ServerTransportListenerImpl.streamCreatedInternal`) 실행기에 `MethodLookup`과 `HandleServerCall`을 **어떤 콜백보다 먼저** 넣는다(`ServerImpl.java` 515~517·635~636줄 — 직렬 실행기라 그 뒤의 `halfClosed`·`closed`는 이 둘 뒤에 돈다). `HandleServerCall`은 문맥이 이미 취소됐는지 보지 않고 `startWrappedCall` → `callHandler.startCall`을 부른다(613~626·689~694줄) — 서비스 정의를 감싼 인터셉터의 `interceptCall`이 여기서 불린다. 건너뛰는 것은 메서드를 찾지 못했을 때(`future.isCancelled()` — `UNIMPLEMENTED`, 547~559줄)뿐이다. 그 뒤 취소는 `closed` → `ServerCallImpl.ServerStreamListenerImpl.closedInternal`의 `listener.onCancel()`(ServerCallImpl.java 368~376줄)로 오고, 문맥이 까닭과 함께 취소되면 `call.cancelled`가 서서(301~312줄) 뒤의 `halfClosed`가 처리 코드를 부르지 않는다(349~357줄). 그래서 **실행기 큐에서 기다리다 취소된 호출도 `interceptCall`(들어온 수)과 `onCancel`(halfClose 없이 — `grpcCancelledBeforeHandler`)을 모두 거친다** — 두 수에서 함께 빠지는 경로는 이 서비스의 메서드에는 없다. **빠지는 것**(고치지 않았다): `streamCreated`에 닿기 전에 전송 층이 거절한 스트림(HTTP/2의 동시 스트림 상한 등), 압축 해제기를 찾지 못해 바로 닫은 스트림(`ServerImpl.java` 485~495줄 — 이 실험은 압축을 쓰지 않는다)은 들어온 수에도 기록에도 없다. 부른 쪽의 나간 수에는 들므로 "부른 쪽의 나간 수 = 불린 쪽의 들어온 수"를 견주면 드러나지만, ④는 그것을 견주지 않는다(서비스마다 자기 기록과만 견준다) — 이 몫은 대조가 잡지 못한다.
 - 들어온 HTTP를 세는 자리는 시각 기록을 남기는 입구 필터와 같은 클래스의 맨 앞이다(같은 필터의 다른 자리 — 순서가 정해진 다른 필터로 두면 Spring의 다른 필터와의 차례가 바뀐다). gRPC는 서버 인터셉터라 클래스도 다르다.
+
+## 12. 두 서버 시계의 어긋남을 분석에 넣기 (task 06) — 모든 하위 명령
+
+> 서버 두 대에서 잴 때(`SERVICES_SSH` — 6절의 task 06 칸) 부하 도구(k6)의 시각은 부하 서버의 시계, 서비스의 시각은 서비스 서버의 시계다. 두 시계가 어긋난 만큼 둘을 **견주는** 지표가 밀린다(2026-11-26 `cal-retry-burst`가 −16.4ms로 1초 칸 하나를 넘겨 종료 2 — `docs/experiments/task-06-design.md` 6절). 분석기는 실행 기록의 어긋남만큼 **서비스의 시각을 부하 서버의 시계로 옮겨** 계산한다. 어긋남이 기록되지 않은 실행(노트북, 테스트의 기록)은 0으로 보고 보고가 한 글자도 바뀌지 않는다.
+
+### 12-1. 입구 — `config.env`의 칸
+
+| 칸 | 꼴 | 뜻 |
+|---|---|---|
+| `clock_offset_services_minus_load_ms_start` | 10진 수 `-?[0-9]+(\.[0-9]+)?`(ms, 실행 스크립트는 소수 셋째 자리) | 실행 앞에 잰 어긋남 = 서비스 서버의 시계 − 부하 서버의 시계. 음수 = 서비스 서버가 늦다. 실행 스크립트는 k6를 띄우기 바로 앞(워밍업·상태 초기화 뒤)에 잰다(06-a 재보정 앞의 실행은 이미지 확인 뒤·워밍업 앞) |
+| `clock_offset_services_minus_load_ms` | 같다 | **옛 이름**(06-a의 실행 27개 — 앞의 값만 있다). `_start`와 함께 있으면 입력 오류 |
+| `clock_offset_services_minus_load_ms_end` | 같다 | 실행 뒤에 잰 어긋남. 실행 스크립트는 k6가 끝난 바로 뒤(가라앉기·내보내기 앞)에 잰다(06-a 재보정 앞의 실행은 내보내기 뒤·분석 앞) |
+| `clock_offset_drift_max_ms` | 0 이상의 10진 수 `[0-9]+(\.[0-9]+)?` | 앞·뒤의 차의 문턱(실행 스크립트가 `CLOCK_DRIFT_MAX_MS`(기본 `5`)를 적는다). 없으면 5 |
+| `clock_offset_error_ms_start`·`_end`(옛 이름 `clock_offset_error_ms`) | | 그 값을 **잰 순간**의 오차 상한(±ms — 가장 짧은 왕복의 반). 잰 때와 다른 때의 어긋남에는 그 사이에 시계가 움직인 몫이 더해진다(12-5). **분석기는 읽지 않는다**(기록용) |
+
+- 칸은 `<이름>=<값>` 한 줄(첫 `=`에서 나눈다). 다른 줄은 보지 않는다. 파일이 없으면 = 기록 없음.
+- **기록 없음**(파일이 없거나, 앞의 값이 두 이름 모두 없음) → 어긋남 0: 옮기지 않고, 보고에 `clock` 칸이 없고, 문턱도 보지 않는다.
+- **입력 오류**(종료 코드 1 — 그 명령의 보고를 쓰지 않고 있던 것은 지운다. 대조 분석과 `timing`·`retry`·`overload`가 읽는다):
+  - 위 칸 가운데 하나가 두 줄 이상.
+  - `_start`와 옛 이름이 모두 있다.
+  - 뒤의 값만 있고 앞의 값이 없다.
+  - 값이 꼴에 맞지 않는다(빈 값, `abc`, `1e3`, `+5`, `.5`, `5.` 등). 문턱은 음수도 입력 오류.
+  - 뒤의 값이 있고 `|뒤 − 앞| > 문턱`(같으면 받는다). 오류 줄: `<경로>: 실행 앞·뒤의 시계 어긋남이 <앞> → <뒤>ms, 차 <차>ms가 문턱 <문턱>ms보다 크다 — …`.
+- **대조 분석도 이 검사를 한다**(옮길 시각은 없다 — 실행의 첫 관문이라 `scripts/run.sh`가 문턱을 넘은 실행을 종료 1로 남기게). `idem`·`transport`는 읽지 않는다(두 시계를 견주지 않는다 — 12-3).
+- 테스트 입구(`Inputs.kt`):
+
+```kotlin
+fun readClockOffset(run: Path): ClockOffset?              // 기록 없음 → null. 위의 입력 오류 → InputException
+class ClockOffset(val startMs: BigDecimal, val endMs: BigDecimal?, val headerShifted: Boolean = true) {
+    val offsetMs: BigDecimal   // 뒤가 있으면 (앞 + 뒤) / 2, 없으면 앞
+    val shiftMs: Long          // offsetMs를 ms 정수로 반올림(.5는 0에서 먼 쪽: −16.5 → −17, 16.5 → 17)
+    val outageShiftMs: Long    // 구간 장애 헤더의 from·to를 부하 서버의 시계로 옮기는 양(12-4):
+                               //   headerShifted면 startMs를 ms 정수로 반올림(.5는 0에서 먼 쪽 — k6가 헤더에 더한 양과 같다), 아니면 shiftMs
+    fun report(): Map<String, Any?>   // 보고의 clock 칸(네 칸 그대로 — outageShiftMs는 싣지 않는다)
+}
+// readClockOffset은 headerShifted = (`_start` 칸이 있다)로 만든다 — 옛 이름의 실행은 false(그때의 k6는 헤더를 옮기지 않았다).
+const val CLOCK_OFFSET_START_KEY / CLOCK_OFFSET_OLD_KEY / CLOCK_OFFSET_END_KEY / CLOCK_DRIFT_MAX_KEY   // 위 칸의 이름
+val CLOCK_DRIFT_MAX_MS_DEFAULT: BigDecimal                // 5
+// 읽기에 옮기는 양을 주는 인자(기본 0 — 주지 않으면 지금까지와 같다):
+fun readTimings(path: Path, hasNextLayer: Boolean, shiftMs: Long = 0): List<Timing>
+fun readSamples(path: Path, shiftMs: Long = 0): SampleSeries
+fun readAttempts(path: Path, known: Set<String>, shiftMs: Long = 0): List<Attempt>
+fun readRetryAnswers(path: Path, shiftMs: Long = 0): List<RetryAnswer>   // 구간 장애의 from·to만 shiftMs만큼 옮긴다(retry 명령은 outageShiftMs를 준다)
+```
+
+### 12-2. 무엇을 어떻게 옮기나
+
+- **부호**: 서비스의 시각 t(서비스 서버의 시계) → 부하 서버의 시계로 `t − shiftMs`(μs 칸은 `t − shiftMs × 1000`). 예: 어긋남 −16.397 → `shiftMs` −16 → 서비스의 시각에 16ms를 더한다. k6의 시각(`sentAtMs`·`elapsedMs`, 조회의 시각)은 옮기지 않는다.
+- **옮기는 것**(읽는 자리에서, 검사는 기록 그대로의 값으로 한 뒤): 시각 기록의 `startUs`·`endUs`·`callStartUs`·`callEndUs`·`deadlineUs`·`cancelledUs`, 표본의 `atMs`, 시도 기록의 `startUs`·`endUs`. 정답의 `attemptFault`에 든 **구간 장애의 from·to**(결제가 자기 시계로 판정하는 시각이라 서비스의 시각이다)는 `shiftMs`가 아니라 `outageShiftMs`만큼 옮긴다 — 12-4. 라벨로 쓰는 `attemptFault` 문자열(`mix.<라벨>`)은 그대로다.
+- **같은 정수 양을 모두 옮긴다** — 서비스의 시각끼리의 차, 같은 μs의 묶음, 정렬 차례, `startUs ÷ 1000`의 차는 한 글자도 바뀌지 않는다. 그래서 서비스끼리 견주는 지표(12-3의 "해당 없음")는 옮겨도 같은 값이다.
+- **옮기는 양이 ms 정수인 까닭**: μs 기록과 ms 기록(표본의 `atMs`, 구간 장애의 from·to)을 정수 ms로 옮겨야 구간 장애의 `attemptFaults.<서비스>.outage.expected`(시각 기록 `startUs`와 from·to를 견준다)를 기록 그대로의 값끼리 견준 것과 정확히 같게 다시 셀 수 있다(12-4). 반올림으로 남는 오차 ≤ 0.5ms는 잰 순간의 오차 상한(06-a 실측 0.45~1.67ms)보다 작다.
+- **보고**: 어긋남이 기록된 실행에만 `report-timing.json`·`report-retry.json`·`report-overload.json`의 맨 끝(`series` 앞)에 `"clock": {"offsetStartMs": 수, "offsetEndMs": 수 또는 null, "offsetMs": 수, "shiftMs": 정수}`가 붙고, 같은 이름으로 `metrics.tsv`·`metrics-retry.tsv`·`metrics-overload.tsv`에 네 줄(`offsetEndMs`가 null이면 빈 값)이 붙는다. 대조 분석·`idem`·`transport`의 보고에는 없다(옮긴 시각이 없다). 기대 파일은 이 칸을 견줄 수 있다(7-4절과 같은 꼴).
+
+### 12-3. 두 시계를 견주는 지표 — 전수
+
+"견준다" = 한 식에 k6의 시각과 서비스의 시각이 함께 든다. 옮기면 값이 바뀔 수 있는 것은 이것뿐이다.
+
+| 명령 | 지표(보고의 자리) | 견주는 두 시각 |
+|---|---|---|
+| `timing` | `waste.<L>.*`(헛일의 건수·시간·`startedAfterGiveUp`·`cancelSeen`·`cancelAfterGiveUpMs`·`endAfterCancelMs`·`stopped`·`cancelBeforeDeadline`의 대상) | `giveUp`의 k6 몫 `sentAtMs + elapsedMs`(응답을 못 받은 요청) ↔ L의 `startUs`·`endUs`·`cancelledUs`. 위 층의 `callEndUs`에서 나온 `giveUp`은 서비스끼리 |
+| `timing` | 7-2의 "표본이 부하 구간을 덮지 않음"(입력 오류) | 첫·마지막 표본 `atMs` ↔ 첫 `sentAtMs`, `sentAtMs + elapsedMs`의 최대 |
+| `timing` | `samples.<서비스>.meanLoadDuringSend`(과 7-4의 "보내는 동안의 표본이 없다") | 표본 `atMs` ↔ [첫 `sentAtMs`, 마지막 `sentAtMs`] |
+| `timing` | `slow.baselineOrderLoad`·`recoveredBySamples`·`recoveryBySamplesMs` | 주문 표본 `atMs` ↔ 느린 구간 `startMs`·`endMs`(`sentAtMs`) |
+| `retry` | `bins.<L>.peakPer50ms`·`peakPer1s` | L의 `startUs ÷ 1000` ↔ t0(가장 이른 `sentAtMs`)에 맞춘 칸 |
+| `retry` | `edges.<U>-><L>.retriesPeakPer50ms` | 시도 `startUs ÷ 1000` ↔ t0의 칸 |
+| `retry` | `outage.startMs`·`endMs` | 구간 장애 from·to(`outageShiftMs`로 옮긴 것 — 아래 `outage.*` 모두 같다, 12-4) ↔ t0 |
+| `retry` | `outage.requestsSentDuring`·`completedSentDuring` | `sentAtMs` ↔ from·to |
+| `retry` | `outage.calleePeakPer50msBefore`·`During`·`After` | S의 `startUs ÷ 1000`(t0의 칸) ↔ 칸 시작(t0 + 50·i)과 from·to |
+| `retry` | `outage.retriesPeakPer50msDuring`·`retryBinsDuring`·`retriesInCrowdedBinsDuring` | 시도 `startUs ÷ 1000`(t0의 칸) ↔ 칸 시작과 from·to |
+| `retry` | `outage.clientRecoveryMs` | 완료가 아닌 정답의 `sentAtMs` ↔ to |
+| `retry` | `series.*`(보고에만) | 결제의 든 시각·시도 시작 ↔ t0, 칸 수(`last`) |
+| `overload` | `payment.rejectedBeforeSpike`·`DuringSpike`·`AfterSpike`(과 10-4 ⑥⑦), `arrivalsAfterSpike`, `acceptedAfterSpike` | 결제의 `startUs ÷ 1000` ↔ spikeStart·spikeEnd(`sentAtMs`) |
+| `overload` | `payment.recovered`·`rejectionsStopMs` | 마지막 503의 든 시각 ↔ lastSent − Q, spikeEnd |
+| `overload` | `series.paymentArrivals`·`paymentRejected`(보고에만), 칸 수 | 결제의 든 시각 ↔ t0 |
+
+**해당 없음**(서비스끼리만, 또는 k6끼리만 견준다 — 같은 양을 옮기므로 값이 그대로다):
+
+- `timing`: `edges.*`(타임아웃·거짓 타임아웃·`callMs`·`belowDelay.*` — 위 층의 call 칸과 아래 층의 시각), `layers.*`, `samples.*`의 `maxGapMs`·최대·`saturatedMs`, `delays.*`, `clients.*`(시각을 견주지 않는다 — 주문의 시각 기록이 있는지만), `slow.lookups`·`normalChain`·`slowChain`·`badAfter`·`recoveredByClients`·`recoveryByClientsMs`(k6끼리), `waste.<L>.cancelMinusDeadlineMs`의 값(같은 기록의 두 칸 — 대상이 되는 헛일의 집합은 위 표).
+- `retry`: `outage.calleeArrivalsDuring`·`outage.retryTailMs`와 `attemptFaults.<서비스>.outage.expected`(서비스의 시각 ↔ 구간 장애 from·to — 둘 다 서비스의 시각이라 같은 양 `shiftMs`로 옮긴 값끼리 견준다: from·to는 `outageShiftMs`로 옮긴 값에 `outageShiftMs − shiftMs`를 더해 쓴다. 그래서 기록 그대로의 값끼리 견준 것과 정확히 같다 — 12-4), `edges.*`의 시도 수·결정·`delayMs`·`gapMs`·`gapMinusDelayMs`, `layers.*`, `clients.*`, `mix.*`.
+- `overload`: 거절의 세 갈래 대조(`rejectedReplayed`·`tieGroups`·`tieGroupsMismatched`·`maxWindowCount` — 결제의 `startUs`끼리), `arrivals`, `otherStatus`, `inventory.callOutcomes`, `clients.*`·`spike.*`(k6끼리). 다만 10-4 ④의 차이 줄에 적는 `startUs`는 옮긴 값이다(어긋남이 있는 실행에서 원시 기록의 값과 `shiftMs × 1000`만큼 다르다).
+- `idem`(9절): 정답의 `sentAtMs`를 읽지만 쓰지 않는다 — 나중에 든 것·같은 μs·`arrivalGapMs`·`selfMs`는 주문의 시각 기록끼리다. 읽지도 옮기지도 않는다.
+- `transport`(11절): `deadline.paymentAfterInventoryMs`는 결제와 재고의 `deadlineUs`(둘 다 .164) — 읽지도 옮기지도 않는다.
+- 대조 분석(1~6절): 서비스의 시각을 쓰지 않는다(12-1의 검사만 한다).
+
+### 12-4. 서비스가 실행 중에 자기 시계로 판정하는 것 — 구간 장애
+
+- 분석으로 고칠 수 없는 것은 **구간 장애(`outage`)뿐**이다: 결제가 입구에 든 시각(자기 시계)을 헤더의 from·to와 견준다(`chain-link/…/AttemptFaultInjection.kt`). 한도의 창(10절)·끊김·`fail-first`·`slow-first`·gRPC의 기한은 서비스 안의 시각끼리나 횟수로 판정한다.
+- 그래서 k6가 헤더를 만들 때 실행 앞의 어긋남만큼 옮긴다(`load/chain.js` — `CLOCK_OFFSET_MS`를 ms 정수로 반올림, .5는 0에서 먼 쪽): `payment:outage=<시작 + from + 옮김>-<시작 + to + 옮김>`. 구간이 부하 서버의 시계로 [시작 + from, 시작 + to)에 놓인다. 실행 스크립트가 `CLOCK_OFFSET_MS`(서버에서 잰 앞의 값, 같은 컴퓨터면 `0`)를 넘긴다. 구간 장애 시나리오(`cal-retry-outage`·`retry-outage-burst`·`retry-budget`)에서만 읽고, 없거나 10진 수가 아니면 k6가 멈춘다.
+- 분석기는 헤더의 from·to를 두 가지로 쓴다(`Retry.kt`의 `retryReport`):
+  - **부하 서버의 시계로 본 구간** = 헤더의 from·to − `outageShiftMs`(12-1). k6의 시각이나 t0의 칸과 견주는 `outage.*` 모두(`startMs`·`endMs`·`requestsSentDuring`·`completedSentDuring`·`calleePeakPer50msBefore`·`During`·`After`·`retriesPeakPer50msDuring`·`retryBinsDuring`·`retriesInCrowdedBinsDuring`·`clientRecoveryMs`)가 이것을 쓴다.
+    - `_start` 칸이 있는 실행(k6가 헤더를 옮겨 보냈다): `outageShiftMs` = 앞의 값을 ms 정수로 반올림(.5는 0에서 먼 쪽) — `load/chain.js`가 헤더에 더한 양(`Math.sign(x) * Math.round(Math.abs(x))`)과 같다. 그래서 되옮긴 구간은 **k6가 뜻한 구간 [시작 + from, 시작 + to)와 정확히 같고**, 뒤의 값(평균)에 따라 움직이지 않는다. 평균으로 되옮기면 두 반올림이 1~3ms 다를 수 있어(차는 문턱 5ms까지 받는다) 구간의 시작·끝에 정확히 보낸 무리가 `requestsSentDuring`에서 빠지거나 더해진다(재현: 06-a의 `retry-outage-burst` 두 실행에서 뒤의 값만 바꿔 평균의 반올림을 1~2ms 옮기면 `requestsSentDuring` 399·408·413, `completedSentDuring` 11·13·20 — 종료 2).
+    - 두 반올림이 같은 규칙인 까닭: 실행 스크립트가 같은 문자열(소수 셋째 자리까지)을 `config.env`의 `_start`와 k6의 `CLOCK_OFFSET_MS`에 함께 넘긴다. 그런 값에서 `Number`로 읽은 수의 반올림과 10진 수(`BigDecimal` HALF_UP)의 반올림은 같다(.5는 2진수로 정확하다). 유효 숫자가 15자리를 넘는 값은 다를 수 있다(실행 스크립트는 쓰지 않는다).
+    - 옛 이름(`clock_offset_services_minus_load_ms`)의 실행(그때의 k6는 헤더를 옮기지 않았다): `outageShiftMs` = `shiftMs` — 서비스가 실제로 판정한 구간(부하 서버의 시계로 시작 + from − 어긋남)을 낸다(지금까지와 같다).
+    - 기록 없음: 0 — 헤더 그대로.
+  - **서비스가 판정한 것을 다시 세는 비교**(`attemptFaults.<서비스>.outage.expected`, `outage.calleeArrivalsDuring`, `outage.retryTailMs`) = `shiftMs`로 옮긴 서비스의 시각과 (헤더의 from·to − `shiftMs`)를 견준다. 같은 정수 양을 양쪽에서 뺐으므로 서비스가 판정한 식 `startUs ≥ from × 1000 && startUs < to × 1000`(`AttemptFaultInjection.kt`)을 기록 그대로의 값으로 계산한 것과 정확히 같다.
+
+### 12-5. 앞·뒤 두 번, 평균, 문턱
+
+- 실행 스크립트가 부하 구간에 붙여 두 번 잰다 — k6를 띄우기 바로 앞(워밍업·상태 초기화 뒤)과 k6가 끝난 바로 뒤(가라앉기·내보내기 앞)(`scripts/lib.sh`의 `clock_offset` — `docs/experiments/task-06-design.md` 2-2). 분석은 둘의 평균을 쓴다 — 실행 동안 어긋남이 고르게 움직였다면 부하 구간의 가운데쯤의 값이다. 견주는 지표의 시각(12-3)은 거의 모두 부하 구간 안에 있다(가라앉기 동안 끝나는 처리의 `endUs`, 맞추기 단계는 밖이다).
+- **문턱 5ms의 까닭**: ① 06-a에서 본 가장 빠른 움직임이 ≈ 1.7~2ms/분이었고(설계 6절 — NTP가 천천히 당긴 15분), 앞·뒤 사이(k6가 도는 시간 — 부하 15~50s와 k6가 뜨고 내리는 몫)는 1분 안팎이라 그 속도로 차는 ≈ 2ms 이하다 — 평소의 실행이 문턱에 걸리지 않을 만큼. ② 평균을 쓰면 부하 구간의 어느 때든 남는 오차는 차의 반(≤ 2.5ms) + 잰 순간의 상한(≤ 1.7ms) ≈ 4ms다(가라앉기 동안의 시각은 그 몫이 조금 더 는다). 기대 파일 가운데 두 시계를 견주는 지표의 가장 작은 여유는 c7(`cal-retry-burst`)의 1초 칸 경계 — 보낸 때부터 결제에 들기까지 12ms 이상(서버의 06-a 실측 12~39ms)이다 — 보다 작다. 차가 그보다 크면(어긋남이 실행 동안 크게 움직였거나 한 번의 측정이 틀렸다) 평균을 믿을 근거가 없어 그 실행을 버린다(입력 오류 — 다시 잰다). `CLOCK_DRIFT_MAX_MS`로 바꿀 수 있고 실행마다 `config.env`에 남는다.
+- **옛 실행**(06-a의 27개): 앞의 값(옛 이름)만 있다 — 그 값으로 옮기고 문턱은 보지 않는다.
+
+### 12-6. 남는 오차
+
+- 잰 순간의 오차(ssh 왕복의 반 — 왕복이 대칭이라는 가정), 반올림 ≤ 0.5ms, 어긋남이 실행 동안 고르게 움직이지 않은 몫(평균이 맞지 않는다 — 차가 문턱 안이면 ≤ 문턱의 반).
+- 구간 장애의 헤더는 **앞의 값**(k6 바로 앞)으로 옮긴다(부하 전에는 뒤의 값이 없다) — 서비스가 판정한 구간은 부하 서버의 시계로 잰 순간의 상한 + 0.5ms + 잰 때부터 그 시각까지 시계가 움직인 몫(구간 시작이 부하 10s 뒤면 2ms/분에서 ≈ 0.3ms)만큼 어긋날 수 있다. 분석기는 k6와 견주는 `outage.*`에 k6가 뜻한 구간을 쓴다(12-4 — 헤더에 더한 양을 그대로 되돌린다). 그래서 `outage.requestsSentDuring`처럼 k6의 `sentAtMs`를 from·to와 견주는 지표는 구간의 시작·끝에 딱 붙어 보낸 요청(t03 나의 무리 19·39 — prep 3절)에서도 뒤의 값에 따라 흔들리지 않는다. 남는 것은 서비스가 실제로 판정한 구간이 그 구간과 위의 몫만큼 다를 수 있다는 것뿐이고, 그 몫은 무리가 보낸 때부터 결제에 들기까지의 여유(아래)보다 작다. 한편 서비스의 시각(평균으로 옮긴 것)을 그 구간의 50ms 칸에 넣는 지표(`calleePeakPer50ms*`·`retryBinsDuring` 등)는 평균에 따라 칸 경계에서 움직일 수 있다(서비스의 시각 자체를 옮기므로 — 12-3의 다른 지표와 같다).
+- **여유가 가장 작은 곳**: 무리 지은 도착의 구간 장애(`retry-outage-burst` — 무리 19를 구간 시작 시각에 정확히 보낸다)에서 그 무리의 첫 시도가 구간 안에 드는 여유는 보낸 때부터 결제에 들기까지(서버 06-a 12~39ms)뿐이다 — 위의 남는 오차(≈ 2.5ms 이하)보다 크다. c7(`cal-retry-burst`)의 1초 칸 경계도 같은 크기의 여유다(12-5 ②).
+- 시각 기록의 `startUs`가 0에 가까운 기록을 옮기면 음수가 될 수 있다(검사는 옮기기 전의 값으로 한다 — 실제 벽시계의 기록에서는 생기지 않는다).

@@ -1,0 +1,7 @@
+experiment	condition	scenario	rep	run	exit	conditions	note
+prep	r05-12-sampler	cal-sampler	1	runs/cal-sampler-20261125T182812-r1	0		1분 load average 6.99(시작)·4.40(끝)
+prep	r05-12-sampler	cal-sampler	2	runs/cal-sampler-20261125T182928-r2	0		1분 load average 4.40(시작)·4.52(끝)
+prep	r05-12-sampler	cal-sampler	3	runs/cal-sampler-20261125T183028-r3	0		1분 load average 4.52(시작)·3.58(끝)
+prep	r05-12-sampler	cal-sampler	4	runs/cal-sampler-20261125T183128-r4	0		1분 load average 3.58(시작)·4.38(끝)
+prep	r05-12-sampler	cal-sampler	5	runs/cal-sampler-20261125T183228-r5	2		1분 load average 4.38(시작)·3.07(끝)
+prep	r05-12-sampler-new-expect	cal-sampler	6	runs/cal-sampler-20261125T183750-r6	0		고친 기대 파일(saturatedMs·maxActive)로 — 1분 load average 1.71(시작)·2.08(끝)

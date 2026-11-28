@@ -1,0 +1,22 @@
+{
+  "clients.completed": {
+    "min": 558,
+    "max": 558
+  },
+  "clients.unknown": {
+    "min": 242,
+    "max": 242
+  },
+  "layers.payment.arrivals": {
+    "min": 1406,
+    "max": 1406
+  },
+  "layers.inventory.processedNotCompleted": {
+    "min": 119,
+    "max": 119
+  },
+  "layers.payment.processedNotCompleted": {
+    "min": 162,
+    "max": 162
+  }
+}

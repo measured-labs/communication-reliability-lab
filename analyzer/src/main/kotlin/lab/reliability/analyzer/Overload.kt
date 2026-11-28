@@ -133,6 +133,7 @@ fun readOverloadCounts(path: Path): Map<String, Map<String, Long>> {
 
 /** 보고와, 늘 견주는 것의 차이 줄(10-4). */
 fun overloadReport(run: Path): Pair<Map<String, Any?>, List<String>> {
+    val clock = readClockOffset(run) // (task 06) 서비스의 시각을 부하 서버의 시계로 — 12절
     val answers = readOverloadAnswers(run.resolve("answers.jsonl"))
     val dup = answers.groupBy { it.requestId }.filterValues { it.size > 1 }.keys
     if (dup.isNotEmpty()) throw InputException("같은 requestId를 두 번 보낸 정답이 있다(${dup.take(3)}) — 한도 지표는 requestId마다 한 번 보낸 실행에서만 정의된다")
@@ -148,7 +149,7 @@ fun overloadReport(run: Path): Pair<Map<String, Any?>, List<String>> {
     val counted = readOverloadCounts(run.resolve("overload-counts.json"))
     fun timingsOf(layer: Layer): List<Timing> {
         val path = run.resolve("timing").resolve("timings-${layer.label}.json")
-        val list = readTimings(path, layer != Layer.PAYMENT)
+        val list = readTimings(path, layer != Layer.PAYMENT, clock?.shiftMs ?: 0L)
         val stray = list.filter { it.requestId !in known }
         if (stray.isNotEmpty()) throw InputException("$path: 정답에 없는 requestId의 시각 기록 ${stray.size}건(${stray.take(3).map { it.requestId }})")
         return list
@@ -264,6 +265,8 @@ fun overloadReport(run: Path): Pair<Map<String, Any?>, List<String>> {
             "callOutcomes" to inv.mapNotNull { it.callOutcome }.groupingBy { it }.eachCount().toSortedMap(),
         ),
     )
+
+    clock?.let { report["clock"] = it.report() }
 
     // 시간 흐름(보고에만): t0부터 1s 칸
     val last = (arrivalMs + answers.map { it.sentAtMs + it.elapsedMs.toLong() }).max()
