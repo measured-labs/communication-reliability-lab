@@ -164,6 +164,9 @@
 | 11-27 20:58 | 06-c 리뷰 반영 워커 회수(Opus, 253k 토큰, 20:47~20:56) — 커밋 `a6330c2`(결과 문서 하나, +44 −29). 메인이 확인: 범위(그 파일만), 커밋 메시지에 AI 표기·리뷰 출처 0건, 값 둘을 metrics에서 직접(예산 켬 calls 1600·arrivals 1689 세 번, 가-off 거절 484/484/483·멈춤 657/659/657ms) | R06c-2~18 모두 고침(지적이 틀렸다고 본 것 없음). 지적표와 달랐던 값은 근거 파일의 값으로: t04 라 끔 8~15, 줄어든 건수 ≈55, 다른 반복의 p99 19~20. 지적표 밖에서 더 고친 것: `paymentAfterInventoryMs`의 노트북 범위(exp2 포함 0.70~0.87). 워커가 알린 215줄의 문장은 메인이 고침(`b4bd7c7`, R06c-19). ledger의 R04-9·R06p-1·R06-17을 닫음. 재점검(codex, 고친 diff와 문서 전체)을 돌림 |
 | 11-27 21:00 | 재점검(codex — 고친 diff와 문서 전체, 결과 `/tmp/claude-1000/crl-r14/out2.md`) | 바뀐 수치 20개 이상을 실행 폴더의 지표·노트북 색인(exp·exp2)·로그·기대 파일과 견줘 모두 맞음, 표와 본문의 판정이 부딪히는 곳 없음. 지적 둘(문장): ①한계의 "셋은 다른 값"은 넷이고 여덟 가운데 둘은 부하 서버의 값 ②`rejectionsStopMs`의 2ms를 "시계 오차 안"이라 단정 — ≈4ms는 상한이라 "실제 차라고 말할 수 없다"까지 → 메인이 고침(결과 문서의 마지막 커밋) |
 | 11-27 21:00 | **task 06 닫음** — 브랜치 `feat/task-06-servers`(`94f901b`…HEAD). 06-a(옮기기·보정·시계 규칙) 듀얼 리뷰 1패스 + 재확인 + 구현을 보지 않은 테스트 63개(1513개 통과) + 메인의 고장 내기 16건 · 06-b 서버 측정 229/229(마감 검사 통과) · 06-c 결과 문서 듀얼 리뷰 1패스 + 반영 + 재점검, 메인의 재계산(거짓 타임아웃·두 번 처리됨) | 확인하지 않은 것: `abfe830`…`26533bb`(구간 장애의 되옮김, 실행기 수정)는 다른 모델이 다시 보지 않음(테스트·고장 내기·서버의 실제 실행으로만) · `load/chain.js`의 헤더 옮김과 실행 스크립트의 앞·뒤 재기는 단위 테스트가 없음(서버 실행으로만) · 결과 문서의 표 가운데 메인이 직접 센 것은 건수 둘뿐(나머지는 두 리뷰어의 대조) · 11-26 05:45:17의 워밍업 실패와 `.164`가 붐빈 시간(11-27 04:28~05:47 UTC)의 원인 · 끝의 load average가 높았던 네 실행의 벌어진 값이 그 때문인지 · 랜 링크가 끊기는 원인. **남긴 문제**: 실행마다 이미지를 짓는 방식이 서비스 서버의 Docker 데몬을 여섯 번 죽여 다른 프로젝트 컨테이너 넷이 30시간 내려가 있었음(사용자 지시로 메인이 다시 올림) — 다음에 서버에서 재기 전에 이미지를 한 번만 짓게 고쳐야 한다(CS 이슈 후보). 서버에 남은 것: 두 서버의 `~/communication-reliability-lab`, 서비스 서버의 이 프로젝트 이미지·빌드 캐시 |
+| 11-28 13:03 | task 06을 올리고 병합 — 올리기 전 확인(커밋 메시지에 AI 표기 0건, 커밋된 파일에 사설 주소 전체·키 경로·비밀 값 0건) → `feat/task-06-servers` push → PR #7 → 병합 커밋으로 병합 | https://github.com/measured-labs/communication-reliability-lab/pull/7 (병합 커밋 `79b899a`). 로컬 `main`을 맞춤. 남은 것(브랜치 `docs/sync-call-closeout`에서): 이 명세의 마감 — 완료 요약, 측정 로그, `docs/plans/NEXT.md`, CS 이슈, "진행 중 결정"의 사용자 확인 |
+| 11-28 13:17 | 사용자: "우선 쉘스크립트 안쓰는건 다 정리하고 다음 작업은 내가 지시주면 그때 진행하자. 1번까지만 하고," · "근데 백그라운드 테스크가 8개나 돌아가고 있다고?" | 정리(메인): 끝나지 않던 대기 셸 여덟(메인의 것 하나, 워커들이 띄운 것 일곱 — 모두 `pgrep -f`가 자기 명령줄을 세어 끝나지 않던 것, 기다리던 대상은 이미 끝남)을 종료, 세션용 ssh-agent 종료, 리뷰용 사본 셋 삭제. 메인이 처음에 "도는 셸이 없다"고 잘못 알림(서버와 ssh 쪽만 보고 이 세션의 자식 프로세스를 보지 않음) → 사용자의 지적 뒤 고쳐 알림. 다른 프로젝트 세션의 대기 셸 하나는 건드리지 않음. **다음 작업(하네스 문서, 이미지 짓기 수정, 메시징)은 사용자의 지시가 있을 때 시작한다** |
+| 11-28 13:17 | 마감 기록 — 문서 워커(Opus, 304k 토큰, 13:08~13:14)가 초안 넷을 보고로 돌려줌(파일 쓰기가 막혀 본문으로). 메인이 워커의 본문을 그대로 뽑아 넣음: 이 log의 `## 완료 요약` · `docs/plans/NEXT.md`(76줄) · `docs/measurement-log.md`(새 파일 — 틀 + 한 행). 메인이 확인: 스니펫 넷 가운데 셋의 줄이 실파일·`git show f72c889`에 그대로 있음, `scripts/run.sh:185`가 `build_images` 호출임. ledger R01-13의 상태를 고침으로 갱신(task 04 `4247991`) | 측정 로그의 토큰 합은 log에 적힌 것만(구현 6738k 등, 미기록 27건은 미측정으로). **CS 이슈 아카이브는 보류** — 후보 아홉(Tomcat keep-alive EOF, 두 서버의 시계, Docker 데몬의 죽음, 랜 링크 끊김, Tomcat 큐 1, gRPC 실행기 큐의 취소, 응답 없이 끊기, `pgrep -f` 자기 세기, 틀린 이유로 통과한 테스트). study-note에 쓰는 것은 이 명세의 범위 밖(4절)이라 사용자 확인 뒤에. "진행 중 결정" 여덟 행과 그 밖의 확인 거리는 마감 보고에서 사용자에게 보임 |
 
 ## 진행 중 결정 (합의 뒤 기록하고 진행한 것 — 마감 때 사용자 확인, `playbooks/task-units.md` §4)
 
@@ -194,7 +197,7 @@
 | R01-10 | 01 | 1 | opus | `chain-link.yml:13` — Tomcat의 keep-alive 시간(연결 타임아웃 20s를 따름)이 클라이언트의 유휴 시간(30s)보다 짧아, 서버가 닫는 연결을 재사용하다 받지도 않은 요청이 "결과 모름"이 될 수 있다. 명시도 기록도 없음 | 코드로만 확인 — 확인 필요 | 데이터 · 있으면 좋다 | 지금 고친다(클라이언트의 유휴 시간이 서버의 keep-alive보다 짧게 두 값을 명시하고 기록) | fixed(`59c19ad`까지) |
 | R01-11 | 01 | 1 | opus | `README.md:37` — 커밋한 실행 기록을 문서끼리 다르게 적음 | 코드로만 확인 | 문서 · 있으면 좋다 | 지금 고친다 | fixed(`59c19ad`까지) |
 | R01-12 | 01 | 1 | opus(질문) | `run.sh:120` — `up.sh` 뒤에 분석기 코드가 바뀌어도 옛 이미지로 분석한다 · k6가 보내지 못한 반복(`dropped_iterations`)을 검사하지 않는다 | 코드로만 확인 | 검증 | 지금 고친다(분석 전에 분석기 이미지를 다시 짓고, 보내지 못한 반복이 0이 아니면 실패) | fixed(`59c19ad`까지) |
-| R01-13 | 01 | 1 | opus(질문) | `Fault.kt:92-96` — "커밋 뒤 실패"가 깔끔한 500 응답만 흉내 낸다. 커밋 뒤 연결이 끊겨 위 층이 결과를 모르는 꼴은 보정 섞음에 없다 | 해당 없음 | 계약 | 후보 — 컨테이너 죽이기와 함께 그 장애가 필요한 task(04 멱등 키)에서 더한다 | 후보 |
+| R01-13 | 01 | 1 | opus(질문) | `Fault.kt:92-96` — "커밋 뒤 실패"가 깔끔한 500 응답만 흉내 낸다. 커밋 뒤 연결이 끊겨 위 층이 결과를 모르는 꼴은 보정 섞음에 없다 | 해당 없음 | 계약 | 후보 — 컨테이너 죽이기와 함께 그 장애가 필요한 task(04 멱등 키)에서 더한다 | 고침 `4247991`(task 04 — 처리하고 커밋한 뒤 응답 없이 끊는 장애 `X-Drop-Fault`) |
 | R02-1 | 02 | 1 | opus · codex(질문) | `docs/results/task-02-timeouts.md:101-108,141`·실행 보고(`slow.normalChain.after.unknown` 110/111/109, `slow.recoveryByClientsMs` 1832/1850/1817) — 나-1(타임아웃 없음·플랫폼)의 EOF 409~411건이 24.9~31.7s에 보낸 사슬 요청의 거의 전부(60/s × 6.8s ≈ 408). 느린 요청 300건이 서버에서 처리되지 않아 그 조건의 부하가 달랐고, 회복 ② 1.8s는 큐가 빠진 시간이 아니라 그 구멍이 끝난 시각으로 보임. 나-1과 나-2의 회복 비교, 나-1의 큐·꽉 찬 시간도 같은 영향 | 코드와 보고의 수로 확인 — 원시 기록으로 확인 필요 | 검증 · 반드시 필요 | 지금 고친다 — EOF 요청이 서버에 들어갔는지 원시 기록(시각 기록, 표본)으로 확인하고, 실험 나의 네 조건을 부하 도구의 연결 재사용을 끈 채 다시 잰다(조건 하나만 바꾸면 비교가 깨지므로 넷 모두). 그래도 풀리지 않으면 그 비교를 결론에서 내리고 한계로 적는다 | fixed(`20b3e60`까지) |
 | R02-2 | 02 | 1 | opus | `docs/results/task-02-timeouts.md:146-147`·나-2의 `waste.payment.startedAfterGiveUp` 1572/1569/1570(헛일 1773/1769/1772 가운데 약 89%) — 결론이 "남은 시간이 없으면 시작하지 않는다만으로는 헛일이 줄지 않고 취소가 필요하다"를 실험 다만으로 적고, 아래 층이 찼을 때는 헛일의 대부분이 위가 포기한 **뒤에** 시작됐다는 측정을 뺌 | 보고의 수로 확인 | 문서 · 반드시 필요 | 지금 고친다(결론의 범위를 "아래 층이 차지 않았을 때"로 한정하고 나-2의 수를 함께 적는다 — 하네스의 기한 줄에 들어갈 근거다) | fixed(`20b3e60`까지) |
 | R02-3 | 02 | 1 | opus | `docs/results/task-02-timeouts.md:128,146`·`docs/experiments/task-02-design.md:97-100` — "결제의 헛일은 배치와 상관없이 같다"는 두 배치의 가장 짧은 타임아웃이 둘 다 1000ms라 설계에서 정해진 결과. 가운데값(514~544ms)은 두 무리의 경계값이라 대표값이 아님 | 코드로만 확인 | 문서 · 하면 좋다 | 지금 고친다(문장을 "취소가 전해지지 않으면 맨 아래 층의 헛일은 경로의 가장 짧은 타임아웃으로 정해진다 — 이 두 배치는 그 값이 같다"로, 가운데값 대신 무리마다의 값) | fixed(`20b3e60`까지) |
@@ -407,4 +410,254 @@
 
 ## 생략한 검증
 
-## 완료 요약
+## 완료 요약 (마감 시)
+
+> 출처: 이 log의 타임라인(행 번호는 11-28 13:03 행까지 있는 작업 트리 기준), 리뷰 ledger, `docs/results/task-06-servers.md`, `git show`. 스니펫은 `main`(`79b899a`)의 실파일과 `git show`에서 복사했다.
+
+### 무엇이 됐나
+
+- 주문→재고→결제 세 서비스(Kotlin + Spring Boot 4.2.0, JDK 25, PostgreSQL 18)와 공유 모듈 `chain-link`·`fault-header`, 측정 도구를 만들었다. 측정 도구는 k6 스크립트 `load/chain.js`, 실행 스크립트 `scripts/`, 분석기 `analyzer`(하위 명령 `timing`·`retry`·`idem`·`overload`·`transport`)다. 재시도·백오프·예산·멱등 키·한도·기한 전파는 직접 짠 최소 코드이고 모두 기본 꺼짐이다.
+- task 01~05는 노트북에서 상대 비교로 쟀다. task 06에서 서비스를 `.164`, 부하·분석을 `.158`에 나눠 task 02~05를 다시 쟀고, 잰 실행 229/229가 마감 검사를 통과했다(152행). 결과 문서는 `docs/results/task-02-timeouts.md` … `task-05-grpc.md`(노트북)와 `docs/results/task-06-servers.md`(서버 — 하네스 문서 2절에 넣을 값)다.
+- 서버의 값 가운데 몇(출처: `docs/results/task-06-servers.md` 1·1-2·2·7절):
+  - 거짓 타임아웃: 80/173/323/2000ms에서 52.1% / 10.9% / 1.67% / 0%
+  - 타임아웃이 없을 때(플랫폼 스레드): 주문 스레드 200이 27.3초 묶임
+  - 키 저장이 더한 시간: 주문·재고 자기 몫 시간 p50에 +0.61·+0.51ms
+  - 두 번 처리됨 119·198: 서버에서도 세 번씩 같음(R06p-1)
+- 검증:
+  - 듀얼 리뷰 1패스 여덟 번(task 01·02·03·04·04-b·05·06-a·06-c), 다른 모델의 재확인 여섯 번, 재점검 한 번
+  - 구현을 보지 않은 워커가 쓴 테스트 1513개, 모두 통과(145행)
+  - 메인의 고장 내기 일곱 묶음
+  - 메인이 원시 묶음에서 따로 센 핵심 건수(41·56·74·79·93·99·107·114·130·133·158행)
+- PR #1~#7을 `main`으로 병합했다. 마지막 병합 커밋은 `79b899a`(167행).
+
+### 핵심 diff before/after
+
+**① 재시도 감싸개** — `git show 59292c4 -- chain-link/src/main/kotlin/lab/reliability/chain/ChainLinkConfiguration.kt`
+
+before:
+```kotlin
+        @Bean
+        fun nextLayerCall(settings: NextLayerSettings): NextLayerCall = HttpNextLayerCall(settings)
+```
+after:
+```kotlin
+        @Bean
+        fun nextLayerCall(settings: NextLayerSettings, retry: RetrySettings, attemptLog: AttemptLog): NextLayerCall {
+            val http = HttpNextLayerCall(settings)
+            if (!retry.enabled) return http
+            return RetryingNextLayerCall(http, retry.policy(), retry.budgetOrNull(), attemptLog::add)
+        }
+```
+감싸개 본체 — `chain-link/src/main/kotlin/lab/reliability/chain/Retry.kt`(main):
+```kotlin
+    override fun call(amount: Long): LayerOutcome {
+        val id = requestId()
+        val callId = callIds.incrementAndGet()
+        budget?.deposit()
+        var attempt = 1
+        var delay = 0L
+        while (true) {
+            val start = clock()
+            val outcome = delegate.call(amount)
+            val end = clock()
+            val decision = decide(outcome, attempt)
+            record(AttemptRecord(id, callId, attempt, start, end, outcome.label(), delay, decision.label))
+            if (decision != RetryDecision.RETRY) return outcome
+            attempt++
+            delay = policy.delayBeforeMs(attempt, if (policy.backoff == Backoff.EXPONENTIAL_JITTER) random() else 0.0)
+            sleeper(delay)
+        }
+    }
+
+    /** 차례: 성공 → 다시 시도할 갈래가 아님 → 시도 상한 → 예산(이때만 토큰을 뺀다) → 재시도. */
+    private fun decide(outcome: LayerOutcome, attempt: Int): RetryDecision {
+        if (outcome == LayerOutcome.Completed) return RetryDecision.SUCCESS
+        val cls = policy.classOf(outcome)
+        if (cls == null || cls !in policy.retryOn) return RetryDecision.NOT_RETRYABLE
+        if (attempt >= policy.maxAttempts) return RetryDecision.MAX_ATTEMPTS
+        if (budget != null && !budget.tryWithdraw()) return RetryDecision.BUDGET_DENIED
+        return RetryDecision.RETRY
+    }
+```
+
+**② 멱등 키를 업무 행과 같은 트랜잭션에 저장** — `git show 4247991 -- payment/src/main/kotlin/lab/reliability/payment/PaymentApplication.kt`
+
+before:
+```kotlin
+@Repository
+class PaymentStore(private val jdbc: JdbcClient) {
+    @Transactional
+    fun approve(requestId: String, amount: Long): Long =
+```
+after:
+```kotlin
+@Repository
+class PaymentStore(private val jdbc: JdbcClient, private val keys: IdempotencyKeys) {
+    /** task 04: 결제 행과 키(COMPLETED, 응답 201)를 한 트랜잭션에. 키가 이미 있으면 둘 다 되돌리고 false. */
+    @Transactional
+    fun approveWithKey(key: String, requestId: String, amount: Long, responseBody: String): Boolean {
+        val id = approve(requestId, amount)
+        if (keys.insert(key, requestId, id, amount, KeyState.COMPLETED, 201, responseBody)) return true
+        TransactionAspectSupport.currentTransactionStatus().setRollbackOnly()
+        return false
+    }
+
+    @Transactional
+    fun approve(requestId: String, amount: Long): Long =
+```
+키 넣기 — `chain-link/src/main/kotlin/lab/reliability/chain/Idempotency.kt`(main):
+```kotlin
+        jdbc.sql(
+            "insert into idempotency_keys (key, request_id, row_id, amount, state, response_status, response_body) " +
+                "values (:key, :requestId, :rowId, :amount, :state, :status, :body) on conflict (key) do nothing",
+        )
+```
+
+**③ 분석기가 두 서버 시계의 어긋남만큼 서비스의 시각을 옮김(`ClockOffset`)** — `git show a6c3f27`
+
+before(`analyzer/…/Overload.kt`):
+```kotlin
+        val list = readTimings(path, layer != Layer.PAYMENT)
+```
+after:
+```kotlin
+    val clock = readClockOffset(run) // (task 06) 서비스의 시각을 부하 서버의 시계로 — 12절
+```
+```kotlin
+        val list = readTimings(path, layer != Layer.PAYMENT, clock?.shiftMs ?: 0L)
+```
+`analyzer/src/main/kotlin/lab/reliability/analyzer/Inputs.kt`(main — `headerShifted`는 뒤의 `abfe830`에서 더해짐, R06-13):
+```kotlin
+class ClockOffset(val startMs: BigDecimal, val endMs: BigDecimal?, val headerShifted: Boolean = true) {
+    val offsetMs: BigDecimal = if (endMs == null) startMs else (startMs + endMs).divide(BigDecimal(2))
+    // 단순화: 옮기는 양을 ms 정수로 반올림한다 — 남는 오차 ≤ 0.5ms(재는 법의 오차 상한 0.45~1.67ms보다 작다). μs 기록과 ms 기록(표본, 구간 장애)을
+    // 같은 정수 양으로 옮겨 서비스끼리 견주는 값이 한 글자도 바뀌지 않게 하려는 것. 0.5ms보다 작은 몫을 따지는 지표가 생기면 μs로 옮긴다.
+    val shiftMs: Long = offsetMs.setScale(0, RoundingMode.HALF_UP).longValueExact()
+```
+
+**④ 실행 스크립트의 서버 경로(서비스 서버를 ssh로 부림, 기본은 localhost)** — `git show f72c889 -- scripts/lib.sh`
+
+before:
+```bash
+COMPOSE=(docker compose -f compose.yaml -p communication-reliability-lab)
+```
+```bash
+      out=$(curl -s --max-time 2 -w '\n%{http_code}' "localhost:${port}/actuator/health" || true)
+```
+after:
+```bash
+if [[ -n $SERVICES_SSH ]]; then
+  [[ $SERVICES_SSH == *@* && -n ${SERVICES_SSH#*@} ]] || die "SERVICES_SSH '$SERVICES_SSH' 는 <계정>@<주소> 꼴이어야 한다"
+  [[ -z ${SERVICES_HOST:-} || $SERVICES_HOST == "${SERVICES_SSH#*@}" ]] \
+    || die "SERVICES_HOST($SERVICES_HOST)가 SERVICES_SSH의 주소(${SERVICES_SSH#*@})와 다르다 — 서비스의 HTTP와 Docker가 한 서버여야 한다"
+  SERVICES_HOST=${SERVICES_SSH#*@}
+  # 서비스 서버에서 명령 하나. 인자마다 %q로 감싸 원격 셸이 다시 나누지 않게 한다(psql의 SQL 등). 표준 입력은 넘기지 않는다(-n).
+  on_services() { ssh -n -o BatchMode=yes -o ConnectTimeout=10 "$SERVICES_SSH" "cd ~/$SERVICES_DIR && $(printf '%q ' "$@")"; }
+```
+```bash
+# 이미지 짓기: 세 서비스는 서비스가 도는 곳에서, 분석기는 이 컴퓨터에서. 같은 곳이면 한 번에(task 01~05 그대로).
+build_images() {
+  if [[ -z $SERVICES_SSH ]]; then
+    "${COMPOSE[@]}" --profile tools build
+  else
+    "${COMPOSE[@]}" build order inventory payment && "${COMPOSE_LOCAL[@]}" --profile tools build analyzer
+  fi
+}
+```
+```bash
+      out=$(curl -s --max-time 2 -w '\n%{http_code}' "${SERVICES_HOST}:${port}/actuator/health" || true)
+```
+`build_images`는 `scripts/run.sh:185`에서 실행마다 불린다(`build_images > "$OUT/image-build.txt" 2>&1 || die …`). 아래 "남은 빚/이월"의 데몬 문제가 이 줄에서 생겼다.
+
+### 배운 것
+
+- 섞음과 규칙만으로 정해지는 건수를 잰 결과처럼 적은 일이 단계마다 다시 나왔다(R03-2, R04b-1, R05-3, R06c-7). task 06에서 그 값을 기대 파일로 옮겨(R04-9, 조건 75개·파일 176개) 분석기가 견주게 했다. 결과 문서는 "정해지는 값"과 "잰 값"을 가르는 절로 시작한다.
+- 구현을 보지 않은 워커의 테스트도 틀린 이유로 통과할 수 있었다. 필수 입력이 빠져 먼저 종료 1을 낸 입력 오류 테스트가 57개(64행), 67개(82행), 2개(86행) 나왔다. 기준 기록이 종료 0을 내는지부터 확인하게 바꿔 고쳤다.
+- 리뷰가 가장 많이 잡은 것은 분석기가 조용히 통과하는 경로였다. 예: 꺼진 층의 음수 지표(R03-3), 빠진 시각 기록(R03-4), 행 id를 보지 않는 키 대조(R04-2), 맞추기의 분모(R04-3), 색인 검사(R06-3), 이어 돌기가 옛 실패를 가림(R06-14).
+- 서버 측정의 실패는 모두 측정 밖에서 왔다: 랜 링크 끊김 9, 시계 차 4, Docker 데몬의 죽음 4, load average 2(결과 문서 61~67줄). 측정 도구는 이 실패를 모두 잡았고, 조용히 통과한 실행은 없었다(150행).
+
+### 남은 빚/이월
+
+- `## 생략한 검증`은 비어 있다(긴급 경로를 쓰지 않음, DEBT 기록 없음). 안전선 ②를 하지 못한 사유: 기록 없음.
+- **남긴 문제**(166행): 실행마다 이미지를 짓는 방식(`scripts/run.sh:185` → `build_images`)이 서비스 서버의 Docker 29.6.1 데몬을 BuildKit `concurrent map iteration and map write`로 여섯 번 죽였다. 다른 프로젝트 컨테이너 넷이 30시간 내려가 있었다(사용자 지시로 메인이 다시 올림, 160행). 서버에서 다시 재기 전에 이미지를 한 번만 짓게 고쳐야 한다.
+- 서버에 남은 것(153·166행): 두 서버의 `~/communication-reliability-lab`(부하 서버는 `runs/` 1.1G·k6 포함), 서비스 서버의 이 프로젝트 이미지와 빌드 캐시.
+- ledger R01-13의 상태가 "후보"로 남아 있다. task 04에서 `X-Drop-Fault`(`4247991`)로 더해졌으므로(명세 112줄, 70·72행) 상태 칸만 갱신하면 된다.
+
+### 확인하지 않은 것과 알아야 할 위험 (각 task 닫음 행에서 모음)
+
+- **task 01(35행)**
+  - 리뷰 반영 뒤 코드(`be9210b`…`59c19ad`)는 다른 모델이 다시 보지 않음
+  - 실제 DOWN 상태의 준비 확인, `dropped_iterations`의 실패 경로, keep-alive를 맞춘 효과
+  - 초당 20건보다 무거운 부하의 편차(명세 8절 가정 1)
+- **task 02(52행)**
+  - 패킷 수준의 연결 닫힘, k6의 VU 선택 차례, Tomcat 11.0.27 태그의 소스
+  - 연결을 요청마다 맺는 비용(실험 나만 연결 재사용을 끔)
+  - 실험 나·다의 수치는 메인이 일부만 다시 셈
+  - 측정 중 노트북의 다른 부하
+  - `40bea68`은 다른 모델이 보지 않음
+- **task 03(68행)**
+  - 재시도가 회복을 늦추는 효과(이 설계로는 잴 수 없음 — 04-b가 일부 채움)
+  - 지터는 full jitter 하나, 무리 20건·주기 500ms 하나로만 잼. 꽉 찬 칸의 문턱 15는 무리 크기에 묶임
+  - 실험 다·라는 메인이 다시 세지 않음
+  - `docs/retry.md` 5-1의 예외 동작은 테스트로만 확인. Spring으로 띄운 감싸개의 테스트 없음
+  - 고정 500ms r2의 꼬리 +131ms의 원인
+  - `bfdc8a3`은 다른 모델이 보지 않음
+- **task 04(89행)**
+  - `Idempotency.repeated`·`IdempotencyKeys`의 SQL, 입구 필터, 끊기, Spring 기동 실패는 실행으로만 확인
+  - 실험 다는 노트북 load average 47에서 잼
+  - 동시 요청에서 "먼저 든 쪽이 409"의 몫은 부하 도구가 보낸 간격을 따라감
+  - 409를 결과 모름으로 읽은 43건을 같은 키로 맞추는 것은 재지 않음
+  - 옛 62개 실행에는 `row_id`가 없음
+  - `63b5987`…`3dd1982`는 다른 모델이 보지 않음
+  - 처음 커밋 뒤 죽은 키가 영원히 409로 남음(문서에 적힌 한계)
+- **task 04-b(103행)**
+  - 지터가 몰린 재시도를 흩어 회복을 앞당기는지는 이 한도(지난 1초의 수)로 가려지지 않음
+  - 자리 ②는 17/s 한 값·5회, 기제는 모형과 맞을 뿐. 자리 ③은 위상 하나
+  - 한도는 흉내 낸 것. 한도·끊김 판정의 차례(R04b-5)는 확인 실행으로만 확인
+  - 한도와 `fail-first`를 섞으면 대조가 어긋남
+  - 세 갈래 대조는 같은 규칙 코드를 불러 규칙 착오와 잠금 밖 시계를 거의 못 잡음
+  - `88c3515`은 다른 모델이 보지 않음
+  - 예산은 값 하나로만 잼
+- **task 05(119행)**
+  - 취소 전파의 지연은 재지 못함. P1에서 전파의 몫은 처리 행·멈춘 수로만 0
+  - 기한보다 먼저 안 취소(0~32건)의 까닭은 추론
+  - `UNAVAILABLE` 경로는 일으켜 보지 않음
+  - `GrpcChainLayerService`, 채널·실행기 설정, `/settings` 인터셉터 칸은 단위 테스트 입구가 없음
+  - P2-G2 r2의 느린 결제 기록 53건의 원인
+  - HTTP(Tomcat)와 gRPC(Netty)의 차는 프로토콜 하나의 차가 아님
+  - `6042c22`은 다른 모델이 보지 않음
+- **task 06 준비(125행)**
+  - 409 설정을 켠 실행 스모크 없음
+  - `cal-sampler` 새 기대의 근거는 워커의 보고
+  - 조건 75개 가운데 워커가 대조한 것은 두 곳
+  - 준비 단계는 따로 리뷰를 거치지 않음(06-a 리뷰에 함께 넣음)
+- **task 06(166행)**
+  - `abfe830`…`26533bb`(구간 장애의 되옮김, 실행기 수정)는 다른 모델이 다시 보지 않음
+  - `load/chain.js`의 헤더 옮김과 실행 스크립트의 앞·뒤 재기는 단위 테스트가 없음
+  - 결과 문서 표 가운데 메인이 직접 센 것은 건수 둘뿐
+  - 11-26 05:45:17 워밍업 실패와 `.164`가 붐빈 시간(11-27 04:28~05:47 UTC)의 원인
+  - 끝의 load average가 높았던 실행의 벌어진 값, 랜 링크가 끊기는 원인
+- **알아야 할 위험**
+  - 실행 기록의 `compose.resolved.yaml`에 이 컴퓨터의 프로젝트 절대 경로가 들어 있고, 공개 저장소에 올라가 있다(69행, R06-11).
+  - 06-a 워커가 `ssh-add`로 데스크톱 agent에 서버 키를 넣었다 뺐다. 원래 들어 있었는지는 모른다(137행).
+
+### 뺀 것과 다시 더할 조건
+
+- 409를 결과 모름으로 읽은 조건의 맞추기 단계와 `replayed`·`resumed`의 기록 대조를 뺐다(78행). 다시 더할 조건: 기록 없음.
+- `cal-sampler` 기대에서 `samples.order.maxQueue` 0~0을 뺐다. 이 보정은 더는 `queue`를 읽는지 보지 않는다(122행). 다시 더할 조건: 기록 없음.
+- `runValueOf`가 `--`로 시작하는 값도 받는 고장을 잡는 테스트를 더하지 않았다. 대상 실행의 보고에 닿지 않는 고장이다(118행).
+- 라이브러리와의 비교와 서킷 브레이커는 명세 2절의 범위 밖이다. 결과 문서 9절에 "재지 않았다"로 적었다.
+
+### 더 나은 대안
+
+- log에 "더 나은 대안"으로 적힌 행은 없다.
+- 관측에서 나온 하나: 실행마다 이미지를 짓지 말고 한 번만 짓는다. 조건은 환경 변수로만 바뀌므로 이미지는 같다(결과 문서 한계 324줄). 데몬 실패 넷과 다른 프로젝트 컨테이너가 멈추는 일을 없앤다.
+
+### 이번 변경의 `단순화:` 주석 (`git grep -n -E '(단순화|ponytail):' main -- ':!runs' ':!docs/plans'` — 코드 여섯, 문서 언급은 거름)
+
+- `analyzer/src/main/kotlin/lab/reliability/analyzer/Inputs.kt:189` 옮기는 양을 ms 정수로 반올림(남는 오차 ≤ 0.5ms) — 0.5ms보다 작은 몫을 따지는 지표가 생기면 μs로.
+- `chain-link/src/main/kotlin/lab/reliability/chain/AttemptFaultInjection.kt:20` 든 횟수를 상한 없이 메모리에(`DELETE /attempt-faults`로 비움) — 고칠 때 없음.
+- `chain-link/src/main/kotlin/lab/reliability/chain/DropFault.kt:19` 든 횟수를 상한 없이 메모리에(`DELETE /drop-faults`로 비움) — 고칠 때 없음.
+- `chain-link/src/main/kotlin/lab/reliability/chain/DropFault.kt:53` Tomcat 11.0.27의 내부에 기댐 — Tomcat을 올리면 보정(`cal-idem`)으로 다시 확인.
+- `chain-link/src/main/kotlin/lab/reliability/chain/Observation.kt:62` 상한 없이 메모리에 쌓음 — 상주 서비스라면 내보내기로.
+- `chain-link/src/main/kotlin/lab/reliability/chain/Retry.kt:224` 상한 없이 메모리에 쌓음(`DELETE /attempts`로 비움) — 고칠 때 없음.
